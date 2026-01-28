@@ -1,0 +1,60 @@
+.belief-statement {
+  min-height: 50vh;
+  padding: 120px 80px;
+  background-color: #3d3d3d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.belief-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.leaf-icon {
+  margin-bottom: 50px;
+  display: inline-block;
+}
+
+.belief-text {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 52px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: #ffffff;
+  letter-spacing: -0.5px;
+  max-width: 1300px;
+  margin: 0 auto;
+}
+
+.belief-subtext {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 18px;
+  font-weight: 400;
+  font-style: italic;
+  color: #b8c9c0;
+  margin-top: 30px;
+}
+
+@media (max-width: 1200px) {
+  .belief-text {
+    font-size: 42px;
+  }
+}
+
+@media (max-width: 768px) {
+  .belief-statement {
+    padding: 90px 40px;
+  }
+
+  .belief-text {
+    font-size: 34px;
+  }
+
+  .leaf-icon svg {
+    width: 50px;
+    height: 50px;
+  }
+}

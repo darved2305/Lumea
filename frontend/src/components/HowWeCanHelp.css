@@ -1,0 +1,162 @@
+.how-we-help {
+  min-height: 100vh;
+  padding: 100px 80px;
+  background-color: #f5f0e8;
+  display: flex;
+  align-items: center;
+}
+
+.how-we-help-container {
+  max-width: 1600px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.help-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 70px;
+  gap: 60px;
+}
+
+.help-text {
+  flex: 1;
+  max-width: 700px;
+}
+
+.help-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 75px;
+  font-weight: 500;
+  color: #2d2d2d;
+  margin-bottom: 28px;
+  letter-spacing: -1.5px;
+  line-height: 1.1;
+}
+
+.help-subtitle {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 19px;
+  font-weight: 400;
+  line-height: 1.7;
+  color: #5a5a5a;
+  max-width: 600px;
+}
+
+.btn-view-all {
+  display: inline-block;
+  background-color: #4a7c59;
+  color: white;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 18px;
+  font-weight: 500;
+  padding: 20px 45px;
+  border-radius: 40px;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.btn-view-all:hover {
+  background-color: #3d6849;
+  transform: translateY(-2px);
+}
+
+.services-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 35px;
+}
+
+.service-card-item {
+  background-color: #b8c9c0;
+  padding: 55px 40px;
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s ease;
+}
+
+.service-icon {
+  margin-bottom: 35px;
+}
+
+.service-card-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 42px;
+  font-weight: 500;
+  color: #2d2d2d;
+  margin-bottom: 20px;
+  letter-spacing: -0.5px;
+}
+
+.service-card-description {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 17px;
+  font-weight: 400;
+  line-height: 1.6;
+  color: #3d3d3d;
+  margin-bottom: 35px;
+  flex-grow: 1;
+}
+
+.service-view-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 17px;
+  font-weight: 500;
+  color: #2d2d2d;
+  transition: all 0.3s ease;
+}
+
+.service-view-link:hover {
+  gap: 14px;
+  color: #4a7c59;
+}
+
+.view-icon {
+  width: 32px;
+  height: 32px;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+@media (max-width: 1200px) {
+  .services-cards {
+    grid-template-columns: 1fr;
+    gap: 30px;
+  }
+
+  .help-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .help-title {
+    font-size: 60px;
+  }
+}
+
+@media (max-width: 768px) {
+  .how-we-help {
+    padding: 80px 40px;
+  }
+
+  .help-title {
+    font-size: 52px;
+  }
+
+  .help-subtitle {
+    font-size: 17px;
+  }
+
+  .service-card-title {
+    font-size: 36px;
+  }
+}

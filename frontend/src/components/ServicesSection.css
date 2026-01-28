@@ -1,0 +1,267 @@
+.services {
+  min-height: 100vh;
+  padding: 80px 80px 60px;
+  background-color: #f5f0e8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.services-container {
+  max-width: 1600px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.services-header {
+  text-align: center;
+  margin-bottom: 70px;
+}
+
+.services-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 75px;
+  font-weight: 500;
+  color: #2d2d2d;
+  margin-bottom: 28px;
+  letter-spacing: -1.5px;
+  line-height: 1.1;
+}
+
+.services-subtitle {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1.7;
+  color: #5a5a5a;
+}
+
+.services-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 0;
+  max-width: 1500px;
+  margin: 0 auto 60px;
+  position: relative;
+  min-height: 500px;
+}
+
+.service-card {
+  padding: 60px 50px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background-color: transparent;
+  position: relative;
+  z-index: 2;
+}
+
+.card-left-top {
+  grid-column: 1;
+  grid-row: 1;
+  padding-right: 70px;
+}
+
+.card-right-top {
+  grid-column: 3;
+  grid-row: 1;
+  padding-left: 70px;
+}
+
+.card-left-bottom {
+  grid-column: 1;
+  grid-row: 2;
+  padding-right: 70px;
+}
+
+.card-right-bottom {
+  grid-column: 3;
+  grid-row: 2;
+  padding-left: 70px;
+}
+
+.service-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 48px;
+  font-weight: 500;
+  color: #2d2d2d;
+  margin-bottom: 22px;
+  letter-spacing: -0.6px;
+  line-height: 1.2;
+}
+
+.service-description {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 1.7;
+  color: #5a5a5a;
+}
+
+.petal-container {
+  grid-column: 2;
+  grid-row: 1 / 3;
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+.petal {
+  position: absolute;
+  width: 50%;
+  height: 50%;
+  border-radius: 0 100% 0 0;
+}
+
+.petal-green {
+  background-color: #4a7c59;
+}
+
+.petal-brown {
+  background-color: #5a5346;
+}
+
+.petal.top-left {
+  top: 0;
+  left: 0;
+  border-radius: 0 100% 0 0;
+  transform-origin: bottom right;
+}
+
+.petal.top-right {
+  top: 0;
+  right: 0;
+  border-radius: 100% 0 0 0;
+  transform-origin: bottom left;
+}
+
+.petal.bottom-left {
+  bottom: 0;
+  left: 0;
+  border-radius: 0 0 100% 0;
+  transform-origin: top right;
+}
+
+.petal.bottom-right {
+  bottom: 0;
+  right: 0;
+  border-radius: 0 0 0 100%;
+  transform-origin: top left;
+}
+
+.petal-border {
+  position: absolute;
+  border: 1.5px dashed #c5c5c5;
+}
+
+.petal-border.horizontal-top {
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 0;
+}
+
+.petal-border.horizontal-bottom {
+  bottom: 50%;
+  left: 0;
+  right: 0;
+  height: 0;
+}
+
+.petal-border.vertical-left {
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 0;
+}
+
+.petal-border.vertical-right {
+  right: 50%;
+  top: 0;
+  bottom: 0;
+  width: 0;
+}
+
+.services-footer {
+  text-align: center;
+}
+
+.btn-learn-more {
+  display: inline-block;
+  background-color: #4a7c59;
+  color: white;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 18px;
+  font-weight: 500;
+  padding: 22px 55px;
+  border-radius: 40px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.btn-learn-more:hover {
+  background-color: #3d6849;
+}
+
+@media (max-width: 1400px) {
+  .services-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+    gap: 50px;
+  }
+
+  .service-card {
+    grid-column: 1 !important;
+    grid-row: auto !important;
+    padding: 50px !important;
+    text-align: center;
+  }
+
+  .petal-container {
+    grid-column: 1;
+    grid-row: auto;
+    height: 450px;
+  }
+
+  .services-title {
+    font-size: 70px;
+  }
+
+  .service-title {
+    font-size: 48px;
+  }
+
+  .service-description {
+    font-size: 18px;
+  }
+}
+
+@media (max-width: 768px) {
+  .services {
+    padding: 90px 40px;
+  }
+
+  .services-title {
+    font-size: 56px;
+  }
+
+  .services-subtitle {
+    font-size: 19px;
+  }
+
+  .service-title {
+    font-size: 42px;
+  }
+
+  .service-description {
+    font-size: 17px;
+  }
+
+  .petal-container {
+    height: 350px;
+  }
+}

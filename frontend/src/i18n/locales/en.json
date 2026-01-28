@@ -1,0 +1,149 @@
+{
+  "header": {
+    "nav": {
+      "features": "Features",
+      "howItWorks": "How It Works",
+      "privacySecurity": "Privacy & Security",
+      "news": "News",
+      "faq": "FAQ",
+      "contact": "Contact"
+    },
+    "cta": "Get Started"
+  },
+  "hero": {
+    "tagline": "First priority is",
+    "taglineHighlight": "your health",
+    "subtitle": "Track it. Understand it. Prevent it.",
+    "description": "Upload your lab reports, get them interpreted, and receive smart reminders for checkups + medicines. Co-Code GGW helps you stay preventive—without becoming your doctor.",
+    "disclaimer": "Not medical advice. Always consult a licensed clinician for diagnosis/treatment.",
+    "cta": {
+      "upload": "Upload Reports",
+      "howItWorks": "See How It Works"
+    },
+    "images": {
+      "labReport": "Person scanning lab report on phone",
+      "dashboard": "Doctor reviewing health dashboard analytics",
+      "smartwatch": "Smartwatch health metrics tracking",
+      "medicine": "Medicine blister pack and pharmacy"
+    }
+  },
+  "services": {
+    "title": "Unified Medical Platform",
+    "subtitle": "One secure place for your reports, reminders, and health insights.",
+    "cards": {
+      "preventive": {
+        "title": "Preventive",
+        "description": "Personalized checkup schedule based on age, history, BMI, and past reports."
+      },
+      "tracking": {
+        "title": "Mindful Tracking",
+        "description": "Log food habits and lifestyle choices to identify patterns."
+      },
+      "reminders": {
+        "title": "Smart Reminders",
+        "description": "Dynamic alerts for checkups and medicines based on your health profile."
+      },
+      "index": {
+        "title": "Health Index",
+        "description": "Simple score showing trends and what needs attention in your health data."
+      }
+    }
+  },
+  "howItWorks": {
+    "title": "How Co-Code GGW Works",
+    "subtitle": "Upload reports, get insights, and stay on top of preventive care—all in one secure platform.",
+    "features": {
+      "ocr": {
+        "title": "Report OCR",
+        "description": "Upload blood tests, dental reports, scans—extract key values automatically."
+      },
+      "reminders": {
+        "title": "Smart Reminders",
+        "description": "Dynamic reminders for checkups + medicines based on your profile and history."
+      },
+      "index": {
+        "title": "Health Index",
+        "description": "Your health score + trends, highlighting areas that need attention."
+      }
+    },
+    "cta": "View All Features"
+  },
+  "belief": {
+    "message": "Most health issues don't start as emergencies. They start quietly. Co-Code GGW keeps your health history organized and nudges you at the right time—so prevention becomes automatic.",
+    "tagline": "Built as a suggestion system, not a doctor."
+  },
+  "news": {
+    "label": "In the News",
+    "readMore": "Read more",
+    "articles": {
+      "abha": {
+        "title": "India's ABHA Digital Mission Crosses 600M Records",
+        "source": "Ministry of Health & Family Welfare",
+        "snippet": "The Ayushman Bharat Digital Mission has generated over 600 million Ayushman Bharat Health Accounts (ABHA), enabling citizens to securely store and share their medical records digitally."
+      },
+      "nppa": {
+        "title": "NPPA Ensures Pricing Measures for Essential Medicines",
+        "source": "Press Information Bureau",
+        "snippet": "The National Pharmaceutical Pricing Authority announced new measures to regulate prices of 800+ essential drugs, aiming to improve accessibility and affordability for preventive care."
+      },
+      "ocr": {
+        "title": "OCR Transforms Healthcare Document Management",
+        "source": "Healthcare IT Today",
+        "snippet": "Optical Character Recognition technology is revolutionizing how healthcare providers extract and analyze medical records, reducing manual data entry errors by up to 90%."
+      }
+    }
+  },
+  "faq": {
+    "title": "The Art Of",
+    "titleHighlight": "Prevention",
+    "subtitle": "Co-Code GGW makes preventive care simple. Upload reports, track trends, and get nudges at the right time—so staying healthy doesn't feel like work.",
+    "items": {
+      "isDoctor": {
+        "question": "Is Co-Code GGW a doctor?",
+        "answer": "No. Co-Code GGW is not a doctor and does not provide medical advice, diagnosis, or treatment. It is a suggestion system that helps you organize lab reports, track health trends, and receive smart reminders—always consult a licensed clinician for medical decisions."
+      },
+      "reports": {
+        "question": "What reports can I upload?",
+        "answer": "You can upload lab reports, diagnostic images, prescriptions, and medical documents in PDF, JPG, or PNG format. Our OCR extracts key values like glucose, cholesterol, hemoglobin, and more."
+      },
+      "ocr": {
+        "question": "How does OCR work and what do you extract?",
+        "answer": "Optical Character Recognition (OCR) scans your uploaded reports and automatically extracts biomarker values, test names, dates, and reference ranges. This eliminates manual data entry and enables trend analysis over time."
+      },
+      "reminders": {
+        "question": "How are reminders personalized?",
+        "answer": "Based on your report history, age, and past checkup dates, Co-Code GGW suggests when to schedule follow-ups, refill medicines, or repeat tests. Reminders adapt dynamically as you upload new reports."
+      },
+      "security": {
+        "question": "How do you keep my data secure?",
+        "answer": "All reports are encrypted at rest and in transit. We follow HIPAA-equivalent security standards, use multi-factor authentication, and never share your data with third parties without explicit consent."
+      },
+      "export": {
+        "question": "Can I export or delete my data?",
+        "answer": "Yes. You can export all your reports and extracted data as a ZIP file anytime. You also have the right to permanently delete your account and all associated data from our servers."
+      }
+    }
+  },
+  "footer": {
+    "description": "Unified Medical Platform for preventive care. Upload reports, track trends, and get nudges at the right time—so staying healthy doesn't feel like work.",
+    "product": {
+      "title": "Product"
+    },
+    "cta": {
+      "title": "Ready to take control of your health?",
+      "contact": "Contact Us",
+      "demo": "Book Demo"
+    },
+    "bottom": {
+      "privacy": "Privacy",
+      "terms": "Terms",
+      "copyright": "Copyright @2026 - Made by team GitGoneWild"
+    }
+  },
+  "language": {
+    "select": "Select Language",
+    "english": "English",
+    "hindi": "हिंदी",
+    "marathi": "मराठी"
+  }
+}
