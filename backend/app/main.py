@@ -4,24 +4,37 @@ from contextlib import asynccontextmanager
 from app.settings import settings
 from app.db import init_db
 from app.routes import auth
+from app.routes import health
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await init_db()
+    try:
+        await init_db()
+    except Exception as e:
+        print(f"DB init warning: {e}")
     yield
 
 app = FastAPI(title="Co-Code GGW Auth API", lifespan=lifespan)
 
-# CORS configuration to allow frontend requests
+# CORS configuration - allow both localhost ports
+origins = [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:5174",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.frontend_origin],
+    allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 app.include_router(auth.router)
+app.include_router(health.router)
 
 @app.get("/")
 async def root():

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -8,11 +8,12 @@ from app.models import User, LoginEvent
 from app.schemas import UserCreate, UserLogin, TokenResponse, UserResponse
 from app.security import hash_password, verify_password, create_access_token, decode_access_token
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(prefix="/api/auth", tags=["auth"])
 security = HTTPBearer()
 
 @router.post("/signup", response_model=TokenResponse)
-async def signup(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
+@router.post("/register", response_model=TokenResponse)
+async def signup(user_data: UserCreate, response: Response, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == user_data.email))
     existing_user = result.scalar_one_or_none()
     
@@ -31,6 +32,16 @@ async def signup(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
     
     access_token = create_access_token({"sub": str(new_user.id)})
     
+    # Set httpOnly cookie
+    response.set_cookie(
+        key="auth_token",
+        value=access_token,
+        httponly=True,
+        secure=False,  # Set to True in production with HTTPS
+        samesite="lax",
+        max_age=7 * 24 * 60 * 60  # 7 days
+    )
+    
     return TokenResponse(
         access_token=access_token,
         user=UserResponse.model_validate(new_user)
@@ -40,6 +51,7 @@ async def signup(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
 async def login(
     login_data: UserLogin,
     request: Request,
+    response: Response,
     db: AsyncSession = Depends(get_db)
 ):
     result = await db.execute(select(User).where(User.email == login_data.email))
@@ -62,6 +74,16 @@ async def login(
     
     access_token = create_access_token({"sub": str(user.id)})
     
+    # Set httpOnly cookie
+    response.set_cookie(
+        key="auth_token",
+        value=access_token,
+        httponly=True,
+        secure=False,  # Set to True in production with HTTPS
+        samesite="lax",
+        max_age=7 * 24 * 60 * 60  # 7 days
+    )
+    
     return TokenResponse(
         access_token=access_token,
         user=UserResponse.model_validate(user)
@@ -81,6 +103,11 @@ async def get_current_user(
     if not user_id:
         raise HTTPException(status_code=401, detail="Invalid token payload")
     
+
+@router.post("/logout")
+async def logout(response: Response):
+    response.delete_cookie(key="auth_token")
+    return {"message": "Successfully logged out"}
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     

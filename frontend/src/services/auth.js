@@ -6,7 +6,8 @@ const api = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json'
-  }
+  },
+  withCredentials: true // Enable sending cookies
 })
 
 api.interceptors.request.use(config => {
@@ -18,7 +19,7 @@ api.interceptors.request.use(config => {
 })
 
 export const signup = async (fullName, email, password) => {
-  const response = await api.post('/auth/signup', {
+  const response = await api.post('/api/auth/register', {
     full_name: fullName,
     email,
     password
@@ -27,7 +28,7 @@ export const signup = async (fullName, email, password) => {
 }
 
 export const login = async (email, password) => {
-  const response = await api.post('/auth/login', {
+  const response = await api.post('/api/auth/login', {
     email,
     password
   })
@@ -35,10 +36,12 @@ export const login = async (email, password) => {
 }
 
 export const getMe = async () => {
-  const response = await api.get('/auth/me')
+  const response = await api.get('/api/me')
   return response.data
 }
 
-export const logout = () => {
+export const logout = async () => {
+  await api.post('/api/auth/logout')
   localStorage.removeItem('access_token')
 }
+

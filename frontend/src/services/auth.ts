@@ -6,7 +6,8 @@ const api = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json'
-  }
+  },
+  withCredentials: true // Enable sending cookies
 })
 
 api.interceptors.request.use(config => {
@@ -42,7 +43,7 @@ interface MeResponse {
 }
 
 export const signup = async (fullName: string, email: string, password: string): Promise<SignupResponse> => {
-  const response = await api.post<SignupResponse>('/auth/signup', {
+  const response = await api.post<SignupResponse>('/api/auth/register', {
     full_name: fullName,
     email,
     password
@@ -51,7 +52,7 @@ export const signup = async (fullName: string, email: string, password: string):
 }
 
 export const login = async (email: string, password: string): Promise<LoginResponse> => {
-  const response = await api.post<LoginResponse>('/auth/login', {
+  const response = await api.post<LoginResponse>('/api/auth/login', {
     email,
     password
   })
@@ -59,10 +60,11 @@ export const login = async (email: string, password: string): Promise<LoginRespo
 }
 
 export const getMe = async (): Promise<MeResponse> => {
-  const response = await api.get<MeResponse>('/auth/me')
+  const response = await api.get<MeResponse>('/api/me')
   return response.data
 }
 
-export const logout = () => {
+export const logout = async (): Promise<void> => {
+  await api.post('/api/auth/logout')
   localStorage.removeItem('access_token')
 }

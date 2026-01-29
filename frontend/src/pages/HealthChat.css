@@ -1,0 +1,77 @@
+.health-chat-page {
+  min-height: 100vh;
+  background-color: #f5f0e8;
+}
+
+.health-chat-loading {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: #f5f0e8;
+  gap: 20px;
+}
+
+.loading-spinner {
+  font-size: 64px;
+}
+
+.health-chat-loading p {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 16px;
+  color: #5a5a5a;
+}
+
+.health-chat-container {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 40px 20px;
+}
+
+.health-chat-layout {
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: 24px;
+  height: calc(100vh - 180px);
+  min-height: 600px;
+}
+
+.chat-section {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.snapshot-section {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+@media (max-width: 1200px) {
+  .health-chat-layout {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+
+  .snapshot-section {
+    order: -1;
+    max-height: 400px;
+  }
+
+  .chat-section {
+    min-height: 500px;
+  }
+}
+
+@media (max-width: 768px) {
+  .health-chat-container {
+    padding: 20px 12px;
+  }
+
+  .health-chat-layout {
+    gap: 16px;
+  }
+}

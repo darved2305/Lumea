@@ -8,6 +8,7 @@ function Header() {
   const { t } = useTranslation()
 
   const navLinks = [
+    { label: 'Health Chat', href: '/health-chat', isRoute: true },
     { label: t('header.nav.features'), href: '#features' },
     { label: t('header.nav.howItWorks'), href: '#how-it-works' },
     { label: t('header.nav.privacySecurity'), href: '#privacy' },
@@ -44,14 +45,25 @@ function Header() {
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.1 * index, duration: 0.5 }}
               >
-                <motion.a 
-                  href={link.href} 
-                  className="nav-link"
-                  whileHover={{ scale: 1.1, color: '#4a7c59' }}
-                  transition={{ type: 'spring', stiffness: 300 }}
-                >
-                  {link.label}
-                </motion.a>
+                {link.isRoute ? (
+                  <Link to={link.href} className="nav-link">
+                    <motion.span
+                      whileHover={{ scale: 1.1, color: '#4a7c59' }}
+                      transition={{ type: 'spring', stiffness: 300 }}
+                    >
+                      {link.label}
+                    </motion.span>
+                  </Link>
+                ) : (
+                  <motion.a 
+                    href={link.href} 
+                    className="nav-link"
+                    whileHover={{ scale: 1.1, color: '#4a7c59' }}
+                    transition={{ type: 'spring', stiffness: 300 }}
+                  >
+                    {link.label}
+                  </motion.a>
+                )}
               </motion.li>
             ))}
           </ul>

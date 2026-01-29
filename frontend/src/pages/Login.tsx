@@ -28,7 +28,7 @@ function Login() {
     try {
       const data = await login(formData.email, formData.password)
       localStorage.setItem('access_token', data.access_token)
-      navigate('/')
+      navigate('/health-chat')
     } catch (err) {
       setError(err.response?.data?.detail || 'Login failed. Please check your credentials.')
     } finally {
