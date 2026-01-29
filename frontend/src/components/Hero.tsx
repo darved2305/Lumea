@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 import gsap from 'gsap'
 import './Hero.css'
 
@@ -95,32 +96,32 @@ function Hero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 1.3, duration: 0.8 }}
           >
-            <motion.a 
-              href="#" 
-              className="btn-primary"
+            <motion.div
               whileHover={{ scale: 1.1, y: -3, boxShadow: '0 10px 30px rgba(74, 124, 89, 0.4)' }}
               whileTap={{ scale: 0.95 }}
               transition={{ type: 'spring', stiffness: 400, damping: 10 }}
             >
-              {t('hero.cta.upload')}
-            </motion.a>
-            <motion.a 
-              href="#" 
-              className="btn-secondary"
+              <Link to="/login" className="btn-primary">
+                {t('hero.cta.upload')}
+              </Link>
+            </motion.div>
+            <motion.div
               whileHover={{ scale: 1.05, x: 10 }}
               whileTap={{ scale: 0.95 }}
             >
-              <motion.span 
-                className="btn-icon"
-                whileHover={{ rotate: 90 }}
-                transition={{ type: 'spring', stiffness: 300 }}
-              >
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M6 1L11 6M11 6L6 11M11 6H1" stroke="#2d2d2d" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </motion.span>
-              {t('hero.cta.howItWorks')}
-            </motion.a>
+              <Link to="/login" className="btn-secondary">
+                <motion.span 
+                  className="btn-icon"
+                  whileHover={{ rotate: 90 }}
+                  transition={{ type: 'spring', stiffness: 300 }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M6 1L11 6M11 6L6 11M11 6H1" stroke="#2d2d2d" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </motion.span>
+                {t('hero.cta.howItWorks')}
+              </Link>
+            </motion.div>
           </motion.div>
         </motion.div>
         <div className="hero-images">

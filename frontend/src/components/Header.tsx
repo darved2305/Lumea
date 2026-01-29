@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 import LanguageSwitcher from './LanguageSwitcher'
 import './Header.css'
 
@@ -63,15 +64,15 @@ function Header() {
           transition={{ delay: 0.5, duration: 0.6 }}
         >
           <LanguageSwitcher />
-          <motion.a 
-            href="#" 
-            className="book-session-btn"
+          <motion.div
             whileHover={{ scale: 1.08, boxShadow: '0 8px 25px rgba(74, 124, 89, 0.3)' }}
             whileTap={{ scale: 0.95 }}
             transition={{ type: 'spring', stiffness: 400, damping: 10 }}
           >
-            {t('header.cta')}
-          </motion.a>
+            <Link to="/login" className="book-session-btn">
+              {t('header.cta')}
+            </Link>
+          </motion.div>
         </motion.div>
       </div>
     </motion.header>
