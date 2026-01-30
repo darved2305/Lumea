@@ -1,0 +1,200 @@
+/* Dashboard Base Styles */
+@import './dashboardTokens.css';
+
+.dashboard-page {
+  min-height: 100vh;
+  background-color: var(--dash-bg);
+  font-family: var(--dash-font-sans);
+  padding-top: 80px; /* Space for fixed navbar */
+}
+
+.dashboard-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: var(--dash-spacing-2xl) var(--dash-spacing-xl);
+}
+
+/* Card Base */
+.dash-card {
+  background: var(--dash-surface);
+  border: 1px solid var(--dash-border);
+  border-radius: var(--dash-radius-xl);
+  box-shadow: var(--dash-shadow-md);
+  transition: all var(--dash-transition-base);
+  overflow: hidden;
+}
+
+.dash-card:hover {
+  box-shadow: var(--dash-shadow-lg);
+  transform: translateY(-2px);
+}
+
+.dash-card-header {
+  padding: var(--dash-spacing-lg);
+  border-bottom: 1px solid var(--dash-border-light);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.dash-card-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--dash-text);
+  margin: 0;
+}
+
+.dash-card-body {
+  padding: var(--dash-spacing-lg);
+}
+
+/* Button Base */
+.dash-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dash-spacing-xs);
+  padding: var(--dash-spacing-sm) var(--dash-spacing-md);
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: var(--dash-radius-md);
+  transition: all var(--dash-transition-fast);
+  cursor: pointer;
+  border: none;
+  outline: none;
+}
+
+.dash-btn-primary {
+  background: var(--dash-accent);
+  color: white;
+}
+
+.dash-btn-primary:hover {
+  background: var(--dash-accent-dark);
+  transform: scale(1.02);
+}
+
+.dash-btn-secondary {
+  background: var(--dash-surface);
+  color: var(--dash-text);
+  border: 1px solid var(--dash-border);
+}
+
+.dash-btn-secondary:hover {
+  background: var(--dash-surface-hover);
+  border-color: var(--dash-accent);
+}
+
+.dash-btn-icon {
+  padding: var(--dash-spacing-sm);
+  border-radius: var(--dash-radius-full);
+  background: transparent;
+  color: var(--dash-text-secondary);
+}
+
+.dash-btn-icon:hover {
+  background: var(--dash-accent-pale);
+  color: var(--dash-accent-dark);
+}
+
+/* Badge */
+.dash-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: var(--dash-radius-full);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.dash-badge-success {
+  background: var(--dash-accent-pale);
+  color: var(--dash-accent-dark);
+}
+
+.dash-badge-live {
+  background: linear-gradient(135deg, #6b9175 0%, #4a7c59 100%);
+  color: white;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.85; }
+}
+
+/* Progress Bar */
+.dash-progress {
+  width: 100%;
+  height: 6px;
+  background: var(--dash-border-light);
+  border-radius: var(--dash-radius-full);
+  overflow: hidden;
+}
+
+.dash-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--dash-accent-light), var(--dash-accent));
+  border-radius: var(--dash-radius-full);
+  transition: width var(--dash-transition-slow);
+}
+
+/* Tooltip */
+.dash-tooltip {
+  position: absolute;
+  z-index: var(--dash-z-dropdown);
+  padding: var(--dash-spacing-sm) var(--dash-spacing-md);
+  background: var(--dash-text);
+  color: white;
+  font-size: 0.875rem;
+  border-radius: var(--dash-radius-sm);
+  box-shadow: var(--dash-shadow-lg);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--dash-transition-fast);
+}
+
+.dash-tooltip.show {
+  opacity: 1;
+}
+
+/* Grid Layouts */
+.dash-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--dash-spacing-xl);
+}
+
+@media (max-width: 1024px) {
+  .dash-grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Scrollbar Styling */
+.dash-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.dash-scrollbar::-webkit-scrollbar-track {
+  background: var(--dash-border-light);
+  border-radius: var(--dash-radius-full);
+}
+
+.dash-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--dash-accent-light);
+  border-radius: var(--dash-radius-full);
+}
+
+.dash-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--dash-accent);
+}
+
+/* Focus States */
+.dash-focus-ring:focus-visible {
+  outline: 2px solid var(--dash-accent);
+  outline-offset: 2px;
+}
