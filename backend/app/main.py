@@ -16,7 +16,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Co-Code GGW Health Platform API", lifespan=lifespan)
 
-# CORS configuration - allow both localhost ports
+# CORS configuration - allow both localhost ports and Docker
 origins = [
     "http://localhost:5173",
     "http://localhost:5174",
@@ -26,6 +26,7 @@ origins = [
     "http://127.0.0.1:5174",
     "http://127.0.0.1:5175",
     "http://127.0.0.1:5176",
+    "http://frontend:5173",  # Docker service name
 ]
 
 app.add_middleware(
