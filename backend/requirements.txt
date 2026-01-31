@@ -7,3 +7,12 @@ python-jose[cryptography]==3.3.0
 python-multipart==0.0.12
 pydantic-settings==2.6.0
 python-dotenv==1.0.1
+alembic==1.13.1
+aiofiles==24.1.0
+pillow>=10.4.0
+
+# PDF/OCR extraction (text-first approach)
+pdfplumber>=0.11.0
+PyMuPDF>=1.24.0
+paddleocr>=2.7.0
+paddlepaddle>=2.6.0

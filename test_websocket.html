@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        #log { 
+            border: 1px solid #ccc; 
+            height: 400px; 
+            overflow-y: scroll; 
+            padding: 10px; 
+            background: #f5f5f5;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .connected { color: green; font-weight: bold; }
+        .disconnected { color: red; font-weight: bold; }
+        .message { color: blue; }
+        .error { color: red; }
+        button { padding: 10px 20px; margin: 5px; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <h1>WebSocket Connection Test</h1>
+    <p>Status: <span id="status" class="disconnected">Disconnected</span></p>
+    <p>Messages Received: <span id="msgCount">0</span></p>
+    <p>Connected Time: <span id="uptime">0</span>s</p>
+    
+    <div>
+        <button onclick="connect()">Connect</button>
+        <button onclick="disconnect()">Disconnect</button>
+        <button onclick="sendPing()">Send Ping</button>
+        <button onclick="clearLog()">Clear Log</button>
+    </div>
+    
+    <h3>Log:</h3>
+    <div id="log"></div>
+    
+    <script>
+        let ws = null;
+        let msgCount = 0;
+        let connectTime = null;
+        let uptimeInterval = null;
+        
+        // Use your actual JWT token here
+        const TOKEN = localStorage.getItem('access_token') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxYmM1NmUyYy1kMzgxLTQxYTctYjgxMy1lOTM0NDhjOGRkYzAiLCJleHAiOjE3NzA0NTk5NDh9.vyI0iWinlYEluFHdkgaL74WeCYgn5wyJLNQM_TDKW2Y';
+        
+        function log(message, className = '') {
+            const logDiv = document.getElementById('log');
+            const time = new Date().toLocaleTimeString();
+            const line = document.createElement('div');
+            line.className = className;
+            line.textContent = `[${time}] ${message}`;
+            logDiv.appendChild(line);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        function updateStatus(connected) {
+            const statusSpan = document.getElementById('status');
+            if (connected) {
+                statusSpan.textContent = 'Connected';
+                statusSpan.className = 'connected';
+                connectTime = Date.now();
+                uptimeInterval = setInterval(updateUptime, 1000);
+            } else {
+                statusSpan.textContent = 'Disconnected';
+                statusSpan.className = 'disconnected';
+                connectTime = null;
+                if (uptimeInterval) {
+                    clearInterval(uptimeInterval);
+                    uptimeInterval = null;
+                }
+            }
+        }
+        
+        function updateUptime() {
+            if (connectTime) {
+                const seconds = Math.floor((Date.now() - connectTime) / 1000);
+                document.getElementById('uptime').textContent = seconds;
+            }
+        }
+        
+        function connect() {
+            if (ws) {
+                log('Already connected or connecting', 'error');
+                return;
+            }
+            
+            log('Connecting to ws://localhost:8000/ws...');
+            ws = new WebSocket(`ws://localhost:8000/ws?token=${TOKEN}`);
+            
+            ws.onopen = () => {
+                log('✅ WebSocket connected!', 'connected');
+                updateStatus(true);
+            };
+            
+            ws.onclose = (event) => {
+                log(`❌ WebSocket closed: code=${event.code}, reason="${event.reason}"`, 'disconnected');
+                updateStatus(false);
+                ws = null;
+            };
+            
+            ws.onerror = (error) => {
+                log(`❌ WebSocket error: ${error}`, 'error');
+            };
+            
+            ws.onmessage = (event) => {
+                msgCount++;
+                document.getElementById('msgCount').textContent = msgCount;
+                
+                try {
+                    const data = JSON.parse(event.data);
+                    log(`📨 ${data.type}: ${JSON.stringify(data.data || {})}`, 'message');
+                } catch (e) {
+                    log(`📨 ${event.data}`, 'message');
+                }
+            };
+        }
+        
+        function disconnect() {
+            if (ws) {
+                log('Disconnecting...');
+                ws.close(1000, 'User disconnect');
+                ws = null;
+            } else {
+                log('Not connected', 'error');
+            }
+        }
+        
+        function sendPing() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'ping' }));
+                log('📤 Sent ping');
+            } else {
+                log('Not connected', 'error');
+            }
+        }
+        
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+            msgCount = 0;
+            document.getElementById('msgCount').textContent = 0;
+        }
+        
+        // Auto-connect on load
+        window.onload = () => {
+            log('Page loaded. Click Connect to start.');
+        };
+    </script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, ChangeEvent, FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AuthShell from '../components/AuthShell'
 import { signup } from '../services/auth'
@@ -13,7 +13,7 @@ function Signup() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const handleChange = (e) => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
@@ -21,7 +21,7 @@ function Signup() {
     setError('')
   }
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError('')
     setLoading(true)
@@ -29,9 +29,10 @@ function Signup() {
     try {
       const data = await signup(formData.fullName, formData.email, formData.password)
       localStorage.setItem('access_token', data.access_token)
-      navigate('/health-chat')
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Signup failed. Please try again.')
+      navigate('/dashboard')
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { data?: { detail?: string } } }
+      setError(axiosError.response?.data?.detail || 'Signup failed. Please try again.')
     } finally {
       setLoading(false)
     }

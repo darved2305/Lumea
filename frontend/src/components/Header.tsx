@@ -8,12 +8,11 @@ function Header() {
   const { t } = useTranslation()
 
   const navLinks = [
-    { label: 'Health Chat', href: '/health-chat', isRoute: true },
+    { label: 'Dashboard', href: '/dashboard', isRoute: true },
+    { label: 'Reports', href: '/reports', isRoute: true },
     { label: t('header.nav.features'), href: '#features' },
     { label: t('header.nav.howItWorks'), href: '#how-it-works' },
     { label: t('header.nav.privacySecurity'), href: '#privacy' },
-    { label: t('header.nav.news'), href: '#news' },
-    { label: t('header.nav.faq'), href: '#faq' },
     { label: t('header.nav.contact'), href: '#contact' },
   ]
 

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Maximize2, X, Bot } from 'lucide-react';
-import { useHealthChat } from '../../hooks/useDashboard';
+import { useAIAssistant } from '../../hooks/useDashboard';
 import './ChatPanel.css';
 
 interface ChatPanelProps {
@@ -9,7 +9,7 @@ interface ChatPanelProps {
 }
 
 function ChatPanel({ compact: _compact = false }: ChatPanelProps) {
-  const { messages, isTyping, suggestions, sendMessage } = useHealthChat();
+  const { messages, isTyping, suggestions, sendMessage } = useAIAssistant();
   const [inputValue, setInputValue] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);

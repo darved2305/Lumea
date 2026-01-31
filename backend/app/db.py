@@ -4,6 +4,10 @@ from app.settings import settings
 
 engine = create_async_engine(settings.database_url, echo=False)
 async_session_maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+# For backwards compatibility - also export as async_session
+async_session = async_session_maker
+
 Base = declarative_base()
 
 async def get_db():

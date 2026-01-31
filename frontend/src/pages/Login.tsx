@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, ChangeEvent, FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AuthShell from '../components/AuthShell'
 import { login } from '../services/auth'
@@ -12,7 +12,7 @@ function Login() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const handleChange = (e) => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
@@ -20,7 +20,7 @@ function Login() {
     setError('')
   }
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError('')
     setLoading(true)
@@ -28,9 +28,10 @@ function Login() {
     try {
       const data = await login(formData.email, formData.password)
       localStorage.setItem('access_token', data.access_token)
-      navigate('/health-chat')
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Login failed. Please check your credentials.')
+      navigate('/dashboard')
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { data?: { detail?: string } } }
+      setError(axiosError.response?.data?.detail || 'Login failed. Please check your credentials.')
     } finally {
       setLoading(false)
     }

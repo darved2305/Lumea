@@ -1,7 +1,18 @@
 import bcrypt
 from jose import jwt, JWTError
 from datetime import datetime, timedelta
+from typing import TYPE_CHECKING
+from fastapi import Depends, HTTPException
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from app.settings import settings
+
+if TYPE_CHECKING:
+    from app.models import User
+
+# HTTPBearer security scheme
+security = HTTPBearer()
 
 def hash_password(password: str) -> str:
     password_bytes = password.encode('utf-8')
@@ -25,3 +36,37 @@ def decode_access_token(token: str) -> dict:
         return payload
     except JWTError:
         return None
+
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+) -> "User":
+    """
+    Dependency to get the current authenticated user from JWT token.
+    
+    Gets its own database session internally to avoid circular import issues.
+    Routes using this don't need to pass db separately.
+    """
+    from app.models import User
+    from app.db import get_db
+    
+    # Get database session
+    async for db in get_db():
+        token = credentials.credentials
+        payload = decode_access_token(token)
+        
+        if not payload:
+            raise HTTPException(status_code=401, detail="Invalid or expired token")
+        
+        user_id = payload.get("sub")
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Invalid token payload")
+        
+        result = await db.execute(select(User).where(User.id == user_id))
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            raise HTTPException(status_code=401, detail="User not found")
+        
+        return user
+    
+    raise HTTPException(status_code=500, detail="Database connection failed")

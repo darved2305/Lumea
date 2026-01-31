@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Settings, LogOut, Home, LayoutDashboard, Bell } from 'lucide-react';
+import { Search, Settings, LogOut, Home, LayoutDashboard, Bell, FileText } from 'lucide-react';
 import './DashboardNavbar.css';
 
 interface DashboardNavbarProps {
@@ -17,6 +17,7 @@ function DashboardNavbar({ userName = 'User', userStatus = '87% Healthy' }: Dash
   const navItems = [
     { label: 'Home', path: '/', icon: Home },
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    { label: 'Reports', path: '/reports', icon: FileText },
   ];
 
   const isActive = (path: string) => location.pathname === path;

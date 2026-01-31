@@ -83,8 +83,8 @@ export function useLiveSeries(metric: string, range: '1D' | '1W' | '1M') {
   return { data, isLive, toggleLive };
 }
 
-// Hook for chat functionality
-export function useHealthChat() {
+// Hook for AI assistant chat functionality in dashboard
+export function useAIAssistant() {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: '1',

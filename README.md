@@ -103,17 +103,18 @@ Co-Code GGW/
     │   │   │   ├── Button.tsx
     │   │   │   ├── Input.tsx
     │   │   │   └── Card.tsx
-    │   │   ├── health-chat/        # Health chat feature components
-    │   │   │   ├── GuestIntakeForm.tsx
+    │   │   ├── dashboard/          # Dashboard feature components
+    │   │   │   ├── HealthIndexCard.tsx
     │   │   │   ├── ChatPanel.tsx
-    │   │   │   ├── SnapshotPanel.tsx
-    │   │   │   └── RemindersPanel.tsx
+    │   │   │   ├── TrendsCard.tsx
+    │   │   │   └── DashboardNavbar.tsx
     │   │   └── [Other components]
     │   ├── pages/
     │   │   ├── HomePage.tsx
     │   │   ├── Login.tsx
     │   │   ├── Signup.tsx
-    │   │   └── HealthChat.tsx      # Main health chat page
+    │   │   ├── Dashboard.tsx       # Main dashboard page
+    │   │   └── Reports.tsx         # Report management page
     │   ├── services/
     │   │   └── auth.ts             # API service layer
     │   ├── App.tsx
@@ -306,19 +307,19 @@ The system computes preventive care reminders based on:
 ## 👥 User Flows
 
 ### Guest User Flow
-1. Navigate to `/health-chat`
-2. Complete optional health intake form
-3. Profile stored in browser localStorage
-4. Use chat interface immediately
-5. Option to save profile by creating account
+1. Navigate to `/` (homepage)
+2. Click "Get Started" to go to `/signup`
+3. After signup, redirected to `/dashboard`
+4. Upload reports via `/reports` page
+5. View health insights on dashboard
 
 ### Registered User Flow
 1. Register or login at `/signup` or `/login`
-2. JWT authentication token stored in httpOnly cookie
-3. Automatically redirected to `/health-chat`
-4. Health profile auto-loaded from database
-5. View personalized health reminders
-6. Full chat history and profile persistence
+2. JWT authentication token stored
+3. Automatically redirected to `/dashboard`
+4. Health data auto-loaded from backend
+5. View personalized health recommendations
+6. Upload and manage reports via `/reports`
 
 ---
 
@@ -349,23 +350,25 @@ The system computes preventive care reminders based on:
 
 ### Manual Test Cases
 
-**Guest Mode**
-- [ ] Access `/health-chat` → intake form displays
-- [ ] Complete health form → BMI calculates correctly
-- [ ] Submit form → chat interface loads
-- [ ] View snapshot panel showing profile
-- [ ] Verify reminders computed and displayed
-- [ ] Send chat messages
-- [ ] Refresh page → data persists from localStorage
+**Dashboard**
+- [ ] Access `/dashboard` → health index displays
+- [ ] Health score card shows breakdown
+- [ ] AI assistant responds to questions
+- [ ] Trends chart displays metrics
+- [ ] Recommendations panel shows suggestions
 
-**Registered Mode**
-- [ ] Complete registration → redirects to health chat
-- [ ] Login → auth cookie stored
-- [ ] Visit `/health-chat` → profile auto-populated
-- [ ] Update profile → changes saved to database
-- [ ] Verify reminders update based on profile
-- [ ] Chat history persists across sessions
-- [ ] Logout → auth cleared
+**Reports Page**
+- [ ] Access `/reports` → document table displays
+- [ ] Upload file → processing status shows
+- [ ] File processed → status changes to Complete
+- [ ] View/Download/Delete actions work
+- [ ] Filters narrow results correctly
+
+**Authentication**
+- [ ] Complete registration → redirects to dashboard
+- [ ] Login → token stored
+- [ ] Visit `/dashboard` → data loads
+- [ ] Logout → redirects to login
 
 **Quality Assurance**
 - [ ] UI matches design system
