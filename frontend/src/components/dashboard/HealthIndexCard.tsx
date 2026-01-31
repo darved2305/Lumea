@@ -45,7 +45,7 @@ function HealthIndexCard({ onFactorSelect, selectedFactor }: HealthIndexCardProp
     }
   }, [healthData]);
 
-  if (loading || !healthData) {
+  if (loading) {
     return (
       <div className="dash-card health-index-card">
         <div className="dash-card-header">
@@ -54,6 +54,24 @@ function HealthIndexCard({ onFactorSelect, selectedFactor }: HealthIndexCardProp
         <div className="dash-card-body" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '400px' }}>
           <div style={{ textAlign: 'center', color: 'var(--dash-text-muted)' }}>
             Loading...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // No data state - show upload prompt instead of hardcoded value
+  if (!healthData) {
+    return (
+      <div className="dash-card health-index-card">
+        <div className="dash-card-header">
+          <h2 className="dash-card-title">Health Index</h2>
+        </div>
+        <div className="dash-card-body" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '400px', gap: '1rem' }}>
+          <AlertCircle size={48} style={{ color: 'var(--dash-text-muted)' }} />
+          <div style={{ textAlign: 'center', color: 'var(--dash-text-muted)' }}>
+            <h3 style={{ margin: '0 0 0.5rem' }}>No Health Data Yet</h3>
+            <p style={{ margin: 0, fontSize: '0.9rem' }}>Upload lab reports to compute your Health Index</p>
           </div>
         </div>
       </div>

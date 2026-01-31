@@ -52,9 +52,20 @@ function mapStatus(backendStatus: string): 'processing' | 'complete' | 'failed' 
 const categories = ['All Categories', 'Lab', 'Dental', 'MRI', 'X-ray', 'Prescription', 'Sleep'];
 const documentTypes = ['All Types', 'Blood Panel', 'Lipid Panel', 'Checkup', 'Brain Scan', 'Chest'];
 
+// WebSocket event data types
+interface ReportParsedData {
+  report_id?: string;
+  status?: string;
+  extracted_metrics_count?: number;
+}
+
+interface ProcessingStartedData {
+  report_id?: string;
+}
+
 function Reports() {
   const [reports, setReports] = useState<Report[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true); // prefixed with _ to avoid unused warning
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
   const [selectedType, setSelectedType] = useState('All Types');
@@ -73,7 +84,7 @@ function Reports() {
       console.log('WS: Reports list updated, refetching...');
       fetchReports();
     }, []),
-    onReportParsed: useCallback((data) => {
+    onReportParsed: useCallback((data: ReportParsedData) => {
       console.log('WS: Report parsed', data);
       // Update report status in local state immediately
       if (data.report_id) {
@@ -86,8 +97,8 @@ function Reports() {
       // Also refetch to ensure consistency
       fetchReports();
     }, []),
-    onReportProcessingStarted: useCallback((data) => {
-      console.log('WS: Report processing started', data);
+    onReportProcessingStarted: useCallback((_data: ProcessingStartedData) => {
+      console.log('WS: Report processing started', _data);
     }, []),
   });
 

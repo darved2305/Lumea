@@ -37,16 +37,20 @@ class MetricsService:
         Returns:
             Created HealthMetric or None if insufficient data
         """
-        # Get recent observations (last 30 days)
+        from sqlalchemy import select
+        from sqlalchemy.ext.asyncio import AsyncSession
+        
+        # Get recent observations (last 30 days) - async version
         cutoff_date = datetime.utcnow() - timedelta(days=30)
-        observations = (
-            self.db.query(Observation)
-            .filter(
+        
+        result = await self.db.execute(
+            select(Observation)
+            .where(
                 Observation.user_id == user_id,
                 Observation.observed_at >= cutoff_date
             )
-            .all()
         )
+        observations = result.scalars().all()
         
         if not observations:
             return None  # No data to compute from
@@ -134,7 +138,7 @@ class MetricsService:
                 "detail": factor_details[key]
             }
         
-        # Save to database
+        # Save to database - async
         now = datetime.utcnow()
         metric = HealthMetric(
             user_id=user_id,
@@ -148,8 +152,8 @@ class MetricsService:
         )
         
         self.db.add(metric)
-        self.db.commit()
-        self.db.refresh(metric)
+        await self.db.commit()
+        await self.db.refresh(metric)
         
         return metric
     
@@ -411,6 +415,8 @@ class MetricsService:
         Returns:
             (data_points, stats)
         """
+        from sqlalchemy import select
+        
         # Determine time window
         now = datetime.utcnow()
         if time_range == "1D":
@@ -420,21 +426,22 @@ class MetricsService:
         elif time_range == "1M":
             start_time = now - timedelta(days=30)
         else:
-            raise ValueError(f"Invalid time range: {time_range}")
+            # Default to 1 month instead of raising error
+            start_time = now - timedelta(days=30)
         
         # Get data based on metric type
         if metric == "health_index":
-            # Get computed health metrics
-            metrics = (
-                self.db.query(HealthMetric)
-                .filter(
+            # Get computed health metrics - async
+            result = await self.db.execute(
+                select(HealthMetric)
+                .where(
                     HealthMetric.user_id == user_id,
                     HealthMetric.metric_type == "health_index",
                     HealthMetric.computed_at >= start_time
                 )
                 .order_by(HealthMetric.computed_at)
-                .all()
             )
+            metrics = result.scalars().all()
             
             data_points = [
                 TimeSeriesPoint(
@@ -448,6 +455,7 @@ class MetricsService:
             metric_name_map = {
                 "sleep": "sleep_hours",
                 "bloodPressure": "systolic_bp",
+                "blood_pressure": "systolic_bp",
                 "glucose": "glucose",
                 "activity": "steps",
                 "stress": "stress_level",
@@ -456,18 +464,21 @@ class MetricsService:
             
             observation_metric = metric_name_map.get(metric)
             if not observation_metric:
-                raise ValueError(f"Unknown metric: {metric}")
+                # Return empty instead of error
+                return [], TrendsStats(
+                    current=0, average=0, minimum=0, maximum=0, change_percent=0
+                )
             
-            observations = (
-                self.db.query(Observation)
-                .filter(
+            result = await self.db.execute(
+                select(Observation)
+                .where(
                     Observation.user_id == user_id,
                     Observation.metric_name == observation_metric,
                     Observation.observed_at >= start_time
                 )
                 .order_by(Observation.observed_at)
-                .all()
             )
+            observations = result.scalars().all()
             
             data_points = [
                 TimeSeriesPoint(

@@ -201,8 +201,8 @@ async def upload_report(
         
         logger.info(f"Report record created: {report_id}")
         
-        # Trigger processing in background with SYNC function (creates its own async context)
-        background_tasks.add_task(process_report_background, report_id, user_id)
+        # Trigger processing in background - use asyncio.create_task
+        asyncio.create_task(_process_report_async(report_id, user_id))
         
         return {
             "id": str(report.id),

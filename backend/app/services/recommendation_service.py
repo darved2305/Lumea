@@ -45,38 +45,55 @@ class RecommendationService:
         """
         Get all applicable recommendations for the user.
         
+        NEVER throws - returns empty list on any error.
+        
         Returns:
             Dict containing:
                 - updated_at: ISO timestamp
                 - disclaimer: Safety disclaimer text
                 - items: List of recommendation items
         """
-        # Build user context from stored metrics
-        context = await self._build_user_context()
-        
-        # Evaluate all rules
-        results = self.registry.evaluate_all(context)
-        
-        # Filter by severity if requested
-        if not include_low_severity:
-            results = [r for r in results if r.severity != Severity.INFO]
-        
-        # Sort by severity (URGENT > WARNING > INFO) then by rule priority
-        severity_order = {Severity.URGENT: 0, Severity.WARNING: 1, Severity.INFO: 2}
-        results.sort(key=lambda r: (severity_order.get(r.severity, 3),))
-        
-        # Optionally apply LLM rewording
-        if settings.USE_GEMINI and settings.GEMINI_API_KEY:
-            results = await self._reword_with_gemini(results)
-        
-        return {
-            "updated_at": datetime.utcnow().isoformat(),
-            "disclaimer": self.DISCLAIMER,
-            "items": [r.to_dict() for r in results],
-            "total_count": len(results),
-            "urgent_count": sum(1 for r in results if r.severity == Severity.URGENT),
-            "warning_count": sum(1 for r in results if r.severity == Severity.WARNING),
-        }
+        try:
+            # Build user context from stored metrics
+            context = await self._build_user_context()
+            
+            # Evaluate all rules
+            results = self.registry.evaluate_all(context)
+            
+            # Filter by severity if requested
+            if not include_low_severity:
+                results = [r for r in results if r.severity != Severity.INFO]
+            
+            # Sort by severity (URGENT > WARNING > INFO) then by rule priority
+            severity_order = {Severity.URGENT: 0, Severity.WARNING: 1, Severity.INFO: 2}
+            results.sort(key=lambda r: (severity_order.get(r.severity, 3),))
+            
+            # Optionally apply LLM rewording - but catch errors
+            if settings.USE_GEMINI and settings.GEMINI_API_KEY:
+                try:
+                    results = await self._reword_with_gemini(results)
+                except Exception as e:
+                    logger.warning(f"Gemini rewording failed, using original text: {e}")
+            
+            return {
+                "updated_at": datetime.utcnow().isoformat(),
+                "disclaimer": self.DISCLAIMER,
+                "items": [r.to_dict() for r in results],
+                "total_count": len(results),
+                "urgent_count": sum(1 for r in results if r.severity == Severity.URGENT),
+                "warning_count": sum(1 for r in results if r.severity == Severity.WARNING),
+            }
+        except Exception as e:
+            logger.exception(f"Error generating recommendations: {e}")
+            # Return empty but valid response
+            return {
+                "updated_at": datetime.utcnow().isoformat(),
+                "disclaimer": self.DISCLAIMER,
+                "items": [],
+                "total_count": 0,
+                "urgent_count": 0,
+                "warning_count": 0,
+            }
     
     async def _build_user_context(self) -> UserContext:
         """

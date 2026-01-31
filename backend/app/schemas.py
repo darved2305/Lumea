@@ -129,19 +129,24 @@ class ObservationTypeEnum(str, Enum):
 
 
 class TimeRange(str, Enum):
-    ONE_DAY = "1D"
-    ONE_WEEK = "1W"
-    ONE_MONTH = "1M"
+    ONE_DAY = "1d"
+    ONE_DAY_UPPER = "1D"
+    ONE_WEEK = "1w"
+    ONE_WEEK_UPPER = "1W"
+    ONE_MONTH = "1m"
+    ONE_MONTH_UPPER = "1M"
 
 
 class MetricType(str, Enum):
     HEALTH_INDEX = "health_index"
     SLEEP = "sleep"
-    BLOOD_PRESSURE = "bloodPressure"
+    BLOOD_PRESSURE = "blood_pressure"  # Fixed: was "bloodPressure"
+    BLOOD_PRESSURE_ALT = "bloodPressure"  # Also accept camelCase
     GLUCOSE = "glucose"
     ACTIVITY = "activity"
     STRESS = "stress"
     HYDRATION = "hydration"
+    INDEX = "index"  # Alias for health_index
 
 
 # BOOTSTRAP

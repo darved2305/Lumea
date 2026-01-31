@@ -1,258 +1,314 @@
-import { useState } from 'react';
+/**
+ * TrendsCard Component - API-Based Medical Trends Visualization
+ * 
+ * IMPORTANT: This component does NOT generate fake data.
+ * It fetches real data from the backend API and updates ONLY when:
+ * 1. User changes the selected metric
+ * 2. User changes the time range (1D/1W/1M)
+ * 3. WebSocket event signals new data (report uploaded)
+ * 4. User manually refreshes
+ * 
+ * Like a stock chart - data changes only when underlying dataset changes.
+ */
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { TrendingUp, Maximize2, X, AlertCircle, Play, Pause } from 'lucide-react';
-import { useLiveSeries } from '../../hooks/useDashboard';
+import { TrendingUp, TrendingDown, Maximize2, X, AlertCircle, RefreshCw, BarChart2 } from 'lucide-react';
+import { useTrends, type TrendDataPoint } from '../../hooks/useTrends';
 import './TrendsCard.css';
 
 interface TrendsCardProps {
   selectedMetric?: string;
+  authToken?: string;
+  apiBaseUrl?: string;
+  refreshTrigger?: number; // Increment to trigger refetch (from WebSocket)
 }
 
 const metrics = [
-  { key: 'index', label: 'Health Index' },
-  { key: 'sleep', label: 'Sleep' },
-  { key: 'bloodPressure', label: 'Blood Pressure' },
-  { key: 'glucose', label: 'Glucose' },
-  { key: 'activity', label: 'Activity' },
+  { key: 'index', label: 'Health Index', unit: '' },
+  { key: 'glucose', label: 'Glucose', unit: 'mg/dL' },
+  { key: 'bloodPressure', label: 'Blood Pressure', unit: 'mmHg' },
+  { key: 'activity', label: 'Activity', unit: 'steps' },
 ];
 
-function TrendsCard({ selectedMetric: initialMetric = 'index' }: TrendsCardProps) {
+function TrendsCard({ 
+  selectedMetric: initialMetric = 'index',
+  authToken,
+  apiBaseUrl = 'http://localhost:8000',
+  refreshTrigger = 0,
+}: TrendsCardProps) {
   const [selectedMetric, setSelectedMetric] = useState(initialMetric);
-  const [timeRange, setTimeRange] = useState<'1D' | '1W' | '1M'>('1D');
+  const [timeRange, setTimeRange] = useState<'1D' | '1W' | '1M'>('1W');
   const [isModalOpen, setIsModalOpen] = useState(false);
   
-  const { data, isLive, toggleLive } = useLiveSeries(selectedMetric, timeRange);
+  // Get auth token from localStorage if not provided
+  const token = authToken || localStorage.getItem('access_token');
+  
+  // Use the API-based trends hook - NO fake data!
+  const { data, stats, loading, error, refetch, lastFetchedAt } = useTrends(
+    selectedMetric,
+    timeRange,
+    {
+      authToken: token,
+      apiBaseUrl,
+    }
+  );
 
-  // Calculate stats from data
-  const calculateStats = () => {
-    if (data.length === 0) return { current: 0, avg: 0, min: 0, max: 0, change: 0 };
+  // Refetch when refreshTrigger changes (WebSocket event)
+  useEffect(() => {
+    if (refreshTrigger > 0) {
+      refetch();
+    }
+  }, [refreshTrigger, refetch]);
 
-    const values = data.map(d => d.value);
-    const current = values[values.length - 1];
-    const previous = values[values.length - 2] || current;
-    const avg = values.reduce((sum, v) => sum + v, 0) / values.length;
-    const min = Math.min(...values);
-    const max = Math.max(...values);
-    const change = ((current - previous) / previous) * 100;
-
+  // Format chart data with proper date labels
+  const chartData = data.map((point: TrendDataPoint) => {
+    const date = new Date(point.timestamp);
+    let dateLabel: string;
+    
+    if (timeRange === '1D') {
+      dateLabel = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    } else if (timeRange === '1W') {
+      dateLabel = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    } else {
+      dateLabel = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+    
     return {
-      current: Math.round(current * 10) / 10,
-      avg: Math.round(avg * 10) / 10,
-      min: Math.round(min * 10) / 10,
-      max: Math.round(max * 10) / 10,
-      change: Math.round(change * 10) / 10,
+      timestamp: point.timestamp,
+      value: point.value,
+      flag: point.flag,
+      date: dateLabel,
+      fullDate: date.toLocaleString(),
     };
-  };
+  });
 
-  const stats = calculateStats();
-
-  // Format chart data
-  const chartData = data.map((point) => ({
-    timestamp: point.timestamp,
-    value: point.value,
-    date: new Date(point.timestamp).toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-    }),
-  }));
-
-  // Custom tooltip
+  // Custom tooltip showing full details
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
+      const point = payload[0].payload;
+      const metricInfo = metrics.find(m => m.key === selectedMetric);
+      
       return (
         <div className="trends-custom-tooltip">
-          <div className="trends-tooltip-label">
-            {new Date(payload[0].payload.timestamp).toLocaleString('en-US', {
-              month: 'short',
-              day: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-            })}
-          </div>
+          <div className="trends-tooltip-label">{point.fullDate}</div>
           <div className="trends-tooltip-value">
             {Math.round(payload[0].value * 10) / 10}
+            {metricInfo?.unit && <span className="trends-tooltip-unit"> {metricInfo.unit}</span>}
           </div>
+          {point.flag && point.flag !== 'Normal' && (
+            <div className={`trends-tooltip-flag ${point.flag.toLowerCase()}`}>
+              {point.flag}
+            </div>
+          )}
         </div>
       );
     }
     return null;
   };
 
-  const renderChart = (height: number = 320) => (
-    <ResponsiveContainer width="100%" height={height}>
-      <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-        <defs>
-          <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#6b9175" stopOpacity={0.3} />
-            <stop offset="95%" stopColor="#6b9175" stopOpacity={0} />
-          </linearGradient>
-        </defs>
-        <CartesianGrid strokeDasharray="3 3" stroke="#e5dfd5" opacity={0.5} />
-        <XAxis
-          dataKey="date"
-          stroke="#999999"
-          fontSize={12}
-          tickLine={false}
-          interval="preserveStartEnd"
-        />
-        <YAxis
-          stroke="#999999"
-          fontSize={12}
-          tickLine={false}
-          domain={[40, 100]}
-        />
-        <Tooltip content={<CustomTooltip />} />
-        <Area
-          type="monotone"
-          dataKey="value"
-          stroke="#4a7c59"
-          strokeWidth={3}
-          fill="url(#colorValue)"
-          animationDuration={300}
-        />
-      </AreaChart>
-    </ResponsiveContainer>
-  );
-
-  const renderContent = () => (
-    <>
-      <div className="dash-card-header trends-card-header">
-        <div className="trends-header-left">
-          <div className="trends-title-group">
-            <h2 className="dash-card-title">Medical Trends</h2>
-            <span className="trends-subtitle">Real-time health metrics visualization</span>
-          </div>
+  // Render the chart - shared between card and modal
+  const renderChart = (height: number = 200) => {
+    // Loading state
+    if (loading) {
+      return (
+        <div className="trends-loading">
+          <div className="trends-loading-spinner" />
+          <span>Loading trends...</span>
         </div>
-
-        <div className="trends-header-right">
-          {/* Metric Selector */}
-          <div className="trends-metrics">
-            {metrics.map((metric) => (
-              <motion.button
-                key={metric.key}
-                className={`trends-metric-chip ${selectedMetric === metric.key ? 'active' : ''}`}
-                onClick={() => setSelectedMetric(metric.key)}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                {metric.label}
-              </motion.button>
-            ))}
-          </div>
-
-          {/* Time Range */}
-          <div className="trends-time-range">
-            {(['1D', '1W', '1M'] as const).map((range) => (
-              <button
-                key={range}
-                className={`trends-time-btn ${timeRange === range ? 'active' : ''}`}
-                onClick={() => setTimeRange(range)}
-              >
-                {range}
-              </button>
-            ))}
-          </div>
-
-          {/* Live Toggle */}
-          {timeRange === '1D' && (
-            <button
-              className={`trends-live-indicator ${!isLive ? 'paused' : ''}`}
-              onClick={toggleLive}
-              title={isLive ? 'Pause live updates' : 'Resume live updates'}
-            >
-              <div className="trends-live-dot" />
-              {isLive ? (
-                <>
-                  LIVE
-                  <Pause size={12} />
-                </>
-              ) : (
-                <>
-                  PAUSED
-                  <Play size={12} />
-                </>
-              )}
-            </button>
-          )}
+      );
+    }
+    
+    // Error state
+    if (error) {
+      return (
+        <div className="trends-error">
+          <AlertCircle size={24} />
+          <span>{error}</span>
+          <button className="trends-retry-btn" onClick={refetch}>
+            <RefreshCw size={14} />
+            Retry
+          </button>
         </div>
-      </div>
-
-      <div className="trends-chart-section">
-        <div className="trends-chart-wrapper">
-          {chartData.length > 0 ? (
-            renderChart(isModalOpen ? 400 : 320)
-          ) : (
-            <div className="trends-loading">Loading chart data...</div>
-          )}
+      );
+    }
+    
+    // Empty state
+    if (chartData.length === 0) {
+      return (
+        <div className="trends-empty">
+          <BarChart2 size={32} />
+          <h4>No data available</h4>
+          <p>Upload lab reports to see your {metrics.find(m => m.key === selectedMetric)?.label || 'health'} trends.</p>
         </div>
-      </div>
+      );
+    }
+    
+    // Determine chart color based on metric status
+    const latestFlag = chartData[chartData.length - 1]?.flag;
+    
+    let strokeColor = '#10b981'; // Default green
+    let fillId = 'colorNormal';
+    
+    if (latestFlag === 'High' || latestFlag === 'Critical') {
+      strokeColor = '#ef4444'; // Red
+      fillId = 'colorHigh';
+    } else if (latestFlag === 'Low') {
+      strokeColor = '#f59e0b'; // Amber
+      fillId = 'colorLow';
+    }
 
-      {/* Stats Summary */}
-      <div className="trends-stats">
-        <div className="trends-stat-item">
-          <span className="trends-stat-label">Current</span>
-          <span className="trends-stat-value">{stats.current}</span>
-          <span className={`trends-stat-change ${stats.change > 0 ? 'positive' : stats.change < 0 ? 'negative' : 'neutral'}`}>
-            <TrendingUp size={14} style={{ transform: stats.change < 0 ? 'rotate(180deg)' : 'none' }} />
-            {Math.abs(stats.change)}%
-          </span>
-        </div>
-
-        <div className="trends-stat-item">
-          <span className="trends-stat-label">Average</span>
-          <span className="trends-stat-value">{stats.avg}</span>
-        </div>
-
-        <div className="trends-stat-item">
-          <span className="trends-stat-label">Minimum</span>
-          <span className="trends-stat-value">{stats.min}</span>
-        </div>
-
-        <div className="trends-stat-item">
-          <span className="trends-stat-label">Maximum</span>
-          <span className="trends-stat-value">{stats.max}</span>
-        </div>
-      </div>
-
-      {/* Disclaimer */}
-      <div className="trends-disclaimer">
-        <AlertCircle size={14} />
-        Not medical advice. For emergencies, contact a healthcare professional immediately.
-      </div>
-    </>
-  );
+    return (
+      <ResponsiveContainer width="100%" height={height}>
+        <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+          <defs>
+            <linearGradient id="colorNormal" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+              <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+            </linearGradient>
+            <linearGradient id="colorHigh" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3}/>
+              <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
+            </linearGradient>
+            <linearGradient id="colorLow" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3}/>
+              <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--dash-border)" opacity={0.5} />
+          <XAxis 
+            dataKey="date" 
+            stroke="var(--dash-text-muted)" 
+            fontSize={11}
+            tickLine={false}
+            interval="preserveStartEnd"
+          />
+          <YAxis 
+            stroke="var(--dash-text-muted)" 
+            fontSize={11}
+            tickLine={false}
+            axisLine={false}
+            width={40}
+          />
+          <Tooltip content={<CustomTooltip />} />
+          <Area
+            type="monotone"
+            dataKey="value"
+            stroke={strokeColor}
+            strokeWidth={2}
+            fillOpacity={1}
+            fill={`url(#${fillId})`}
+            dot={false}
+            activeDot={{ r: 6, strokeWidth: 2, fill: '#fff', stroke: strokeColor }}
+          />
+        </AreaChart>
+      </ResponsiveContainer>
+    );
+  };
 
   return (
     <>
-      {/* Regular Card */}
-      <motion.div
-        className="dash-card trends-card"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
-      >
-        <div style={{ position: 'relative' }}>
-          <motion.button
-            className="dash-btn dash-btn-icon dash-focus-ring"
-            onClick={() => setIsModalOpen(true)}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            title="Expand chart"
-            style={{
-              position: 'absolute',
-              top: 'var(--dash-spacing-lg)',
-              right: 'var(--dash-spacing-lg)',
-              zIndex: 10,
-            }}
-          >
-            <Maximize2 size={18} />
-          </motion.button>
-        </div>
-        {renderContent()}
-      </motion.div>
+      <div className="trends-card">
+        {/* Header */}
+        <div className="trends-header">
+          <div className="trends-title-row">
+            <h3 className="trends-title">Medical Trends</h3>
+            <div className="trends-header-actions">
+              {/* Refresh button */}
+              <button 
+                className="trends-refresh-btn"
+                onClick={refetch}
+                disabled={loading}
+                title="Refresh data"
+              >
+                <RefreshCw size={16} className={loading ? 'spinning' : ''} />
+              </button>
+              <button 
+                className="trends-expand-btn"
+                onClick={() => setIsModalOpen(true)}
+                title="Expand chart"
+              >
+                <Maximize2 size={16} />
+              </button>
+            </div>
+          </div>
 
-      {/* Modal View */}
+          {/* Controls Row */}
+          <div className="trends-controls">
+            {/* Metric Selector */}
+            <div className="trends-metric-select">
+              <select
+                value={selectedMetric}
+                onChange={(e) => setSelectedMetric(e.target.value)}
+                className="trends-select"
+              >
+                {metrics.map((m) => (
+                  <option key={m.key} value={m.key}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Time Range */}
+            <div className="trends-time-range">
+              {(['1D', '1W', '1M'] as const).map((range) => (
+                <button
+                  key={range}
+                  className={`trends-range-btn ${timeRange === range ? 'active' : ''}`}
+                  onClick={() => setTimeRange(range)}
+                >
+                  {range}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Chart Section */}
+        <div className="trends-chart-section">
+          <div className="trends-chart-wrapper">
+            {renderChart(200)}
+          </div>
+        </div>
+
+        {/* Stats Summary */}
+        {stats && (
+          <div className="trends-stats">
+            <div className="trends-stat-item">
+              <span className="trends-stat-label">Current</span>
+              <span className="trends-stat-value">{stats.current}</span>
+              {stats.change !== 0 && (
+                <span className={`trends-stat-change ${stats.change > 0 ? 'positive' : 'negative'}`}>
+                  {stats.change > 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                  {Math.abs(stats.change)}%
+                </span>
+              )}
+            </div>
+            <div className="trends-stat-item">
+              <span className="trends-stat-label">Average</span>
+              <span className="trends-stat-value">{stats.avg}</span>
+            </div>
+            <div className="trends-stat-item">
+              <span className="trends-stat-label">Min</span>
+              <span className="trends-stat-value">{stats.min}</span>
+            </div>
+            <div className="trends-stat-item">
+              <span className="trends-stat-label">Max</span>
+              <span className="trends-stat-value">{stats.max}</span>
+            </div>
+          </div>
+        )}
+
+        {/* Last updated timestamp */}
+        {lastFetchedAt && (
+          <div className="trends-last-updated">
+            Last updated: {lastFetchedAt.toLocaleTimeString()}
+          </div>
+        )}
+      </div>
+
+      {/* Expanded Modal */}
       <AnimatePresence>
         {isModalOpen && (
           <motion.div
@@ -263,88 +319,75 @@ function TrendsCard({ selectedMetric: initialMetric = 'index' }: TrendsCardProps
             onClick={() => setIsModalOpen(false)}
           >
             <motion.div
-              className="trends-modal-content"
+              className="trends-modal"
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              transition={{ type: 'spring', damping: 25 }}
               onClick={(e) => e.stopPropagation()}
             >
               <div className="trends-modal-header">
-                <div className="trends-header-left">
-                  <div className="trends-title-group">
-                    <h2 className="dash-card-title" style={{ fontSize: '1.5rem' }}>
-                      Medical Trends - {metrics.find(m => m.key === selectedMetric)?.label}
-                    </h2>
-                    <span className="trends-subtitle">Real-time health metrics visualization</span>
-                  </div>
-                </div>
-                
-                <motion.button
-                  className="dash-btn dash-btn-icon dash-focus-ring"
-                  onClick={() => setIsModalOpen(false)}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <X size={24} />
-                </motion.button>
+                <h3>Medical Trends - {metrics.find(m => m.key === selectedMetric)?.label}</h3>
+                <button className="trends-modal-close" onClick={() => setIsModalOpen(false)}>
+                  <X size={20} />
+                </button>
               </div>
 
-              <div className="trends-modal-body">
-                <div className="dash-card-header trends-card-header" style={{ borderBottom: '1px solid var(--dash-border-light)' }}>
-                  <div className="trends-metrics">
-                    {metrics.map((metric) => (
-                      <motion.button
-                        key={metric.key}
-                        className={`trends-metric-chip ${selectedMetric === metric.key ? 'active' : ''}`}
-                        onClick={() => setSelectedMetric(metric.key)}
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                      >
-                        {metric.label}
-                      </motion.button>
+              <div className="trends-modal-controls">
+                {/* Metric Selector */}
+                <div className="trends-metric-select">
+                  <select
+                    value={selectedMetric}
+                    onChange={(e) => setSelectedMetric(e.target.value)}
+                    className="trends-select"
+                  >
+                    {metrics.map((m) => (
+                      <option key={m.key} value={m.key}>
+                        {m.label}
+                      </option>
                     ))}
-                  </div>
-
-                  <div className="trends-header-right">
-                    <div className="trends-time-range">
-                      {(['1D', '1W', '1M'] as const).map((range) => (
-                        <button
-                          key={range}
-                          className={`trends-time-btn ${timeRange === range ? 'active' : ''}`}
-                          onClick={() => setTimeRange(range)}
-                        >
-                          {range}
-                        </button>
-                      ))}
-                    </div>
-
-                    {timeRange === '1D' && (
-                      <button
-                        className={`trends-live-indicator ${!isLive ? 'paused' : ''}`}
-                        onClick={toggleLive}
-                      >
-                        <div className="trends-live-dot" />
-                        {isLive ? 'LIVE' : 'PAUSED'}
-                      </button>
-                    )}
-                  </div>
+                  </select>
                 </div>
 
-                <div className="trends-modal-chart-section">
-                  <div className="trends-chart-wrapper" style={{ minHeight: '450px' }}>
-                    {chartData.length > 0 ? renderChart(450) : <div className="trends-loading">Loading...</div>}
-                  </div>
+                {/* Time Range */}
+                <div className="trends-time-range">
+                  {(['1D', '1W', '1M'] as const).map((range) => (
+                    <button
+                      key={range}
+                      className={`trends-range-btn ${timeRange === range ? 'active' : ''}`}
+                      onClick={() => setTimeRange(range)}
+                    >
+                      {range}
+                    </button>
+                  ))}
                 </div>
 
-                <div className="trends-stats">
+                {/* Refresh */}
+                <button 
+                  className="trends-refresh-btn"
+                  onClick={refetch}
+                  disabled={loading}
+                >
+                  <RefreshCw size={16} className={loading ? 'spinning' : ''} />
+                  Refresh
+                </button>
+              </div>
+
+              <div className="trends-modal-chart">
+                {renderChart(400)}
+              </div>
+
+              {/* Stats in modal */}
+              {stats && (
+                <div className="trends-stats trends-modal-stats">
                   <div className="trends-stat-item">
                     <span className="trends-stat-label">Current</span>
                     <span className="trends-stat-value">{stats.current}</span>
-                    <span className={`trends-stat-change ${stats.change > 0 ? 'positive' : stats.change < 0 ? 'negative' : 'neutral'}`}>
-                      <TrendingUp size={14} style={{ transform: stats.change < 0 ? 'rotate(180deg)' : 'none' }} />
-                      {Math.abs(stats.change)}%
-                    </span>
+                    {stats.change !== 0 && (
+                      <span className={`trends-stat-change ${stats.change > 0 ? 'positive' : 'negative'}`}>
+                        {stats.change > 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                        {Math.abs(stats.change)}%
+                      </span>
+                    )}
                   </div>
                   <div className="trends-stat-item">
                     <span className="trends-stat-label">Average</span>
@@ -359,11 +402,11 @@ function TrendsCard({ selectedMetric: initialMetric = 'index' }: TrendsCardProps
                     <span className="trends-stat-value">{stats.max}</span>
                   </div>
                 </div>
+              )}
 
-                <div className="trends-disclaimer">
-                  <AlertCircle size={14} />
-                  Not medical advice. For emergencies, contact a healthcare professional immediately.
-                </div>
+              <div className="trends-disclaimer">
+                <AlertCircle size={14} />
+                Not medical advice. For emergencies, contact a healthcare professional immediately.
               </div>
             </motion.div>
           </motion.div>

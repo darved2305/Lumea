@@ -184,8 +184,8 @@ class EnhancedReportService:
             
             await emit_reports_list_updated(str(user_id))
             
-            # TODO: Trigger health index recomputation
-            # await self.recompute_health_index(user_id)
+            # Trigger health index recomputation
+            await self._recompute_health_index_and_emit(user_id)
             
             logger.info(f"Report {report_id} processing complete with {observation_count} observations")
             
@@ -200,3 +200,39 @@ class EnhancedReportService:
                 "extracted_metrics_count": 0,
                 "status": "failed"
             })
+
+    async def _recompute_health_index_and_emit(self, user_id: UUID):
+        """Recompute health index after processing and emit WebSocket events"""
+        from app.routes.websocket import (
+            emit_health_index_updated,
+            emit_trends_updated,
+            emit_recommendations_updated
+        )
+        from app.services.metrics_service import MetricsService
+        
+        try:
+            metrics_service = MetricsService(self.db)
+            health_metric = await metrics_service.compute_health_index(user_id)
+            
+            if health_metric:
+                logger.info(f"Health index recomputed for user {user_id}: {health_metric.value}")
+                
+                # Emit health index update
+                await emit_health_index_updated(str(user_id), {
+                    "score": float(health_metric.value),
+                    "confidence": float(health_metric.confidence),
+                    "contributions": health_metric.contributions
+                })
+                
+                # Emit trends update
+                await emit_trends_updated(str(user_id), {
+                    "metrics": ["health_index"]
+                })
+                
+                # Emit recommendations update (count will be fetched by frontend)
+                await emit_recommendations_updated(str(user_id), count=0, urgent_count=0)
+            else:
+                logger.info(f"No health index computed for user {user_id} (insufficient data)")
+                
+        except Exception as e:
+            logger.exception(f"Error computing health index for user {user_id}: {e}")

@@ -268,7 +268,12 @@ function Dashboard() {
 
           {/* Bottom Row: Trends Chart */}
           <div className="dashboard-full-width">
-            <TrendsCard selectedMetric={selectedFactor} />
+            <TrendsCard 
+              selectedMetric={selectedFactor}
+              authToken={authToken || undefined}
+              apiBaseUrl={API_BASE}
+              refreshTrigger={recommendationsRefreshTrigger}
+            />
           </div>
         </div>
       </div>

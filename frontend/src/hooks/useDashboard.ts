@@ -1,7 +1,6 @@
 // Custom Hooks for Dashboard Features
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  getHealthSummary,
   getTimeSeries,
   generateNextPoint,
   getQuestionSuggestions,
@@ -11,26 +10,75 @@ import {
   type ChatMessage,
 } from '../services/dashboardData';
 
-// Hook for health summary data
+const API_BASE = 'http://localhost:8000';
+
+// Hook for health summary data - fetches from REAL API
 export function useHealthSummary() {
   const [data, setData] = useState<HealthSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Simulate API call
     const fetchData = async () => {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-      const summary = getHealthSummary();
-      setData(summary);
-      setLoading(false);
+      setError(null);
+
+      try {
+        // Fetch from real health-index endpoint
+        const response = await fetch(`${API_BASE}/api/health-index`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          
+          // Transform to HealthSummary format
+          if (result.score !== null && result.score !== undefined) {
+            const factors = [];
+            if (result.contributions) {
+              for (const [key, value] of Object.entries(result.contributions as Record<string, any>)) {
+                factors.push({
+                  key,
+                  label: value.detail?.label || key,
+                  value: value.score || 0,
+                  contribution: value.contribution || 0,
+                  unit: value.detail?.unit,
+                  status: value.detail?.status || 'good',
+                });
+              }
+            }
+
+            setData({
+              healthIndexScore: result.score,
+              lastUpdated: result.computed_at ? new Date(result.computed_at) : new Date(),
+              trend: 'stable',
+              factors,
+            });
+          } else {
+            // No data yet
+            setData(null);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching health summary:', err);
+        setError('Failed to load health data');
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchData();
   }, []);
 
-  return { data, loading };
+  return { data, loading, error };
 }
 
 // Hook for live time series data with simulated streaming
@@ -98,10 +146,10 @@ Feel free to ask me anything about your health index, metrics, or what you can d
   const [isTyping, setIsTyping] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
 
-  // Update suggestions based on latest health score
+  // Update suggestions - use default score of 70 (middle suggestions)
+  // Real score-based suggestions would need integration with health summary API
   useEffect(() => {
-    const summary = getHealthSummary();
-    setSuggestions(getQuestionSuggestions(summary.healthIndexScore));
+    setSuggestions(getQuestionSuggestions(70));
   }, []);
 
   const sendMessage = useCallback(async (content: string) => {

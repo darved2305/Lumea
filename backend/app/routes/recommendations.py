@@ -6,13 +6,27 @@ Provides endpoints for getting personalized health recommendations.
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Dict, Any
+from datetime import datetime
+import logging
 
 from ..db import get_db
 from ..models import User
 from ..security import get_current_user
 from ..services.recommendation_service import get_user_recommendations
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/api/recommendations", tags=["recommendations"])
+
+# Safe fallback response when recommendations fail
+FALLBACK_RESPONSE = {
+    "updated_at": None,  # Will be set to current time
+    "disclaimer": "⚕️ This is wellness guidance, not medical advice. Consult a licensed healthcare provider for diagnosis, treatment, or medical decisions.",
+    "items": [],
+    "total_count": 0,
+    "urgent_count": 0,
+    "warning_count": 0,
+}
 
 
 @router.get("", response_model=None)
@@ -23,6 +37,8 @@ async def get_recommendations(
 ) -> Dict[str, Any]:
     """
     Get personalized health recommendations for the current user.
+    
+    NEVER returns 500 - falls back to empty list on errors.
     
     Returns recommendations based on:
     - Metric values vs reference ranges
@@ -36,15 +52,6 @@ async def get_recommendations(
     - total_count: Total recommendations
     - urgent_count: Count of URGENT items
     - warning_count: Count of WARNING items
-    
-    Each recommendation item contains:
-    - id: Unique rule ID
-    - title: Brief summary
-    - severity: URGENT | WARNING | INFO
-    - why: Explanation of why this recommendation applies
-    - actions: List of suggested actions
-    - followup: Follow-up recommendations
-    - sources: Medical/wellness sources
     """
     try:
         recommendations = await get_user_recommendations(
@@ -55,10 +62,11 @@ async def get_recommendations(
         return recommendations
     
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error generating recommendations: {str(e)}"
-        )
+        # Log error but return safe fallback
+        logger.exception(f"Error generating recommendations for user {current_user.id}: {e}")
+        fallback = FALLBACK_RESPONSE.copy()
+        fallback["updated_at"] = datetime.utcnow().isoformat()
+        return fallback
 
 
 @router.get("/summary")
@@ -69,7 +77,7 @@ async def get_recommendations_summary(
     """
     Get a brief summary of recommendations without full details.
     
-    Useful for dashboard badges and quick overview.
+    NEVER returns 500 - falls back to empty summary on errors.
     """
     try:
         recommendations = await get_user_recommendations(
@@ -88,7 +96,13 @@ async def get_recommendations_summary(
         }
     
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error generating recommendations summary: {str(e)}"
-        )
+        # Log error but return safe fallback
+        logger.exception(f"Error generating recommendations summary for user {current_user.id}: {e}")
+        return {
+            "updated_at": datetime.utcnow().isoformat(),
+            "total_count": 0,
+            "urgent_count": 0,
+            "warning_count": 0,
+            "has_urgent": False,
+            "disclaimer": FALLBACK_RESPONSE["disclaimer"],
+        }
