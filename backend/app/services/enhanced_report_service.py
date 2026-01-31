@@ -135,16 +135,19 @@ class EnhancedReportService:
             observed_at = report.report_date or report.uploaded_at
             
             for metric in metrics:
-                # Skip unmapped metrics for now (or save them separately)
+                # Log unmapped metrics but still save them
                 if metric.canonical_key == "unmapped":
-                    logger.debug(f"Skipping unmapped metric: {metric.test_name}")
-                    continue
+                    logger.warning(f"Unmapped metric (saving anyway): {metric.test_name} = {metric.value} {metric.unit}")
+                    # Use the test name as metric_name for unmapped items
+                    metric_name = metric.test_name.lower().replace(' ', '_')[:50]
+                else:
+                    metric_name = metric.canonical_key
                 
                 observation = Observation(
                     user_id=user_id,
                     report_id=report_id,
                     observation_type=ObservationType.LAB_VALUE,
-                    metric_name=metric.canonical_key,
+                    metric_name=metric_name,
                     display_name=metric.test_name,
                     value=metric.value,
                     unit=metric.unit,

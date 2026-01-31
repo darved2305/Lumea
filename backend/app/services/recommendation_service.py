@@ -104,7 +104,7 @@ class RecommendationService:
         # Get latest health metrics
         stmt = select(HealthMetric).where(
             HealthMetric.user_id == self.user.id
-        ).order_by(HealthMetric.date.desc()).limit(50)
+        ).order_by(HealthMetric.computed_at.desc()).limit(50)
         
         result = await self.db.execute(stmt)
         health_metrics = result.scalars().all()
