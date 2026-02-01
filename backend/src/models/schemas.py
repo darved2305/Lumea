@@ -234,6 +234,10 @@ class ReportListItem(BaseModel):
     processed_at: Optional[datetime]
     extraction_confidence: Optional[float]
     observation_count: int = 0
+    # Document classification
+    category: Optional[str] = None  # Lab, Dental, MRI, X-ray, Prescription, Sleep
+    document_type: Optional[str] = None  # Blood Panel, Lipid Panel, Checkup, Brain Scan, Chest
+    classification_confidence: Optional[float] = None
     
     class Config:
         from_attributes = True
@@ -252,6 +256,10 @@ class ReportDetail(BaseModel):
     extracted_data: Optional[Dict[str, Any]]
     extraction_confidence: Optional[float]
     error_message: Optional[str]
+    # Document classification
+    category: Optional[str] = None
+    document_type: Optional[str] = None
+    classification_confidence: Optional[float] = None
     
     class Config:
         from_attributes = True

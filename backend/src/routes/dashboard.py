@@ -198,3 +198,79 @@ async def get_dashboard_trends(
                 "change_percent": 0
             }
         }
+
+
+@router.get("/health-index")
+async def get_health_index(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get current health index score
+    
+    Returns the real calculated health index from the database.
+    NEVER hardcoded - returns null if no data available.
+    """
+    metrics_service = MetricsService(db)
+    latest = await metrics_service.get_latest_health_index_async(current_user.id)
+    
+    if not latest:
+        return {
+            "score": None,
+            "confidence": None,
+            "computed_at": None,
+            "message": "Upload lab reports to compute your Health Index"
+        }
+    
+    return {
+        "score": float(latest.value),
+        "confidence": float(latest.confidence),
+        "computed_at": latest.computed_at.isoformat(),
+        "contributions": latest.contributions
+    }
+
+
+@router.get("/health-index/debug")
+async def get_health_index_debug(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Debug endpoint to prove Health Index is NOT hardcoded.
+    
+    Returns:
+        - score: Current health index
+        - components: Breakdown of each factor's contribution
+        - last_observation_at: Most recent observation timestamp
+        - last_report_id: ID of last processed report
+        - observation_count: Number of observations used
+    """
+    metrics_service = MetricsService(db)
+    latest = await metrics_service.get_latest_health_index_async(current_user.id)
+    
+    # Get last observation
+    result = await db.execute(
+        select(Observation)
+        .where(Observation.user_id == current_user.id)
+        .order_by(Observation.observed_at.desc())
+        .limit(1)
+    )
+    last_obs = result.scalars().first()
+    
+    # Get observation count
+    count_result = await db.execute(
+        select(func.count(Observation.id))
+        .where(Observation.user_id == current_user.id)
+    )
+    obs_count = count_result.scalar() or 0
+    
+    return {
+        "score": float(latest.value) if latest else None,
+        "confidence": float(latest.confidence) if latest else None,
+        "computed_at": latest.computed_at.isoformat() if latest else None,
+        "contributions": latest.contributions if latest else None,
+        "last_observation_at": last_obs.observed_at.isoformat() if last_obs else None,
+        "last_report_id": str(last_obs.report_id) if last_obs and last_obs.report_id else None,
+        "observation_count": obs_count,
+        "proof": "This data is fetched from the database, not hardcoded"
+    }
