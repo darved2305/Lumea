@@ -2,7 +2,13 @@
  * Health Profile Form Schema
  * 
  * Defines the wizard steps and questions for the health profile form.
- * Rendered dynamically to allow future extensibility.
+ * 
+ * Production-ready version:
+ * - Removed supportsSkip/supportsUnknown (compulsory form)
+ * - Removed duplicate "Other" textareas (inline only)
+ * - Added required flag for mandatory fields
+ * - Added gridColumn hints for 2-column layout
+ * - Split into 8 steps for less scrolling per step
  */
 
 export type FieldType = 
@@ -12,7 +18,7 @@ export type FieldType =
   | 'select'
   | 'multiselect'
   | 'radio'
-  | 'list'  // For medications, allergies, etc.
+  | 'list'
   | 'textarea';
 
 export interface FieldOption {
@@ -36,7 +42,7 @@ export interface FormField {
   type: FieldType;
   options?: FieldOption[];
   listConfig?: ListFieldConfig;
-  required?: boolean;
+  required?: boolean;       // If true, must be filled to proceed
   placeholder?: string;
   helpText?: string;
   unit?: string;
@@ -46,9 +52,7 @@ export interface FormField {
     questionId: string;
     values: string[];
   };
-  supportsUnknown?: boolean;
-  supportsSkip?: boolean;
-  essential?: boolean;  // Affects completion score weighting
+  gridColumn?: 'half' | 'full';  // Layout hint for 2-column grid
 }
 
 export interface WizardStep {
@@ -58,39 +62,35 @@ export interface WizardStep {
   fields: FormField[];
 }
 
+// Required fields that block progress
+export const REQUIRED_FIELDS = [
+  'date_of_birth',
+  'sex_at_birth',
+  'height_cm',
+  'weight_kg',
+];
+
 export const PROFILE_FORM_SCHEMA: WizardStep[] = [
+  // STEP 1: Basic Info
   {
     id: 'basics',
     title: 'Basic Information',
-    description: 'Tell us a bit about yourself',
+    description: 'Let\'s start with some essential details',
     fields: [
       {
         questionId: 'full_name',
         label: 'Full Name',
         type: 'text',
         placeholder: 'Enter your full name',
-        supportsSkip: true,
+        gridColumn: 'full',
       },
       {
         questionId: 'date_of_birth',
         label: 'Date of Birth',
         type: 'date',
         helpText: 'Your age helps personalize health recommendations',
-        supportsUnknown: true,
-        essential: true,
-      },
-      {
-        questionId: 'age_years',
-        label: 'Age (if DOB unknown)',
-        type: 'number',
-        min: 0,
-        max: 120,
-        unit: 'years',
-        showIf: {
-          questionId: 'date_of_birth',
-          values: ['unknown'],
-        },
-        supportsUnknown: true,
+        required: true,
+        gridColumn: 'half',
       },
       {
         questionId: 'sex_at_birth',
@@ -103,29 +103,24 @@ export const PROFILE_FORM_SCHEMA: WizardStep[] = [
           { value: 'prefer_not', label: 'Prefer not to say' },
         ],
         helpText: 'Biological sex affects reference ranges for lab values',
-        supportsUnknown: true,
-        essential: true,
-      },
-      {
-        questionId: 'gender',
-        label: 'Gender Identity',
-        type: 'text',
-        placeholder: 'Optional',
-        supportsSkip: true,
+        required: true,
+        gridColumn: 'half',
       },
       {
         questionId: 'city',
         label: 'City',
         type: 'text',
         placeholder: 'Your city (optional)',
-        supportsSkip: true,
+        gridColumn: 'half',
       },
     ],
   },
+  
+  // STEP 2: Body Measurements
   {
     id: 'measurements',
     title: 'Body Measurements',
-    description: 'Physical measurements help calculate health metrics',
+    description: 'These measurements help calculate your health metrics',
     fields: [
       {
         questionId: 'height_cm',
@@ -136,8 +131,8 @@ export const PROFILE_FORM_SCHEMA: WizardStep[] = [
         unit: 'cm',
         placeholder: 'e.g., 170',
         helpText: 'Used to calculate BMI',
-        supportsUnknown: true,
-        essential: true,
+        required: true,
+        gridColumn: 'half',
       },
       {
         questionId: 'weight_kg',
@@ -148,8 +143,8 @@ export const PROFILE_FORM_SCHEMA: WizardStep[] = [
         unit: 'kg',
         placeholder: 'e.g., 70',
         helpText: 'Used to calculate BMI',
-        supportsUnknown: true,
-        essential: true,
+        required: true,
+        gridColumn: 'half',
       },
       {
         questionId: 'waist_cm',
@@ -160,8 +155,7 @@ export const PROFILE_FORM_SCHEMA: WizardStep[] = [
         unit: 'cm',
         placeholder: 'Optional',
         helpText: 'Measured at navel level',
-        supportsUnknown: true,
-        supportsSkip: true,
+        gridColumn: 'half',
       },
       {
         questionId: 'activity_level',
@@ -172,11 +166,12 @@ export const PROFILE_FORM_SCHEMA: WizardStep[] = [
           { value: 'moderate', label: 'Moderate (exercise 2-3 times/week)' },
           { value: 'active', label: 'Active (exercise 4+ times/week)' },
         ],
-        supportsUnknown: true,
-        essential: true,
+        gridColumn: 'full',
       },
     ],
   },
+  
+  // STEP 3: Medical Conditions
   {
     id: 'conditions',
     title: 'Medical Conditions',
@@ -184,7 +179,7 @@ export const PROFILE_FORM_SCHEMA: WizardStep[] = [
     fields: [
       {
         questionId: 'diagnosed_conditions',
-        label: 'Diagnosed Conditions',
+        label: 'Have you been diagnosed with any of these conditions?',
         type: 'multiselect',
         options: [
           { value: 'diabetes', label: 'Diabetes' },
@@ -201,18 +196,20 @@ export const PROFILE_FORM_SCHEMA: WizardStep[] = [
           { value: 'none', label: 'None of the above' },
         ],
         helpText: 'Select all that apply',
-        essential: true,
+        gridColumn: 'full',
       },
-      {
-        questionId: 'conditions_other',
-        label: 'Other Conditions',
-        type: 'textarea',
-        placeholder: 'List any other conditions not mentioned above',
-        supportsSkip: true,
-      },
+    ],
+  },
+  
+  // STEP 4: Symptoms
+  {
+    id: 'symptoms',
+    title: 'Recurring Symptoms',
+    description: 'Tell us about any symptoms you experience regularly',
+    fields: [
       {
         questionId: 'recurring_symptoms',
-        label: 'Recurring Symptoms',
+        label: 'Do you experience any of these symptoms regularly?',
         type: 'multiselect',
         options: [
           { value: 'fatigue', label: 'Fatigue' },
@@ -221,25 +218,22 @@ export const PROFILE_FORM_SCHEMA: WizardStep[] = [
           { value: 'digestive_issues', label: 'Digestive Issues' },
           { value: 'sleep_problems', label: 'Sleep Problems' },
           { value: 'anxiety', label: 'Anxiety' },
+          { value: 'dizziness', label: 'Dizziness' },
+          { value: 'shortness_of_breath', label: 'Shortness of Breath' },
           { value: 'other', label: 'Other (specify)' },
           { value: 'none', label: 'None' },
         ],
-        helpText: 'Select symptoms you experience regularly',
-        supportsSkip: true,
-      },
-      {
-        questionId: 'symptoms_notes',
-        label: 'Additional Notes on Symptoms',
-        type: 'textarea',
-        placeholder: 'Describe any other symptoms',
-        supportsSkip: true,
+        helpText: 'Select all that apply',
+        gridColumn: 'full',
       },
     ],
   },
+  
+  // STEP 5: Medications & Supplements
   {
     id: 'medications',
-    title: 'Medications & Allergies',
-    description: 'Current medications and known allergies',
+    title: 'Medications & Supplements',
+    description: 'Current medications and supplements you take',
     fields: [
       {
         questionId: 'taking_medications',
@@ -249,8 +243,7 @@ export const PROFILE_FORM_SCHEMA: WizardStep[] = [
           { value: 'yes', label: 'Yes' },
           { value: 'no', label: 'No' },
         ],
-        supportsUnknown: true,
-        essential: true,
+        gridColumn: 'full',
       },
       {
         questionId: 'medications_list',
@@ -279,6 +272,17 @@ export const PROFILE_FORM_SCHEMA: WizardStep[] = [
           questionId: 'taking_medications',
           values: ['yes'],
         },
+        gridColumn: 'full',
+      },
+      {
+        questionId: 'taking_supplements',
+        label: 'Do you take any supplements or vitamins?',
+        type: 'radio',
+        options: [
+          { value: 'yes', label: 'Yes' },
+          { value: 'no', label: 'No' },
+        ],
+        gridColumn: 'full',
       },
       {
         questionId: 'supplements_list',
@@ -290,8 +294,21 @@ export const PROFILE_FORM_SCHEMA: WizardStep[] = [
             { name: 'dose', label: 'Dose', type: 'text' },
           ],
         },
-        supportsSkip: true,
+        showIf: {
+          questionId: 'taking_supplements',
+          values: ['yes'],
+        },
+        gridColumn: 'full',
       },
+    ],
+  },
+  
+  // STEP 6: Allergies
+  {
+    id: 'allergies',
+    title: 'Allergies',
+    description: 'Known allergies help us flag potential interactions',
+    fields: [
       {
         questionId: 'has_allergies',
         label: 'Do you have any known allergies?',
@@ -300,8 +317,7 @@ export const PROFILE_FORM_SCHEMA: WizardStep[] = [
           { value: 'yes', label: 'Yes' },
           { value: 'no', label: 'No' },
         ],
-        supportsUnknown: true,
-        essential: true,
+        gridColumn: 'full',
       },
       {
         questionId: 'allergies_list',
@@ -339,9 +355,12 @@ export const PROFILE_FORM_SCHEMA: WizardStep[] = [
           questionId: 'has_allergies',
           values: ['yes'],
         },
+        gridColumn: 'full',
       },
     ],
   },
+  
+  // STEP 7: Family History
   {
     id: 'family_history',
     title: 'Family History',
@@ -354,8 +373,9 @@ export const PROFILE_FORM_SCHEMA: WizardStep[] = [
         options: [
           { value: 'yes', label: 'Yes' },
           { value: 'no', label: 'No' },
+          { value: 'unknown', label: 'I don\'t know' },
         ],
-        supportsUnknown: true,
+        gridColumn: 'full',
       },
       {
         questionId: 'family_history_list',
@@ -398,59 +418,12 @@ export const PROFILE_FORM_SCHEMA: WizardStep[] = [
           questionId: 'family_history_any',
           values: ['yes'],
         },
-      },
-      {
-        questionId: 'genetic_tests_any',
-        label: 'Have you had any genetic testing?',
-        type: 'radio',
-        options: [
-          { value: 'yes', label: 'Yes' },
-          { value: 'no', label: 'No' },
-        ],
-        supportsUnknown: true,
-        showIf: {
-          questionId: 'family_history_any',
-          values: ['yes'],
-        },
-      },
-      {
-        questionId: 'genetic_tests_list',
-        label: 'Known Genetic Mutations',
-        type: 'list',
-        listConfig: {
-          fields: [
-            { 
-              name: 'mutation_name', 
-              label: 'Mutation', 
-              type: 'select',
-              required: true,
-              options: [
-                { value: 'BRCA1', label: 'BRCA1' },
-                { value: 'BRCA2', label: 'BRCA2' },
-                { value: 'APOE4', label: 'APOE4' },
-                { value: 'Factor_V_Leiden', label: 'Factor V Leiden' },
-                { value: 'other', label: 'Other' },
-              ]
-            },
-            { 
-              name: 'result', 
-              label: 'Result', 
-              type: 'select',
-              options: [
-                { value: 'positive', label: 'Positive' },
-                { value: 'negative', label: 'Negative' },
-                { value: 'variant_uncertain', label: 'Variant of Uncertain Significance' },
-              ]
-            },
-          ],
-        },
-        showIf: {
-          questionId: 'genetic_tests_any',
-          values: ['yes'],
-        },
+        gridColumn: 'full',
       },
     ],
   },
+  
+  // STEP 8: Lifestyle
   {
     id: 'lifestyle',
     title: 'Lifestyle',
@@ -466,8 +439,7 @@ export const PROFILE_FORM_SCHEMA: WizardStep[] = [
           { value: 'current', label: 'Current smoker' },
           { value: 'prefer_not', label: 'Prefer not to say' },
         ],
-        supportsUnknown: true,
-        essential: true,
+        gridColumn: 'half',
       },
       {
         questionId: 'alcohol',
@@ -478,8 +450,7 @@ export const PROFILE_FORM_SCHEMA: WizardStep[] = [
           { value: 'occasional', label: 'Occasional (1-2 drinks/week)' },
           { value: 'frequent', label: 'Frequent (3+ drinks/week)' },
         ],
-        supportsUnknown: true,
-        essential: true,
+        gridColumn: 'half',
       },
       {
         questionId: 'sleep_hours_avg',
@@ -489,8 +460,7 @@ export const PROFILE_FORM_SCHEMA: WizardStep[] = [
         max: 24,
         unit: 'hours',
         placeholder: 'e.g., 7',
-        supportsUnknown: true,
-        supportsSkip: true,
+        gridColumn: 'half',
       },
       {
         questionId: 'sleep_quality',
@@ -501,8 +471,7 @@ export const PROFILE_FORM_SCHEMA: WizardStep[] = [
           { value: 'ok', label: 'OK - Could be better' },
           { value: 'poor', label: 'Poor - Often tired' },
         ],
-        supportsUnknown: true,
-        supportsSkip: true,
+        gridColumn: 'half',
       },
       {
         questionId: 'exercise_minutes_per_week',
@@ -513,8 +482,7 @@ export const PROFILE_FORM_SCHEMA: WizardStep[] = [
         unit: 'minutes',
         placeholder: 'e.g., 150',
         helpText: 'Total minutes of moderate+ intensity exercise',
-        supportsUnknown: true,
-        supportsSkip: true,
+        gridColumn: 'half',
       },
       {
         questionId: 'diet_pattern',
@@ -525,8 +493,7 @@ export const PROFILE_FORM_SCHEMA: WizardStep[] = [
           { value: 'nonveg', label: 'Non-vegetarian' },
           { value: 'mixed', label: 'Mixed' },
         ],
-        supportsUnknown: true,
-        supportsSkip: true,
+        gridColumn: 'half',
       },
     ],
   },

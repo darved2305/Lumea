@@ -153,13 +153,13 @@
   font-size: 1rem;
 }
 
-/* Wizard Container (full page) */
+/* Wizard Container (full page) - WIDER */
 .health-profile-page .health-profile-wizard {
   display: flex;
   flex-direction: column;
   flex: 1;
   background: white;
-  max-width: 800px;
+  max-width: 1100px;
   margin: 0 auto;
   width: 100%;
   box-shadow: 0 0 40px rgba(0, 0, 0, 0.05);
@@ -260,16 +260,19 @@
 .health-profile-page .wizard-content {
   flex: 1;
   overflow-y: auto;
-  padding: 32px 24px;
+  padding: 32px 40px;
 }
 
 .health-profile-page .wizard-step {
-  max-width: 560px;
-  margin: 0 auto;
+  max-width: 100%;
+}
+
+.health-profile-page .wizard-step-header {
+  margin-bottom: 28px;
 }
 
 .health-profile-page .wizard-step-title {
-  font-size: 1.375rem;
+  font-size: 1.5rem;
   font-weight: 600;
   color: #1a1a2e;
   margin-bottom: 8px;
@@ -278,13 +281,12 @@
 .health-profile-page .wizard-step-description {
   font-size: 0.9375rem;
   color: #666;
-  margin-bottom: 28px;
 }
 
-/* Fields */
-.health-profile-page .wizard-fields {
-  display: flex;
-  flex-direction: column;
+/* Fields - 2-COLUMN GRID LAYOUT */
+.health-profile-page .wizard-fields-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: 20px;
 }
 
@@ -293,6 +295,37 @@
   border-radius: 10px;
   padding: 18px;
   border: 1px solid #e0e0e0;
+  transition: border-color 0.2s ease;
+}
+
+.health-profile-page .wizard-field-full {
+  grid-column: 1 / -1;
+}
+
+.health-profile-page .wizard-field-half {
+  grid-column: span 1;
+}
+
+/* Error states */
+.health-profile-page .wizard-field.has-error {
+  border-color: #ef4444;
+  background: #fef2f2;
+}
+
+.health-profile-page .wizard-field-error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: #fef2f2;
+  border-radius: 6px;
+  color: #dc2626;
+  font-size: 0.8125rem;
+}
+
+.health-profile-page .wizard-field-error svg {
+  flex-shrink: 0;
 }
 
 .health-profile-page .wizard-field-header {
@@ -315,46 +348,7 @@
 
 .health-profile-page .required-mark {
   color: #ef4444;
-}
-
-.health-profile-page .essential-badge {
-  font-size: 10px;
   font-weight: 600;
-  text-transform: uppercase;
-  background: #f0f4f1;
-  color: #6b9175;
-  padding: 2px 6px;
-  border-radius: 4px;
-}
-
-.health-profile-page .wizard-field-toggles {
-  display: flex;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-.health-profile-page .toggle-btn {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
-  font-size: 11px;
-  color: #666;
-  background: transparent;
-  border: 1px solid #e0e0e0;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.health-profile-page .toggle-btn:hover {
-  background: #f5f5f5;
-}
-
-.health-profile-page .toggle-btn.active {
-  background: #f0f4f1;
-  border-color: #6b9175;
-  color: #6b9175;
 }
 
 .health-profile-page .wizard-field-help {
@@ -365,16 +359,6 @@
 
 .health-profile-page .wizard-field-input {
   margin-top: 8px;
-}
-
-.health-profile-page .wizard-field-skipped {
-  font-size: 0.8125rem;
-  color: #888;
-  font-style: italic;
-  padding: 8px;
-  background: #f5f5f5;
-  border-radius: 6px;
-  text-align: center;
 }
 
 /* Input Styles */
@@ -738,6 +722,20 @@
 }
 
 /* Mobile Responsive */
+@media (max-width: 768px) {
+  .health-profile-page .wizard-fields-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .health-profile-page .wizard-field-half {
+    grid-column: span 1;
+  }
+  
+  .health-profile-page .wizard-content {
+    padding: 24px 20px;
+  }
+}
+
 @media (max-width: 640px) {
   .welcome-screen {
     padding: 16px;
@@ -772,10 +770,6 @@
   .health-profile-page .wizard-field-header {
     flex-direction: column;
     gap: 8px;
-  }
-  
-  .health-profile-page .wizard-field-toggles {
-    align-self: flex-start;
   }
   
   .health-profile-page .wizard-list-item-fields {

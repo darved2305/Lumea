@@ -5,6 +5,7 @@ import Signup from './pages/Signup'
 import Dashboard from './pages/Dashboard'
 import Reports from './pages/Reports'
 import HealthProfile from './pages/HealthProfile'
+import Settings from './pages/Settings'
 import './App.css'
 
 function App() {
@@ -17,6 +18,7 @@ function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/health-profile" element={<HealthProfile />} />
+        <Route path="/settings" element={<Settings />} />
         {/* Catch-all: redirect unknown routes to dashboard */}
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

@@ -447,9 +447,9 @@ class ProfileService:
                 select(DerivedFeature).where(
                     DerivedFeature.user_id == self.user.id,
                     DerivedFeature.feature_name == feature_name
-                )
+                ).order_by(DerivedFeature.computed_at.desc())
             )
-            existing = result.scalar_one_or_none()
+            existing = result.scalars().first()  # Use first() to handle potential duplicates gracefully
             
             if existing:
                 existing.feature_value = feature_value

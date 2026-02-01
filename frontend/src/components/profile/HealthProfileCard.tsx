@@ -5,22 +5,22 @@
  * - First-time user: "Complete your health profile" CTA
  * - Existing user: Profile summary with edit button
  * - In-progress: Resume wizard prompt
+ * - Completed: Success state with View/Edit button
  * 
- * Now navigates to /health-profile route instead of modal.
+ * Navigates to /health-profile route.
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
-  User, 
   Edit2, 
   CheckCircle2, 
-  AlertCircle, 
   ChevronRight,
   Activity,
   Heart,
-  Loader2
+  Loader2,
+  Settings
 } from 'lucide-react';
 import { fetchFullProfile, FullProfile } from '../../services/profileApi';
 import './HealthProfileCard.css';
@@ -33,7 +33,6 @@ export default function HealthProfileCard({ onProfileUpdated: _onProfileUpdated 
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<FullProfile | null>(null);
-  const [skipped, setSkipped] = useState(false);
   
   const loadProfile = useCallback(async () => {
     setLoading(true);
@@ -55,10 +54,6 @@ export default function HealthProfileCard({ onProfileUpdated: _onProfileUpdated 
     navigate('/health-profile');
   };
   
-  const handleSkip = () => {
-    setSkipped(true);
-  };
-  
   // Determine profile state
   const hasProfile = !!profile?.profile;
   const isComplete = profile?.profile?.wizard_completed || false;
@@ -75,33 +70,8 @@ export default function HealthProfileCard({ onProfileUpdated: _onProfileUpdated 
     );
   }
   
-  // First-time user or skipped - show CTA
+  // First-time user - show CTA
   if (!hasProfile || (!isComplete && !inProgress)) {
-    if (skipped) {
-      return (
-        <motion.div 
-          className="profile-card profile-card-skipped"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <div className="profile-card-icon">
-            <User size={24} />
-          </div>
-          <div className="profile-card-content">
-            <h3>Health Profile</h3>
-            <p>Complete your profile for personalized insights</p>
-          </div>
-          <button 
-            className="profile-card-btn profile-card-btn-text"
-            onClick={handleOpenWizard}
-          >
-            Complete Profile
-            <ChevronRight size={16} />
-          </button>
-        </motion.div>
-      );
-    }
-    
     return (
       <motion.div 
         className="profile-card profile-card-new"
@@ -138,14 +108,8 @@ export default function HealthProfileCard({ onProfileUpdated: _onProfileUpdated 
             className="profile-card-btn profile-card-btn-primary"
             onClick={handleOpenWizard}
           >
-            Continue
+            Get Started
             <ChevronRight size={18} />
-          </button>
-          <button 
-            className="profile-card-btn profile-card-btn-text"
-            onClick={handleSkip}
-          >
-            Skip for now
           </button>
         </div>
       </motion.div>
@@ -190,7 +154,7 @@ export default function HealthProfileCard({ onProfileUpdated: _onProfileUpdated 
     );
   }
   
-  // Complete - show summary
+  // Complete - show success state with summary
   return (
     <motion.div 
       className="profile-card profile-card-complete"
@@ -202,17 +166,20 @@ export default function HealthProfileCard({ onProfileUpdated: _onProfileUpdated 
           <CheckCircle2 size={24} />
         </div>
         <div>
-          <h3>Health Profile</h3>
+          <h3>Health Profile Complete</h3>
           <p className="profile-complete-status">
-            <span className="status-badge">{completionScore.toFixed(0)}% complete</span>
+            <span className="status-badge status-badge-success">
+              <CheckCircle2 size={12} />
+              {completionScore.toFixed(0)}% complete
+            </span>
           </p>
         </div>
         <button 
           className="profile-edit-btn"
           onClick={handleOpenWizard}
-          title="Edit profile"
+          title="View & Edit profile"
         >
-          <Edit2 size={16} />
+          <Settings size={16} />
         </button>
       </div>
       
@@ -250,13 +217,15 @@ export default function HealthProfileCard({ onProfileUpdated: _onProfileUpdated 
         )}
       </div>
       
-      {profile?.completion?.missing_essentials && profile.completion.missing_essentials.length > 0 && (
-        <div className="profile-missing-alert">
-          <AlertCircle size={14} />
-          <span>{profile.completion.missing_essentials.length} essential fields missing</span>
-          <button onClick={handleOpenWizard}>Complete</button>
-        </div>
-      )}
+      <div className="profile-card-footer">
+        <button 
+          className="profile-card-btn profile-card-btn-secondary"
+          onClick={handleOpenWizard}
+        >
+          <Edit2 size={16} />
+          View & Edit Profile
+        </button>
+      </div>
     </motion.div>
   );
 }

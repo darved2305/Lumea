@@ -220,6 +220,19 @@
   color: #5a7d64;
   padding: 2px 8px;
   border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.status-badge-success {
+  background: rgba(107, 145, 117, 0.15);
+  color: #5a7d64;
+}
+
+.status-badge-success svg {
+  width: 12px;
+  height: 12px;
 }
 
 /* Profile Summary */
@@ -252,6 +265,28 @@
   font-weight: 500;
   color: #1a1a2e;
   text-transform: capitalize;
+}
+
+/* Card Footer */
+.profile-card-footer {
+  margin-top: auto;
+  padding-top: 12px;
+}
+
+/* Secondary button - outline style */
+.profile-card-btn-secondary {
+  background: white;
+  color: #6b9175;
+  border: 1px solid #6b9175;
+}
+
+.profile-card-btn-secondary:hover {
+  background: rgba(107, 145, 117, 0.05);
+}
+
+.profile-card-btn-secondary svg {
+  width: 16px;
+  height: 16px;
 }
 
 /* Missing Alert */

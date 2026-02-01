@@ -1,15 +1,16 @@
 /**
- * Health Profile Page
+ * Health Profile Page (Production-Ready)
  * 
  * Full-page wizard for completing health profile.
- * Replaces the modal-based approach.
  * 
  * Features:
  * - Welcome screen with ETA
  * - Multi-step wizard with progress tracking
  * - Autosave with visual feedback
- * - "Other" option for multi-selects
- * - Proper completion percentage calculation
+ * - Inline "Other" option for multi-selects
+ * - Required field validation with red error messages
+ * - Wider 2-column layout for less scrolling
+ * - No skip/don't know options (compulsory form)
  */
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
@@ -19,11 +20,8 @@ import {
   ChevronLeft, 
   ChevronRight, 
   Check, 
-  HelpCircle, 
-  SkipForward,
   Loader2,
   AlertCircle,
-  CheckCircle2,
   Plus,
   X,
   Clock,
@@ -35,7 +33,8 @@ import {
 import { 
   PROFILE_FORM_SCHEMA, 
   FormField, 
-  CONDITION_LABELS 
+  CONDITION_LABELS,
+  REQUIRED_FIELDS 
 } from '../components/profile/profileFormSchema';
 import {
   fetchFullProfile,
@@ -47,15 +46,15 @@ import {
   setSupplements,
   setAllergies,
   setFamilyHistory,
-  setGeneticTests,
   updateWizardState,
   AnswerData,
 } from '../services/profileApi';
 import './HealthProfile.css';
 
 type FormValues = Record<string, AnswerData>;
+type ValidationErrors = Record<string, string>;
 
-// Fields that support "Other" option
+// Fields that support "Other" option with inline text
 const FIELDS_WITH_OTHER = [
   'diagnosed_conditions',
   'recurring_symptoms',
@@ -71,6 +70,10 @@ export default function HealthProfile() {
   const [currentStep, setCurrentStep] = useState(0);
   const [formValues, setFormValues] = useState<FormValues>({});
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  
+  // Validation
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
+  const [showErrors, setShowErrors] = useState(false);
   
   // "Other" text values for multi-selects
   const [otherTexts, setOtherTexts] = useState<Record<string, string>>({});
@@ -216,19 +219,6 @@ export default function HealthProfile() {
           };
         }
         
-        // Load genetic tests
-        if (data.genetic_tests.length > 0) {
-          values['genetic_tests_any'] = { value: 'yes', unknown: false, skipped: false };
-          values['genetic_tests_list'] = {
-            value: data.genetic_tests.map(g => ({
-              mutation_name: g.mutation_name,
-              result: g.result || ''
-            })),
-            unknown: false,
-            skipped: false
-          };
-        }
-        
         setFormValues(values);
         setOtherTexts(otherTxts);
       }
@@ -243,12 +233,8 @@ export default function HealthProfile() {
   // COMPLETION PERCENTAGE CALCULATION
   // ============================================
   const completionPercent = useMemo(() => {
-    // Define weights: essential fields count more
-    const ESSENTIAL_WEIGHT = 2;
-    const NORMAL_WEIGHT = 1;
-    
-    let totalWeight = 0;
-    let answeredWeight = 0;
+    let totalFields = 0;
+    let answeredFields = 0;
     
     // Go through all fields in all steps
     for (const step of PROFILE_FORM_SCHEMA) {
@@ -258,41 +244,71 @@ export default function HealthProfile() {
           const dependencyValue = formValues[field.showIf.questionId];
           if (!dependencyValue) continue;
           
-          if (dependencyValue.unknown) {
-            if (!field.showIf.values.includes('unknown')) continue;
-          } else if (Array.isArray(dependencyValue.value)) {
+          if (Array.isArray(dependencyValue.value)) {
             if (!field.showIf.values.some(v => dependencyValue.value.includes(v))) continue;
           } else {
             if (!field.showIf.values.includes(dependencyValue.value)) continue;
           }
         }
         
-        const weight = field.essential ? ESSENTIAL_WEIGHT : NORMAL_WEIGHT;
-        totalWeight += weight;
+        totalFields += 1;
         
         // Check if field is answered
         const answer = formValues[field.questionId];
-        if (answer) {
-          // Unknown/skipped counts as "answered" (user intentionally responded)
-          if (answer.unknown || answer.skipped) {
-            answeredWeight += weight;
-          } else if (answer.value !== null && answer.value !== undefined && answer.value !== '') {
-            // Has actual value
-            if (Array.isArray(answer.value)) {
-              if (answer.value.length > 0) {
-                answeredWeight += weight;
-              }
-            } else {
-              answeredWeight += weight;
+        if (answer && answer.value !== null && answer.value !== undefined && answer.value !== '') {
+          if (Array.isArray(answer.value)) {
+            if (answer.value.length > 0) {
+              answeredFields += 1;
             }
+          } else {
+            answeredFields += 1;
           }
         }
       }
     }
     
-    if (totalWeight === 0) return 0;
-    return Math.round((answeredWeight / totalWeight) * 100);
+    if (totalFields === 0) return 0;
+    return Math.round((answeredFields / totalFields) * 100);
   }, [formValues]);
+  
+  // ============================================
+  // VALIDATION
+  // ============================================
+  const validateCurrentStep = useCallback((): boolean => {
+    const currentStepData = PROFILE_FORM_SCHEMA[currentStep];
+    const errors: ValidationErrors = {};
+    
+    for (const field of currentStepData.fields) {
+      // Skip conditional fields if their condition isn't met
+      if (field.showIf) {
+        const dependencyValue = formValues[field.showIf.questionId];
+        if (!dependencyValue) continue;
+        
+        if (Array.isArray(dependencyValue.value)) {
+          if (!field.showIf.values.some(v => dependencyValue.value.includes(v))) continue;
+        } else {
+          if (!field.showIf.values.includes(dependencyValue.value)) continue;
+        }
+      }
+      
+      // Check required fields
+      if (field.required || REQUIRED_FIELDS.includes(field.questionId)) {
+        const answer = formValues[field.questionId];
+        const isEmpty = !answer || 
+          answer.value === null || 
+          answer.value === undefined || 
+          answer.value === '' ||
+          (Array.isArray(answer.value) && answer.value.length === 0);
+        
+        if (isEmpty) {
+          errors[field.questionId] = `${field.label} is required`;
+        }
+      }
+    }
+    
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  }, [currentStep, formValues]);
   
   // Debounced autosave
   const debouncedSave = useCallback((values: FormValues, otherTxts: Record<string, string>) => {
@@ -415,12 +431,6 @@ export default function HealthProfile() {
         await setFamilyHistory(history.filter(h => h.relative_type && h.condition_code));
       }
       
-      // Save genetic tests
-      if (values['genetic_tests_list']?.value) {
-        const tests = values['genetic_tests_list'].value as any[];
-        await setGeneticTests(tests.filter(t => t.mutation_name));
-      }
-      
       lastSavedRef.current = JSON.stringify({ values, otherTxts });
       setSaveStatus('saved');
       
@@ -436,20 +446,29 @@ export default function HealthProfile() {
   };
   
   // Handle field change
-  const handleFieldChange = useCallback((questionId: string, value: any, flags?: { unknown?: boolean; skipped?: boolean }) => {
+  const handleFieldChange = useCallback((questionId: string, value: any) => {
     setFormValues(prev => {
       const newValues = {
         ...prev,
         [questionId]: {
-          value: flags?.unknown || flags?.skipped ? null : value,
-          unknown: flags?.unknown || false,
-          skipped: flags?.skipped || false,
+          value: value,
+          unknown: false,
+          skipped: false,
         }
       };
       debouncedSave(newValues, otherTexts);
       return newValues;
     });
-  }, [debouncedSave, otherTexts]);
+    
+    // Clear validation error for this field
+    if (validationErrors[questionId]) {
+      setValidationErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[questionId];
+        return newErrors;
+      });
+    }
+  }, [debouncedSave, otherTexts, validationErrors]);
   
   // Handle "other" text change
   const handleOtherTextChange = useCallback((fieldId: string, text: string) => {
@@ -462,13 +481,33 @@ export default function HealthProfile() {
   
   // Navigate steps
   const handleNext = async () => {
+    // Validate current step
+    setShowErrors(true);
+    const isValid = validateCurrentStep();
+    
+    if (!isValid) {
+      // Scroll to first error
+      const firstErrorField = document.querySelector('.wizard-field.has-error');
+      if (firstErrorField) {
+        firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      return;
+    }
+    
     // Save current step
     await saveFormData(formValues, otherTexts);
     
     if (currentStep < PROFILE_FORM_SCHEMA.length - 1) {
       const nextStep = currentStep + 1;
       setCurrentStep(nextStep);
+      setShowErrors(false);
+      setValidationErrors({});
       await updateWizardState(nextStep + 1);
+      // Scroll to top of content
+      const wizardContent = document.querySelector('.wizard-content');
+      if (wizardContent) {
+        wizardContent.scrollTop = 0;
+      }
     } else {
       // Complete wizard - save and navigate back
       await updateWizardState(PROFILE_FORM_SCHEMA.length, true);
@@ -479,6 +518,13 @@ export default function HealthProfile() {
   const handlePrevious = () => {
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
+      setShowErrors(false);
+      setValidationErrors({});
+      // Scroll to top of content
+      const wizardContent = document.querySelector('.wizard-content');
+      if (wizardContent) {
+        wizardContent.scrollTop = 0;
+      }
     }
   };
   
@@ -488,21 +534,12 @@ export default function HealthProfile() {
     navigate('/reports');
   };
   
-  const handleSkip = () => {
-    navigate('/reports');
-  };
-  
   // Check if field should be shown
   const shouldShowField = (field: FormField): boolean => {
     if (!field.showIf) return true;
     
     const dependencyValue = formValues[field.showIf.questionId];
     if (!dependencyValue) return false;
-    
-    // Handle unknown flag
-    if (dependencyValue.unknown) {
-      return field.showIf.values.includes('unknown');
-    }
     
     // Handle array values (multiselect)
     if (Array.isArray(dependencyValue.value)) {
@@ -517,14 +554,14 @@ export default function HealthProfile() {
     if (!shouldShowField(field)) return null;
     
     const value = formValues[field.questionId];
-    const isUnknown = value?.unknown || false;
-    const isSkipped = value?.skipped || false;
     const currentValue = value?.value;
+    const hasError = showErrors && validationErrors[field.questionId];
+    const isRequired = field.required || REQUIRED_FIELDS.includes(field.questionId);
     
     return (
       <motion.div 
         key={field.questionId}
-        className="wizard-field"
+        className={`wizard-field ${field.gridColumn === 'half' ? 'wizard-field-half' : 'wizard-field-full'} ${hasError ? 'has-error' : ''}`}
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -10 }}
@@ -532,49 +569,22 @@ export default function HealthProfile() {
         <div className="wizard-field-header">
           <label className="wizard-field-label">
             {field.label}
-            {field.required && <span className="required-mark">*</span>}
-            {field.essential && <span className="essential-badge">Important</span>}
+            {isRequired && <span className="required-mark">*</span>}
           </label>
-          
-          <div className="wizard-field-toggles">
-            {field.supportsUnknown && (
-              <button
-                type="button"
-                className={`toggle-btn ${isUnknown ? 'active' : ''}`}
-                onClick={() => handleFieldChange(field.questionId, null, { unknown: !isUnknown })}
-                title="I don't know"
-              >
-                <HelpCircle size={14} />
-                <span>Don't know</span>
-              </button>
-            )}
-            {field.supportsSkip && (
-              <button
-                type="button"
-                className={`toggle-btn ${isSkipped ? 'active' : ''}`}
-                onClick={() => handleFieldChange(field.questionId, null, { skipped: !isSkipped })}
-                title="Skip this question"
-              >
-                <SkipForward size={14} />
-                <span>Skip</span>
-              </button>
-            )}
-          </div>
         </div>
         
         {field.helpText && (
           <p className="wizard-field-help">{field.helpText}</p>
         )}
         
-        {!isUnknown && !isSkipped && (
-          <div className="wizard-field-input">
-            {renderFieldInput(field, currentValue)}
-          </div>
-        )}
+        <div className="wizard-field-input">
+          {renderFieldInput(field, currentValue)}
+        </div>
         
-        {(isUnknown || isSkipped) && (
-          <div className="wizard-field-skipped">
-            {isUnknown ? "Marked as unknown" : "Skipped"}
+        {hasError && (
+          <div className="wizard-field-error">
+            <AlertCircle size={14} />
+            <span>{validationErrors[field.questionId]}</span>
           </div>
         )}
       </motion.div>
@@ -833,7 +843,7 @@ export default function HealthProfile() {
     return (
       <div className="health-profile-page">
         <div className="welcome-screen">
-          <button className="welcome-back-btn" onClick={handleSkip}>
+          <button className="welcome-back-btn" onClick={handleSaveAndExit}>
             <ArrowLeft size={18} />
             Back to Reports
           </button>
@@ -868,17 +878,12 @@ export default function HealthProfile() {
               </div>
               
               <div className="benefit-item">
-                <CheckCircle2 size={20} />
+                <AlertCircle size={20} />
                 <div>
-                  <h3>Track Trends Over Time</h3>
-                  <p>Compare lab results against your baseline</p>
+                  <h3>Required Information</h3>
+                  <p>Only a few fields are required - the rest are optional</p>
                 </div>
               </div>
-            </div>
-            
-            <div className="welcome-note">
-              <HelpCircle size={16} />
-              <span>You can skip any question you don't know or prefer not to answer</span>
             </div>
             
             <div className="welcome-actions">
@@ -886,15 +891,8 @@ export default function HealthProfile() {
                 className="wizard-btn wizard-btn-primary welcome-start-btn"
                 onClick={() => setShowWelcome(false)}
               >
-                Start
+                Get Started
                 <ChevronRight size={18} />
-              </button>
-              
-              <button 
-                className="wizard-btn wizard-btn-ghost"
-                onClick={handleSkip}
-              >
-                Skip for now
               </button>
             </div>
           </div>
@@ -958,10 +956,12 @@ export default function HealthProfile() {
               transition={{ duration: 0.2 }}
               className="wizard-step"
             >
-              <h2 className="wizard-step-title">{currentStepData.title}</h2>
-              <p className="wizard-step-description">{currentStepData.description}</p>
+              <div className="wizard-step-header">
+                <h2 className="wizard-step-title">{currentStepData.title}</h2>
+                <p className="wizard-step-description">{currentStepData.description}</p>
+              </div>
               
-              <div className="wizard-fields">
+              <div className="wizard-fields-grid">
                 {currentStepData.fields.map(field => renderField(field))}
               </div>
             </motion.div>
@@ -971,20 +971,13 @@ export default function HealthProfile() {
         {/* Navigation Footer */}
         <div className="wizard-footer">
           <div className="wizard-footer-left">
-            {currentStep > 0 ? (
+            {currentStep > 0 && (
               <button 
                 className="wizard-btn wizard-btn-secondary"
                 onClick={handlePrevious}
               >
                 <ChevronLeft size={18} />
                 Back
-              </button>
-            ) : (
-              <button 
-                className="wizard-btn wizard-btn-ghost"
-                onClick={handleSkip}
-              >
-                Skip for now
               </button>
             )}
           </div>
