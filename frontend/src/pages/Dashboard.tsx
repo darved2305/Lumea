@@ -134,7 +134,7 @@ function Dashboard() {
           <div className="dashboard-bg-blob dashboard-bg-blob-2" />
         </div>
         <DashboardNavbar userName={userName} userStatus="" />
-        
+
         <div className="dashboard-content">
           <div className="dashboard-container">
             <motion.div
@@ -149,7 +149,7 @@ function Dashboard() {
                 </div>
                 <h2>Welcome to Your Health Dashboard</h2>
                 <p>
-                  Upload your first health report to get started. We'll analyze your data 
+                  Upload your first health report to get started. We'll analyze your data
                   and provide personalized health insights and recommendations.
                 </p>
                 <motion.button
@@ -197,10 +197,7 @@ function Dashboard() {
               <div className="dashboard-welcome-text">
                 <div className="welcome-title-row">
                   <h1>Welcome back, {userName}</h1>
-                  <span className={`live-indicator ${isConnected ? 'connected' : 'disconnected'}`}>
-                    {isConnected ? <Wifi size={14} /> : <WifiOff size={14} />}
-                    {isConnected ? 'LIVE' : 'Offline'}
-                  </span>
+
                 </div>
                 <p>
                   Your comprehensive health summary and medical insights
@@ -210,34 +207,6 @@ function Dashboard() {
                     </span>
                   )}
                 </p>
-              </div>
-
-              <div className="dashboard-quick-actions">
-                <motion.button
-                  className="dash-btn dash-btn-secondary dash-focus-ring"
-                  onClick={() => navigate('/reports')}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <FileText size={18} />
-                  Reports
-                </motion.button>
-                <motion.button
-                  className="dash-btn dash-btn-secondary dash-focus-ring"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <Download size={18} />
-                  Export
-                </motion.button>
-                <motion.button
-                  className="dash-btn dash-btn-primary dash-focus-ring"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <Share2 size={18} />
-                  Share
-                </motion.button>
               </div>
             </div>
           </motion.div>
@@ -268,7 +237,7 @@ function Dashboard() {
 
           {/* Bottom Row: Trends Chart */}
           <div className="dashboard-full-width">
-            <TrendsCard 
+            <TrendsCard
               selectedMetric={selectedFactor}
               authToken={authToken || undefined}
               apiBaseUrl={API_BASE}

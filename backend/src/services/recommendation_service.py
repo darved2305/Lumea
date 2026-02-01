@@ -101,7 +101,7 @@ class RecommendationService:
         """
         metrics: Dict[str, MetricData] = {}
         
-        # Get latest health metrics
+        # Get latest computed health metrics (scores like health_index, sleep_score, etc.)
         stmt = select(HealthMetric).where(
             HealthMetric.user_id == self.user.id
         ).order_by(HealthMetric.computed_at.desc()).limit(50)
@@ -109,18 +109,23 @@ class RecommendationService:
         result = await self.db.execute(stmt)
         health_metrics = result.scalars().all()
         
-        # Process health metrics into MetricData
+        # Process computed health metrics into MetricData
         for hm in health_metrics:
-            # Add each metric value from the health metric
-            if hm.metric_name not in metrics:
-                metrics[hm.metric_name] = MetricData(
-                    name=hm.metric_name,
-                    value=hm.value,
-                    unit=hm.unit,
-                    reference_low=hm.reference_low,
-                    reference_high=hm.reference_high,
-                    days_since_last=self._days_since(hm.date),
-                    trend=hm.trend,
+            # HealthMetric uses 'metric_type' not 'metric_name'
+            metric_key = getattr(hm, 'metric_type', None)
+            if not metric_key:
+                logger.warning(f"HealthMetric {hm.id} missing metric_type, skipping")
+                continue
+            
+            if metric_key not in metrics:
+                metrics[metric_key] = MetricData(
+                    name=metric_key,
+                    value=float(hm.value) if hm.value is not None else 0.0,
+                    unit=getattr(hm, 'unit', None) or "score",  # HealthMetric doesn't have unit, default to "score"
+                    reference_low=getattr(hm, 'reference_low', None),
+                    reference_high=getattr(hm, 'reference_high', None),
+                    days_since_last=self._days_since(hm.computed_at),  # Use computed_at, not date
+                    trend=getattr(hm, 'trend', None),
                 )
         
         # Also get observations for more detailed data
