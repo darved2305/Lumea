@@ -327,3 +327,294 @@ class ServerEvent(BaseModel):
         return f"event: {self.event_type.value}\ndata: {self.json()}\n\n"
 
 
+# ============================================================================
+# HEALTH PROFILE SCHEMAS
+# ============================================================================
+
+# Answer data structure
+class AnswerData(BaseModel):
+    value: Optional[Any] = None
+    unit: Optional[str] = None
+    unknown: bool = False
+    skipped: bool = False
+
+
+class ProfileAnswerUpsert(BaseModel):
+    question_id: str
+    answer_data: AnswerData
+
+
+class ProfileAnswerResponse(BaseModel):
+    question_id: str
+    answer_data: AnswerData
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Condition schemas
+class ProfileConditionCreate(BaseModel):
+    condition_code: str
+    condition_name: Optional[str] = None
+    diagnosed_at: Optional[datetime] = None
+    notes: Optional[str] = None
+
+
+class ProfileConditionResponse(BaseModel):
+    id: UUID
+    condition_code: str
+    condition_name: Optional[str]
+    diagnosed_at: Optional[datetime]
+    notes: Optional[str]
+    is_active: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Symptom schemas
+class ProfileSymptomCreate(BaseModel):
+    symptom_code: str
+    symptom_name: Optional[str] = None
+    frequency: Optional[str] = None
+    severity: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class ProfileSymptomResponse(BaseModel):
+    id: UUID
+    symptom_code: str
+    symptom_name: Optional[str]
+    frequency: Optional[str]
+    severity: Optional[str]
+    notes: Optional[str]
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Medication schemas
+class ProfileMedicationCreate(BaseModel):
+    name: str
+    dose: Optional[str] = None
+    frequency: Optional[str] = None
+    started_at: Optional[datetime] = None
+    notes: Optional[str] = None
+
+
+class ProfileMedicationResponse(BaseModel):
+    id: UUID
+    name: str
+    dose: Optional[str]
+    frequency: Optional[str]
+    started_at: Optional[datetime]
+    notes: Optional[str]
+    is_active: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Supplement schemas
+class ProfileSupplementCreate(BaseModel):
+    name: str
+    dose: Optional[str] = None
+    frequency: Optional[str] = None
+
+
+class ProfileSupplementResponse(BaseModel):
+    id: UUID
+    name: str
+    dose: Optional[str]
+    frequency: Optional[str]
+    is_active: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Allergy schemas
+class ProfileAllergyCreate(BaseModel):
+    allergen: str
+    allergy_type: Optional[str] = None
+    reaction: Optional[str] = None
+    severity: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class ProfileAllergyResponse(BaseModel):
+    id: UUID
+    allergen: str
+    allergy_type: Optional[str]
+    reaction: Optional[str]
+    severity: Optional[str]
+    notes: Optional[str]
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Family history schemas
+class ProfileFamilyHistoryCreate(BaseModel):
+    relative_type: str
+    condition_code: str
+    condition_name: Optional[str] = None
+    age_at_diagnosis: Optional[int] = None
+    notes: Optional[str] = None
+
+
+class ProfileFamilyHistoryResponse(BaseModel):
+    id: UUID
+    relative_type: str
+    condition_code: str
+    condition_name: Optional[str]
+    age_at_diagnosis: Optional[int]
+    notes: Optional[str]
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Genetic test schemas
+class ProfileGeneticTestCreate(BaseModel):
+    mutation_name: str
+    result: Optional[str] = None
+    test_date: Optional[datetime] = None
+    lab_name: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class ProfileGeneticTestResponse(BaseModel):
+    id: UUID
+    mutation_name: str
+    result: Optional[str]
+    test_date: Optional[datetime]
+    lab_name: Optional[str]
+    notes: Optional[str]
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Core profile update schema
+class UserProfileUpdate(BaseModel):
+    # Step 1: Basics
+    full_name: Optional[str] = Field(None, max_length=255)
+    date_of_birth: Optional[datetime] = None
+    age_years: Optional[int] = Field(None, ge=0, le=120)
+    sex_at_birth: Optional[str] = Field(None, pattern="^(male|female|intersex|prefer_not)$")
+    gender: Optional[str] = Field(None, max_length=50)
+    city: Optional[str] = Field(None, max_length=100)
+    
+    # Step 2: Body Measurements
+    height_cm: Optional[float] = Field(None, ge=50, le=250)
+    weight_kg: Optional[float] = Field(None, ge=20, le=300)
+    waist_cm: Optional[float] = Field(None, ge=30, le=200)
+    activity_level: Optional[str] = Field(None, pattern="^(sedentary|moderate|active)$")
+    
+    # Step 6: Lifestyle
+    smoking: Optional[str] = Field(None, pattern="^(never|former|current|prefer_not|unknown)$")
+    alcohol: Optional[str] = Field(None, pattern="^(none|occasional|frequent|unknown)$")
+    sleep_hours_avg: Optional[float] = Field(None, ge=0, le=24)
+    sleep_quality: Optional[str] = Field(None, pattern="^(good|ok|poor|unknown)$")
+    exercise_minutes_per_week: Optional[int] = Field(None, ge=0, le=10080)
+    diet_pattern: Optional[str] = Field(None, pattern="^(veg|nonveg|mixed|unknown)$")
+    
+    # Wizard state
+    wizard_current_step: Optional[int] = Field(None, ge=1, le=7)
+    wizard_completed: Optional[bool] = None
+
+
+class DerivedFeatureResponse(BaseModel):
+    feature_name: str
+    feature_value: Dict[str, Any]
+    computed_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ProfileCompletionResponse(BaseModel):
+    score: float  # 0-100
+    missing_essentials: List[str]
+    missing_optional: List[str]
+    estimated_fields: List[str]
+    completion_by_step: Dict[str, float]
+
+
+class ProfileRecommendationResponse(BaseModel):
+    id: UUID
+    recommendation_type: str
+    category: Optional[str]
+    title: str
+    description: Optional[str]
+    priority: int
+    evidence_jsonb: Optional[Dict[str, Any]]
+    is_active: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Full profile response
+class UserProfileResponse(BaseModel):
+    id: UUID
+    user_id: UUID
+    
+    # Basics
+    full_name: Optional[str]
+    date_of_birth: Optional[datetime]
+    age_years: Optional[int]
+    sex_at_birth: Optional[str]
+    gender: Optional[str]
+    city: Optional[str]
+    
+    # Body measurements
+    height_cm: Optional[float]
+    weight_kg: Optional[float]
+    waist_cm: Optional[float]
+    activity_level: Optional[str]
+    
+    # Lifestyle
+    smoking: Optional[str]
+    alcohol: Optional[str]
+    sleep_hours_avg: Optional[float]
+    sleep_quality: Optional[str]
+    exercise_minutes_per_week: Optional[int]
+    diet_pattern: Optional[str]
+    
+    # Wizard state
+    wizard_current_step: int
+    wizard_completed: bool
+    wizard_last_saved_at: Optional[datetime]
+    
+    # Timestamps
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class FullProfileResponse(BaseModel):
+    """Complete profile with all related data"""
+    profile: Optional[UserProfileResponse]
+    answers: List[ProfileAnswerResponse]
+    conditions: List[ProfileConditionResponse]
+    symptoms: List[ProfileSymptomResponse]
+    medications: List[ProfileMedicationResponse]
+    supplements: List[ProfileSupplementResponse]
+    allergies: List[ProfileAllergyResponse]
+    family_history: List[ProfileFamilyHistoryResponse]
+    genetic_tests: List[ProfileGeneticTestResponse]
+    derived_features: List[DerivedFeatureResponse]
+    completion: ProfileCompletionResponse

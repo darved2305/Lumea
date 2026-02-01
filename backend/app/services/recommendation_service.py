@@ -126,24 +126,24 @@ class RecommendationService:
         # Also get observations for more detailed data
         obs_stmt = select(Observation).where(
             Observation.user_id == self.user.id
-        ).order_by(Observation.effective_date.desc()).limit(100)
+        ).order_by(Observation.observed_at.desc()).limit(100)
         
         obs_result = await self.db.execute(obs_stmt)
         observations = obs_result.scalars().all()
         
         # Process observations
         for obs in observations:
-            metric_name = self._normalize_metric_name(obs.code_display or obs.code)
+            metric_name = self._normalize_metric_name(obs.display_name or obs.metric_name)
             if metric_name and metric_name not in metrics:
-                value = self._extract_value(obs)
+                value = obs.value
                 if value is not None:
                     metrics[metric_name] = MetricData(
                         name=metric_name,
                         value=value,
                         unit=obs.unit,
-                        reference_low=obs.reference_low,
-                        reference_high=obs.reference_high,
-                        days_since_last=self._days_since(obs.effective_date),
+                        reference_low=obs.reference_min,
+                        reference_high=obs.reference_max,
+                        days_since_last=self._days_since(obs.observed_at),
                     )
         
         # Calculate user age

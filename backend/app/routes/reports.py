@@ -201,8 +201,18 @@ async def upload_report(
         
         logger.info(f"Report record created: {report_id}")
         
-        # Trigger processing in background - use asyncio.create_task
-        asyncio.create_task(_process_report_async(report_id, user_id))
+        # Trigger processing in background - use asyncio.create_task with error handling
+        task = asyncio.create_task(_process_report_async(report_id, user_id))
+        
+        # Add done callback to catch any exceptions
+        def task_done_callback(t):
+            try:
+                if t.exception():
+                    logger.error(f"Background task failed for report {report_id}: {t.exception()}")
+            except Exception as e:
+                logger.error(f"Error in task callback: {e}")
+        
+        task.add_done_callback(task_done_callback)
         
         return {
             "id": str(report.id),

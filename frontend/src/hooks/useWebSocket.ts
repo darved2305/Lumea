@@ -14,7 +14,8 @@ export type WebSocketEventType =
   | 'health_index_updated'
   | 'trends_updated'
   | 'reports_list_updated'
-  | 'recommendations_updated';
+  | 'recommendations_updated'
+  | 'profile_updated';
 
 export interface WebSocketMessage {
   type: WebSocketEventType;
@@ -40,6 +41,12 @@ export interface RecommendationsUpdate {
   urgent_count: number;
 }
 
+export interface ProfileUpdate {
+  user_id: string;
+  completion_percent: number;
+  derived_features_count?: number;
+}
+
 interface UseWebSocketOptions {
   onHealthIndexUpdated?: (data: HealthIndexUpdate) => void;
   onReportProcessingStarted?: (data: ReportProcessingUpdate) => void;
@@ -47,6 +54,7 @@ interface UseWebSocketOptions {
   onReportsListUpdated?: () => void;
   onTrendsUpdated?: (metrics: string[]) => void;
   onRecommendationsUpdated?: (data: RecommendationsUpdate) => void;
+  onProfileUpdated?: (data?: ProfileUpdate) => void;
   onConnected?: () => void;
   onDisconnected?: () => void;
   onError?: (error: Event) => void;
@@ -195,10 +203,21 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
         return;
       }
 
-      if (event.code === 1008 || event.code === 4001) {
-        // Auth/policy violation, don't reconnect
-        console.error('❌ Authentication failed, not reconnecting');
+      if (event.code === 1008 || event.code === 4001 || event.code === 4003) {
+        // Auth/policy violation, don't reconnect - wait for new login
+        console.error('❌ Authentication failed, not reconnecting. Wait for new login.');
+        shouldReconnectRef.current = false;
         return;
+      }
+
+      // For abnormal closures (1006), check if we have a valid token before reconnecting
+      if (event.code === 1006 || event.code === 1005) {
+        const token = getToken();
+        if (!token) {
+          console.log('No token available, not reconnecting');
+          shouldReconnectRef.current = false;
+          return;
+        }
       }
 
       // Reconnect with exponential backoff
@@ -261,6 +280,10 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
 
           case 'recommendations_updated':
             options.onRecommendationsUpdated?.(message.data as RecommendationsUpdate);
+            break;
+
+          case 'profile_updated':
+            options.onProfileUpdated?.(message.data as ProfileUpdate);
             break;
 
           default:

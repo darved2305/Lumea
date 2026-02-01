@@ -90,7 +90,7 @@ async def get_user_from_token(token: str, db: AsyncSession) -> User | None:
 @router.websocket("/ws")
 async def websocket_endpoint(
     websocket: WebSocket,
-    token: str = Query(...)
+    token: str = Query(None)  # Make token optional to handle gracefully
 ):
     """
     WebSocket endpoint for real-time updates.
@@ -111,15 +111,22 @@ async def websocket_endpoint(
     """
     user_id = None
     
+    # Validate token exists before attempting connection
+    if not token:
+        print("[WS] No token provided, rejecting connection")
+        await websocket.close(code=4001, reason="No authentication token provided")
+        return
+    
     try:
         # Validate token and get user BEFORE accepting connection
-        from app.db import async_session
+        from app.db import async_session_maker
         
-        async with async_session() as db:
+        # Create a dedicated session for this websocket
+        async with async_session_maker() as db:
             user = await get_user_from_token(token, db)
             if not user:
-                # Close before accepting to avoid protocol error
-                await websocket.close(code=1008, reason="Invalid or expired token")
+                print(f"[WS] Invalid token, rejecting connection")
+                await websocket.close(code=4001, reason="Invalid or expired token")
                 return
             
             user_id = str(user.id)
@@ -179,15 +186,20 @@ async def websocket_endpoint(
                     break
                     
     except WebSocketDisconnect as e:
-        print(f"WebSocket disconnected: user {user_id}, code {e.code}")
+        print(f"[WS] Disconnected: user {user_id}, code {e.code}")
     except Exception as e:
-        print(f"WebSocket error for user {user_id}: {type(e).__name__}: {e}")
+        print(f"[WS] Error for user {user_id}: {type(e).__name__}: {e}")
         import traceback
         traceback.print_exc()
+        # Try to close gracefully with error code
+        try:
+            await websocket.close(code=1011, reason="Internal server error")
+        except Exception:
+            pass
     finally:
         if user_id:
             await manager.disconnect(websocket, user_id)
-            print(f"WebSocket cleaned up: user {user_id}")
+            print(f"[WS] Cleaned up: user {user_id}")
 
 
 # Helper functions to emit events (called from services/background tasks)
@@ -224,4 +236,11 @@ async def emit_recommendations_updated(user_id: str, count: int, urgent_count: i
     await manager.broadcast_to_user(str(user_id), "recommendations_updated", {
         "count": count,
         "urgent_count": urgent_count
+    })
+
+
+async def emit_profile_updated(user_id: str):
+    """Emit when profile is updated"""
+    await manager.broadcast_to_user(str(user_id), "profile_updated", {
+        "updated_at": datetime.utcnow().isoformat()
     })

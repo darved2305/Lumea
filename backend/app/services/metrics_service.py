@@ -378,6 +378,9 @@ class MetricsService:
             Linearly decreases outside ideal toward critical
             40 at critical boundaries
         """
+        # Convert value to float to handle Decimal types
+        value = float(value)
+        
         if ideal_min <= value <= ideal_max:
             return 100.0
         elif value < ideal_min:

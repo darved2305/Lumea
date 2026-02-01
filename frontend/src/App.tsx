@@ -4,6 +4,7 @@ import Login from './pages/Login'
 import Signup from './pages/Signup'
 import Dashboard from './pages/Dashboard'
 import Reports from './pages/Reports'
+import HealthProfile from './pages/HealthProfile'
 import './App.css'
 
 function App() {
@@ -15,6 +16,7 @@ function App() {
         <Route path="/signup" element={<Signup />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/reports" element={<Reports />} />
+        <Route path="/health-profile" element={<HealthProfile />} />
         {/* Catch-all: redirect unknown routes to dashboard */}
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

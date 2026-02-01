@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from app.settings import settings
 from app.db import init_db
 from app.routes import auth, health, dashboard, reports, assistant, recommendations
+from app.routes.profile import router as profile_router
 from app.routes.websocket import router as websocket_router
 
 @asynccontextmanager
@@ -45,6 +46,7 @@ app.include_router(dashboard.router)
 app.include_router(reports.router)
 app.include_router(assistant.router)
 app.include_router(recommendations.router)
+app.include_router(profile_router)
 app.include_router(websocket_router)
 
 @app.get("/")

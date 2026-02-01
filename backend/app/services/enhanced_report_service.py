@@ -17,9 +17,9 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from src.models import Report, Observation, ReportStatus, ObservationType
-from src.services.pdf_extractor import PDFExtractor
-from src.services.lab_parser import LabParser
+from app.models import Report, Observation, ReportStatus, ObservationType
+from app.services.pdf_extractor import PDFExtractor
+from app.services.lab_parser import LabParser
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -42,13 +42,13 @@ class EnhancedReportService:
         Full pipeline: extract text -> parse metrics -> save observations -> emit events
         """
         # Import here to avoid circular import
-        from src.routes.websocket import (
+        from app.routes.websocket import (
             emit_report_processing_started,
             emit_report_parsed,
             emit_reports_list_updated
         )
         
-        logger.info(f"Processing report {report_id} for user {user_id}")
+        logger.info(f"[REPORT] Processing report {report_id} for user {user_id}")
         
         # Fetch report
         result = await self.db.execute(
@@ -193,7 +193,9 @@ class EnhancedReportService:
             logger.info(f"Report {report_id} processing complete with {observation_count} observations")
             
         except Exception as e:
-            logger.exception(f"Error processing report {report_id}: {e}")
+            logger.exception(f"[REPORT] Error processing report {report_id}: {e}")
+            logger.error(f"[REPORT] Error type: {type(e).__name__}")
+            logger.error(f"[REPORT] Error details: {str(e)}")
             report.status = ReportStatus.FAILED
             report.error_message = str(e)
             await self.db.commit()
@@ -201,7 +203,8 @@ class EnhancedReportService:
             await emit_report_parsed(str(user_id), {
                 "report_id": str(report_id),
                 "extracted_metrics_count": 0,
-                "status": "failed"
+                "status": "failed",
+                "error": str(e)
             })
 
     async def _recompute_health_index_and_emit(self, user_id: UUID):

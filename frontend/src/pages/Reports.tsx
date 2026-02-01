@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import DashboardNavbar from '../components/dashboard/DashboardNavbar';
 import { useWebSocket } from '../hooks/useWebSocket';
+import { HealthProfileCard } from '../components/profile';
 import './Reports.css';
 
 const API_BASE = 'http://localhost:8000';
@@ -99,6 +100,10 @@ function Reports() {
     }, []),
     onReportProcessingStarted: useCallback((_data: ProcessingStartedData) => {
       console.log('WS: Report processing started', _data);
+    }, []),
+    onProfileUpdated: useCallback(() => {
+      console.log('WS: Profile updated');
+      // The HealthProfileCard handles its own refresh
     }, []),
   });
 
@@ -509,24 +514,30 @@ function Reports() {
             </select>
           </div>
 
-          {/* Upload Dropzone */}
-          <div
-            className={`upload-dropzone ${isDragging ? 'dragging' : ''}`}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileInputChange}
-              accept=".pdf,.png,.jpg,.jpeg"
-              multiple
-              hidden
-            />
-            <FolderOpen size={40} className="dropzone-icon" />
-            <p>Drop your documents here, or <span className="browse-link">click to browse</span></p>
+          {/* Upload and Profile Section - 2 Column Layout */}
+          <div className="upload-profile-grid">
+            {/* Left: Upload Dropzone */}
+            <div
+              className={`upload-dropzone ${isDragging ? 'dragging' : ''}`}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileInputChange}
+                accept=".pdf,.png,.jpg,.jpeg"
+                multiple
+                hidden
+              />
+              <FolderOpen size={40} className="dropzone-icon" />
+              <p>Drop your documents here, or <span className="browse-link">click to browse</span></p>
+            </div>
+
+            {/* Right: Health Profile Card */}
+            <HealthProfileCard />
           </div>
 
           {/* Upload Progress */}

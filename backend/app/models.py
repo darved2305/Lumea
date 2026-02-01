@@ -1,5 +1,5 @@
-from sqlalchemy import Column, String, DateTime, ForeignKey, Integer, Float, ARRAY, Text, Boolean, Enum, JSON, Numeric
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Column, String, DateTime, ForeignKey, Integer, Float, ARRAY, Text, Boolean, Enum, JSON, Numeric, Date
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 from datetime import datetime, date
 import uuid
@@ -41,6 +41,18 @@ class User(Base):
     observations = relationship("Observation", back_populates="user", cascade="all, delete-orphan")
     health_metrics = relationship("HealthMetric", back_populates="user", cascade="all, delete-orphan")
     chat_sessions = relationship("ChatSession", back_populates="user", cascade="all, delete-orphan")
+    # Health Profile relationships
+    user_profile = relationship("UserProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    profile_answers = relationship("ProfileAnswer", back_populates="user", cascade="all, delete-orphan")
+    profile_conditions = relationship("ProfileCondition", back_populates="user", cascade="all, delete-orphan")
+    profile_symptoms = relationship("ProfileSymptom", back_populates="user", cascade="all, delete-orphan")
+    profile_medications = relationship("ProfileMedication", back_populates="user", cascade="all, delete-orphan")
+    profile_supplements = relationship("ProfileSupplement", back_populates="user", cascade="all, delete-orphan")
+    profile_allergies = relationship("ProfileAllergy", back_populates="user", cascade="all, delete-orphan")
+    profile_family_history = relationship("ProfileFamilyHistory", back_populates="user", cascade="all, delete-orphan")
+    profile_genetic_tests = relationship("ProfileGeneticTest", back_populates="user", cascade="all, delete-orphan")
+    derived_features = relationship("DerivedFeature", back_populates="user", cascade="all, delete-orphan")
+    profile_recommendations = relationship("ProfileRecommendation", back_populates="user", cascade="all, delete-orphan")
 
 class LoginEvent(Base):
     __tablename__ = "login_events"
@@ -180,3 +192,262 @@ class ChatMessage(Base):
     
     # Relationships
     session = relationship("ChatSession", back_populates="messages")
+
+
+# ============================================================================
+# HEALTH PROFILE MODELS
+# ============================================================================
+
+class SexAtBirth(str, enum.Enum):
+    MALE = "male"
+    FEMALE = "female"
+    INTERSEX = "intersex"
+    PREFER_NOT = "prefer_not"
+
+
+class ActivityLevel(str, enum.Enum):
+    SEDENTARY = "sedentary"
+    MODERATE = "moderate"
+    ACTIVE = "active"
+
+
+class SmokingStatus(str, enum.Enum):
+    NEVER = "never"
+    FORMER = "former"
+    CURRENT = "current"
+    PREFER_NOT = "prefer_not"
+    UNKNOWN = "unknown"
+
+
+class AlcoholConsumption(str, enum.Enum):
+    NONE = "none"
+    OCCASIONAL = "occasional"
+    FREQUENT = "frequent"
+    UNKNOWN = "unknown"
+
+
+class SleepQuality(str, enum.Enum):
+    GOOD = "good"
+    OK = "ok"
+    POOR = "poor"
+    UNKNOWN = "unknown"
+
+
+class DietPattern(str, enum.Enum):
+    VEG = "veg"
+    NONVEG = "nonveg"
+    MIXED = "mixed"
+    UNKNOWN = "unknown"
+
+
+class UserProfile(Base):
+    """Core user health profile data - 1 row per user"""
+    __tablename__ = "user_profiles"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False, index=True)
+    
+    # Step 1: Basics
+    full_name = Column(String(255), nullable=True)
+    date_of_birth = Column(Date, nullable=True)
+    age_years = Column(Integer, nullable=True)  # fallback if DOB unknown
+    sex_at_birth = Column(String(20), nullable=True)
+    gender = Column(String(50), nullable=True)
+    city = Column(String(100), nullable=True)
+    
+    # Step 2: Body Measurements
+    height_cm = Column(Float, nullable=True)
+    weight_kg = Column(Float, nullable=True)
+    waist_cm = Column(Float, nullable=True)
+    activity_level = Column(String(20), nullable=True)
+    
+    # Step 6: Lifestyle
+    smoking = Column(String(20), nullable=True)
+    alcohol = Column(String(20), nullable=True)
+    sleep_hours_avg = Column(Float, nullable=True)
+    sleep_quality = Column(String(20), nullable=True)
+    exercise_minutes_per_week = Column(Integer, nullable=True)
+    diet_pattern = Column(String(20), nullable=True)
+    
+    # Wizard state
+    wizard_current_step = Column(Integer, default=1)
+    wizard_completed = Column(Boolean, default=False)
+    wizard_last_saved_at = Column(DateTime, nullable=True)
+    
+    # Timestamps
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    
+    # Relationships
+    user = relationship("User", back_populates="user_profile")
+
+
+class ProfileAnswer(Base):
+    """Flexible JSONB storage for any question answer"""
+    __tablename__ = "profile_answers"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    question_id = Column(String(100), nullable=False, index=True)
+    answer_data = Column(JSONB, nullable=False)  # { "value": any, "unit": str?, "unknown": bool, "skipped": bool }
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    
+    # Relationships
+    user = relationship("User", back_populates="profile_answers")
+
+
+class ProfileCondition(Base):
+    """User's diagnosed medical conditions"""
+    __tablename__ = "profile_conditions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    condition_code = Column(String(50), nullable=False)
+    condition_name = Column(String(200), nullable=True)
+    diagnosed_at = Column(Date, nullable=True)
+    notes = Column(Text, nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    
+    # Relationships
+    user = relationship("User", back_populates="profile_conditions")
+
+
+class ProfileSymptom(Base):
+    """User's recurring symptoms"""
+    __tablename__ = "profile_symptoms"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    symptom_code = Column(String(50), nullable=False)
+    symptom_name = Column(String(200), nullable=True)
+    frequency = Column(String(50), nullable=True)
+    severity = Column(String(20), nullable=True)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    
+    # Relationships
+    user = relationship("User", back_populates="profile_symptoms")
+
+
+class ProfileMedication(Base):
+    """User's current medications"""
+    __tablename__ = "profile_medications"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    name = Column(String(200), nullable=False)
+    dose = Column(String(100), nullable=True)
+    frequency = Column(String(100), nullable=True)
+    started_at = Column(Date, nullable=True)
+    notes = Column(Text, nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    
+    # Relationships
+    user = relationship("User", back_populates="profile_medications")
+
+
+class ProfileSupplement(Base):
+    """User's supplements/vitamins"""
+    __tablename__ = "profile_supplements"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    name = Column(String(200), nullable=False)
+    dose = Column(String(100), nullable=True)
+    frequency = Column(String(100), nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    
+    # Relationships
+    user = relationship("User", back_populates="profile_supplements")
+
+
+class ProfileAllergy(Base):
+    """User's allergies"""
+    __tablename__ = "profile_allergies"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    allergen = Column(String(200), nullable=False)
+    allergy_type = Column(String(50), nullable=True)  # drug/food/environmental/other
+    reaction = Column(String(500), nullable=True)
+    severity = Column(String(20), nullable=True)  # mild/moderate/severe/life_threatening
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    
+    # Relationships
+    user = relationship("User", back_populates="profile_allergies")
+
+
+class ProfileFamilyHistory(Base):
+    """Family medical history"""
+    __tablename__ = "profile_family_history"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    relative_type = Column(String(50), nullable=False)  # mother/father/sibling/grandparent_maternal/grandparent_paternal
+    condition_code = Column(String(50), nullable=False)
+    condition_name = Column(String(200), nullable=True)
+    age_at_diagnosis = Column(Integer, nullable=True)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    
+    # Relationships
+    user = relationship("User", back_populates="profile_family_history")
+
+
+class ProfileGeneticTest(Base):
+    """Genetic test results"""
+    __tablename__ = "profile_genetic_tests"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    mutation_name = Column(String(100), nullable=False)
+    result = Column(String(50), nullable=True)  # positive/negative/variant_uncertain
+    test_date = Column(Date, nullable=True)
+    lab_name = Column(String(200), nullable=True)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    
+    # Relationships
+    user = relationship("User", back_populates="profile_genetic_tests")
+
+
+class DerivedFeature(Base):
+    """Computed values like BMI, risk scores, completeness"""
+    __tablename__ = "derived_features"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    feature_name = Column(String(100), nullable=False, index=True)
+    feature_value = Column(JSONB, nullable=False)
+    computed_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    valid_until = Column(DateTime, nullable=True)
+    
+    # Relationships
+    user = relationship("User", back_populates="derived_features")
+
+
+class ProfileRecommendation(Base):
+    """Generated recommendations with evidence"""
+    __tablename__ = "profile_recommendations"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    recommendation_type = Column(String(50), nullable=False)  # lifestyle/screening/followup/urgent
+    category = Column(String(50), nullable=True)  # nutrition/exercise/sleep/medical
+    title = Column(String(500), nullable=False)
+    description = Column(Text, nullable=True)
+    priority = Column(Integer, default=5)  # 1-10, 1 being highest
+    evidence_jsonb = Column(JSONB, nullable=True)
+    is_active = Column(Boolean, default=True)
+    dismissed_at = Column(DateTime, nullable=True)
+    completed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    
+    # Relationships
+    user = relationship("User", back_populates="profile_recommendations")

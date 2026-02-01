@@ -190,16 +190,34 @@
   border-color: #6b9175;
 }
 
+/* Upload and Profile Grid - 2 Column Layout */
+.upload-profile-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 900px) {
+  .upload-profile-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Upload Dropzone */
 .upload-dropzone {
   border: 2px dashed #d0d0d0;
   border-radius: 12px;
   padding: 48px;
   text-align: center;
-  margin-bottom: 24px;
   cursor: pointer;
   transition: all 0.2s;
   background: #fafafa;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
 }
 
 .upload-dropzone:hover,
