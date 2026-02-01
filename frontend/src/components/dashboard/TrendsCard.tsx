@@ -31,7 +31,7 @@ const metrics = [
   { key: 'activity', label: 'Activity', unit: 'steps' },
 ];
 
-function TrendsCard({
+function TrendsCard({ 
   selectedMetric: initialMetric = 'index',
   authToken,
   apiBaseUrl = 'http://localhost:8000',
@@ -40,10 +40,10 @@ function TrendsCard({
   const [selectedMetric, setSelectedMetric] = useState(initialMetric);
   const [timeRange, setTimeRange] = useState<'1D' | '1W' | '1M'>('1W');
   const [isModalOpen, setIsModalOpen] = useState(false);
-
+  
   // Get auth token from localStorage if not provided
   const token = authToken || localStorage.getItem('access_token');
-
+  
   // Use the API-based trends hook - NO fake data!
   const { data, stats, loading, error, refetch, lastFetchedAt } = useTrends(
     selectedMetric,
@@ -61,38 +61,39 @@ function TrendsCard({
     }
   }, [refreshTrigger, refetch]);
 
-  // Format timestamp for axis labels based on time range
-  const formatTimestamp = (timestamp: number): string => {
-    const date = new Date(timestamp);
+  // Format chart data with proper date labels
+  const chartData = data.map((point: TrendDataPoint) => {
+    const date = new Date(point.timestamp);
+    let dateLabel: string;
+    
     if (timeRange === '1D') {
-      return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+      dateLabel = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
     } else if (timeRange === '1W') {
-      return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      dateLabel = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
     } else {
-      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      dateLabel = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     }
-  };
+    
+    return {
+      timestamp: point.timestamp,
+      value: point.value,
+      flag: point.flag,
+      date: dateLabel,
+      fullDate: date.toLocaleString(),
+    };
+  });
 
-  // Chart data uses numeric timestamp as the primary key for accurate hover
-  const chartData = data.map((point: TrendDataPoint) => ({
-    timestamp: new Date(point.timestamp).getTime(), // Ensure numeric timestamp
-    value: point.value,
-    flag: point.flag,
-  }));
-
-  // Custom tooltip reading directly from the data point
+  // Custom tooltip showing full details
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
-      const point = payload[0].payload; // The actual data object
-      const value = point.value; // Read value from source data, not payload[0].value
+      const point = payload[0].payload;
       const metricInfo = metrics.find(m => m.key === selectedMetric);
-      const fullDate = new Date(point.timestamp).toLocaleString();
-
+      
       return (
         <div className="trends-custom-tooltip">
-          <div className="trends-tooltip-label">{fullDate}</div>
+          <div className="trends-tooltip-label">{point.fullDate}</div>
           <div className="trends-tooltip-value">
-            {Math.round(value * 10) / 10}
+            {Math.round(payload[0].value * 10) / 10}
             {metricInfo?.unit && <span className="trends-tooltip-unit"> {metricInfo.unit}</span>}
           </div>
           {point.flag && point.flag !== 'Normal' && (
@@ -117,7 +118,7 @@ function TrendsCard({
         </div>
       );
     }
-
+    
     // Error state
     if (error) {
       return (
@@ -131,7 +132,7 @@ function TrendsCard({
         </div>
       );
     }
-
+    
     // Empty state
     if (chartData.length === 0) {
       return (
@@ -142,13 +143,13 @@ function TrendsCard({
         </div>
       );
     }
-
+    
     // Determine chart color based on metric status
     const latestFlag = chartData[chartData.length - 1]?.flag;
-
+    
     let strokeColor = '#10b981'; // Default green
     let fillId = 'colorNormal';
-
+    
     if (latestFlag === 'High' || latestFlag === 'Critical') {
       strokeColor = '#ef4444'; // Red
       fillId = 'colorHigh';
@@ -162,32 +163,28 @@ function TrendsCard({
         <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id="colorNormal" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+              <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+              <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
             </linearGradient>
             <linearGradient id="colorHigh" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+              <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3}/>
+              <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
             </linearGradient>
             <linearGradient id="colorLow" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+              <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3}/>
+              <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
             </linearGradient>
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--dash-border)" opacity={0.5} />
-          <XAxis
-            dataKey="timestamp"
-            type="number"
-            scale="time"
-            domain={['dataMin', 'dataMax']}
-            tickFormatter={formatTimestamp}
-            stroke="var(--dash-text-muted)"
+          <XAxis 
+            dataKey="date" 
+            stroke="var(--dash-text-muted)" 
             fontSize={11}
             tickLine={false}
             interval="preserveStartEnd"
           />
-          <YAxis
-            stroke="var(--dash-text-muted)"
+          <YAxis 
+            stroke="var(--dash-text-muted)" 
             fontSize={11}
             tickLine={false}
             axisLine={false}
@@ -218,7 +215,7 @@ function TrendsCard({
             <h3 className="trends-title">Medical Trends</h3>
             <div className="trends-header-actions">
               {/* Refresh button */}
-              <button
+              <button 
                 className="trends-refresh-btn"
                 onClick={refetch}
                 disabled={loading}
@@ -226,7 +223,7 @@ function TrendsCard({
               >
                 <RefreshCw size={16} className={loading ? 'spinning' : ''} />
               </button>
-              <button
+              <button 
                 className="trends-expand-btn"
                 onClick={() => setIsModalOpen(true)}
                 title="Expand chart"
@@ -365,7 +362,7 @@ function TrendsCard({
                 </div>
 
                 {/* Refresh */}
-                <button
+                <button 
                   className="trends-refresh-btn"
                   onClick={refetch}
                   disabled={loading}

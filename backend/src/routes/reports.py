@@ -110,10 +110,7 @@ async def list_reports(
             uploaded_at=report.uploaded_at,
             processed_at=report.processed_at,
             extraction_confidence=report.extraction_confidence,
-            observation_count=obs_count,
-            category=report.category,
-            document_type=report.document_type,
-            classification_confidence=report.classification_confidence
+            observation_count=obs_count
         ))
     
     return result_list

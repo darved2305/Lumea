@@ -110,42 +110,18 @@ class RecommendationService:
         health_metrics = result.scalars().all()
         
         # Process health metrics into MetricData
-        # HealthMetric stores computed aggregates (e.g., "health_index") with a
-        # contributions breakdown. Extract per-factor data from contributions.
         for hm in health_metrics:
-            try:
-                # Add the overall metric (e.g., health_index)
-                if hm.metric_type and hm.metric_type not in metrics:
-                    metrics[hm.metric_type] = MetricData(
-                        name=hm.metric_type,
-                        value=float(hm.value) if hm.value is not None else 0.0,
-                        unit=None,
-                        reference_low=None,
-                        reference_high=None,
-                        days_since_last=self._days_since(hm.computed_at),
-                        trend=None,
-                    )
-                
-                # Extract individual factor contributions if available
-                contributions = hm.contributions or {}
-                for factor_key, factor_data in contributions.items():
-                    if factor_key in metrics:
-                        continue  # Already have this factor
-                    if not isinstance(factor_data, dict):
-                        continue  # Malformed contribution, skip
-                    
-                    detail = factor_data.get("detail", {})
-                    metrics[factor_key] = MetricData(
-                        name=factor_key,
-                        value=float(detail.get("value", factor_data.get("score", 0))),
-                        unit=detail.get("unit"),
-                        reference_low=None,
-                        reference_high=None,
-                        days_since_last=self._days_since(hm.computed_at),
-                        trend=None,
-                    )
-            except Exception as e:
-                logger.warning(f"Skipping malformed HealthMetric {getattr(hm, 'id', '?')}: {e}")
+            # Add each metric value from the health metric
+            if hm.metric_name not in metrics:
+                metrics[hm.metric_name] = MetricData(
+                    name=hm.metric_name,
+                    value=hm.value,
+                    unit=hm.unit,
+                    reference_low=hm.reference_low,
+                    reference_high=hm.reference_high,
+                    days_since_last=self._days_since(hm.date),
+                    trend=hm.trend,
+                )
         
         # Also get observations for more detailed data
         obs_stmt = select(Observation).where(
