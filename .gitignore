@@ -76,3 +76,4 @@ logs/
 # IDE Settings
 .vscode/settings.json
 .idea/
+backend/uploads/

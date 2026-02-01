@@ -89,8 +89,8 @@ function Reports() {
       console.log('WS: Report parsed', data);
       // Update report status in local state immediately
       if (data.report_id) {
-        setReports(prev => prev.map(r => 
-          r.id === data.report_id 
+        setReports(prev => prev.map(r =>
+          r.id === data.report_id
             ? { ...r, status: data.status === 'complete' ? 'complete' : 'failed', extractedMetrics: data.extracted_metrics_count }
             : r
         ));
@@ -220,7 +220,7 @@ function Reports() {
             } catch (e) {
               // Parse error, just refetch
             }
-            
+
             // Clear progress and poll for updates
             setTimeout(() => {
               setUploadProgress(prev => {
@@ -244,7 +244,7 @@ function Reports() {
             try {
               const errData = JSON.parse(xhr.responseText);
               errorMessage = errData.detail || errorMessage;
-            } catch (e) {}
+            } catch (e) { }
             setUploadError(errorMessage);
             setUploadProgress(prev => {
               const { [reportId]: _, ...rest } = prev;
@@ -291,7 +291,7 @@ function Reports() {
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    
+
     if (e.dataTransfer.files.length > 0) {
       handleFileUpload(e.dataTransfer.files);
     }
@@ -355,14 +355,14 @@ function Reports() {
   };
 
   const handleReprocess = (report: Report) => {
-    setReports(prev => prev.map(r => 
+    setReports(prev => prev.map(r =>
       r.id === report.id ? { ...r, status: 'processing' as const } : r
     ));
-    
+
     // Simulate reprocessing
     setTimeout(() => {
-      setReports(prev => prev.map(r => 
-        r.id === report.id 
+      setReports(prev => prev.map(r =>
+        r.id === report.id
           ? { ...r, status: 'complete' as const, extractedMetrics: Math.floor(Math.random() * 20) + 5 }
           : r
       ));
@@ -380,7 +380,7 @@ function Reports() {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
-      
+
       if (response.ok) {
         setReports(prev => prev.filter(r => r.id !== report.id));
         setSelectedReports(prev => {
@@ -413,7 +413,7 @@ function Reports() {
   return (
     <div className="reports-page">
       <DashboardNavbar userName="User" userStatus="" />
-      
+
       <div className="reports-content">
         <div className="reports-container">
           {/* Header */}
@@ -423,10 +423,6 @@ function Reports() {
               <p>Upload and manage your health reports. All documents are processed securely.</p>
             </div>
             <div className="reports-header-actions">
-              <span className={`ws-indicator ${isConnected ? 'connected' : 'disconnected'}`}>
-                {isConnected ? <Wifi size={14} /> : <WifiOff size={14} />}
-                {isConnected ? 'Live' : 'Offline'}
-              </span>
               <button className="btn-secondary">Open Documentation</button>
               <button className="btn-secondary">Setup Details</button>
             </div>
@@ -444,12 +440,6 @@ function Reports() {
           {/* Tabs */}
           <div className="reports-tabs">
             <button className="tab-btn active">Overview</button>
-            <button 
-              className="tab-btn add-document"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              + Add Document
-            </button>
           </div>
 
           {/* Search and Filters */}
@@ -464,20 +454,11 @@ function Reports() {
                 className="search-input"
               />
             </div>
-            <div className="toolbar-actions">
-              <button className="btn-icon">
-                <Filter size={18} />
-                Filters
-              </button>
-              <button className="btn-icon">
-                Attachment
-              </button>
-            </div>
           </div>
 
           {/* Filter Row */}
           <div className="filter-row">
-            <select 
+            <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
               className="filter-select"
@@ -486,8 +467,8 @@ function Reports() {
                 <option key={cat} value={cat}>{cat}</option>
               ))}
             </select>
-            
-            <select 
+
+            <select
               value={selectedType}
               onChange={(e) => setSelectedType(e.target.value)}
               className="filter-select"
@@ -496,7 +477,7 @@ function Reports() {
                 <option key={type} value={type}>{type}</option>
               ))}
             </select>
-            
+
             <input
               type="date"
               value={selectedDate}
@@ -504,14 +485,6 @@ function Reports() {
               className="filter-select"
               placeholder="Document Date"
             />
-            
-            <select className="filter-select">
-              <option>Staff</option>
-            </select>
-            
-            <select className="filter-select">
-              <option>Region</option>
-            </select>
           </div>
 
           {/* Upload and Profile Section - 2 Column Layout */}
@@ -553,7 +526,7 @@ function Reports() {
                   <div key={id} className="upload-progress-item">
                     <span className="progress-label">Processing...</span>
                     <div className="progress-bar">
-                      <div 
+                      <div
                         className="progress-fill"
                         style={{ width: `${progress}%` }}
                       />
@@ -580,10 +553,8 @@ function Reports() {
                   <th>Document Name ▼</th>
                   <th>Document Type</th>
                   <th>Document Date</th>
-                  <th>Staff ▼</th>
-                  <th>Region</th>
                   <th>Status ▼</th>
-                  <th>Operation Selected</th>
+                  <th className="operations-col">Operations</th>
                 </tr>
               </thead>
               <tbody>
@@ -610,23 +581,21 @@ function Reports() {
                       <span className="doc-type-badge">{report.category}</span>
                     </td>
                     <td>{report.date}</td>
-                    <td>{report.staff || '-'}</td>
-                    <td>{report.region || 'New Hampshire'}</td>
                     <td>
                       <span className={`status-badge ${report.status}`}>
                         {getStatusIcon(report.status)}
                         {report.status.charAt(0).toUpperCase() + report.status.slice(1)}
                       </span>
                     </td>
-                    <td className="actions-cell">
-                      <button 
+                    <td className="actions-cell operations-col">
+                      <button
                         className="action-btn"
                         onClick={() => handleView(report)}
                         title="View"
                       >
                         <Eye size={16} />
                       </button>
-                      <button 
+                      <button
                         className="action-btn"
                         onClick={() => handleReprocess(report)}
                         title="Reprocess OCR"
@@ -634,14 +603,14 @@ function Reports() {
                       >
                         <RefreshCw size={16} className={report.status === 'processing' ? 'spinning' : ''} />
                       </button>
-                      <button 
+                      <button
                         className="action-btn"
                         onClick={() => handleDelete(report)}
                         title="Delete"
                       >
                         <Trash2 size={16} />
                       </button>
-                      <button 
+                      <button
                         className="action-btn"
                         onClick={() => handleDownload(report)}
                         title="Download"
@@ -662,7 +631,7 @@ function Reports() {
             </span>
             <div className="pagination-controls">
               <span>You're on page</span>
-              <select 
+              <select
                 value={currentPage}
                 onChange={(e) => setCurrentPage(Number(e.target.value))}
                 className="page-select"
@@ -671,14 +640,14 @@ function Reports() {
                   <option key={i + 1} value={i + 1}>{i + 1}</option>
                 ))}
               </select>
-              <button 
+              <button
                 className="pagination-btn"
                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
               >
                 <ChevronLeft size={18} />
               </button>
-              <button 
+              <button
                 className="pagination-btn"
                 onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
