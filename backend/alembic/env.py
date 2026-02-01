@@ -8,13 +8,12 @@ from sqlalchemy import pool
 
 from alembic import context
 
-# Add the backend directory to the path so we can import app modules
+# Add the backend directory to the path so we can import src modules
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 # Import our models and database config
-from app.db import Base
-from app.models import User, Report, Observation, HealthMetric, ChatSession, ChatMessage
-from app.settings import settings
+from src.config import Base, settings
+from src.models import User, Report, Observation, HealthMetric, ChatSession, ChatMessage
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

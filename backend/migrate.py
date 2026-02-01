@@ -3,8 +3,8 @@ Database migration script for Health Chat feature.
 Run this after updating your .env with DATABASE_URL
 """
 import asyncio
-from app.db import engine, Base
-from app.models import User, LoginEvent, PatientProfile, ChatSession, ChatMessage
+from src.config import engine, Base
+from src.models import User, LoginEvent, PatientProfile, ChatSession, ChatMessage
 
 async def run_migration():
     print("Creating database tables...")
