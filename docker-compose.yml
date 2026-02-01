@@ -29,7 +29,7 @@ services:
       - "8000:8000"
     volumes:
       # Mount source code for hot reload
-      - ./backend/app:/app/app:cached
+      - ./backend/src:/app/src:cached
       - ./backend/uploads:/app/uploads
       # Persist PaddleOCR models
       - paddle_models:/root/.paddleocr

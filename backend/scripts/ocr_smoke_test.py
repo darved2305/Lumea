@@ -10,8 +10,8 @@ from pathlib import Path
 # Add backend to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from app.services.pdf_extractor import PDFExtractor
-from app.services.lab_parser import LabParser
+from src.services.pdf_extractor import PDFExtractor
+from src.services.lab_parser import LabParser
 
 
 def test_sample_report(pdf_path: str):

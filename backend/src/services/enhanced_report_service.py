@@ -206,12 +206,12 @@ class EnhancedReportService:
 
     async def _recompute_health_index_and_emit(self, user_id: UUID):
         """Recompute health index after processing and emit WebSocket events"""
-        from app.routes.websocket import (
+        from src.routes.websocket import (
             emit_health_index_updated,
             emit_trends_updated,
             emit_recommendations_updated
         )
-        from app.services.metrics_service import MetricsService
+        from src.services.metrics_service import MetricsService
         
         try:
             metrics_service = MetricsService(self.db)

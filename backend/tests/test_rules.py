@@ -10,7 +10,7 @@ from datetime import datetime
 import sys
 sys.path.insert(0, 'backend')
 
-from app.rules import (
+from src.rules import (
     get_registry,
     RuleResult,
     MetricData,
@@ -80,7 +80,7 @@ class TestRuleBase:
     
     def test_rule_result_to_dict(self):
         """Test RuleResult serialization"""
-        from app.rules.base import Action, Source
+        from src.rules.base import Action, Source
         
         result = RuleResult(
             id="test_rule",
