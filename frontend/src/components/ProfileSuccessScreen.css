@@ -1,0 +1,207 @@
+/**
+ * Profile Success Screen Styles
+ * GPay-inspired success animation
+ */
+
+.profile-success-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 20px;
+}
+
+.profile-success-container {
+  background: white;
+  border-radius: 24px;
+  padding: 48px 40px;
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 
+    0 20px 60px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(0, 0, 0, 0.05);
+  position: relative;
+}
+
+/* Checkmark Animation */
+.success-checkmark-container {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  margin: 0 auto 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.success-checkmark-circle {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  box-shadow: 
+    0 10px 40px rgba(16, 185, 129, 0.3),
+    0 0 0 4px rgba(16, 185, 129, 0.1);
+}
+
+.success-ripple {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border: 2px solid #10b981;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* Message */
+.success-message {
+  margin-bottom: 32px;
+}
+
+.success-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 8px 0;
+  letter-spacing: -0.02em;
+}
+
+.success-description {
+  font-size: 16px;
+  color: #6b7280;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Action Buttons */
+.success-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.success-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 24px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  width: 100%;
+}
+
+.success-btn-primary {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.success-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+}
+
+.success-btn-primary:active {
+  transform: translateY(0);
+}
+
+.success-btn-secondary {
+  background: #f3f4f6;
+  color: #374151;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.success-btn-secondary:hover {
+  background: #e5e7eb;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+}
+
+.success-btn-secondary:active {
+  transform: translateY(0);
+}
+
+/* Auto-redirect Text */
+.success-auto-redirect {
+  font-size: 13px;
+  color: #9ca3af;
+  margin: 0;
+}
+
+/* Mobile Responsive */
+@media (max-width: 640px) {
+  .profile-success-container {
+    padding: 36px 24px;
+  }
+
+  .success-checkmark-container {
+    width: 96px;
+    height: 96px;
+    margin-bottom: 24px;
+  }
+
+  .success-checkmark-circle svg {
+    width: 36px;
+    height: 36px;
+  }
+
+  .success-title {
+    font-size: 24px;
+  }
+
+  .success-description {
+    font-size: 15px;
+  }
+
+  .success-btn {
+    padding: 12px 20px;
+    font-size: 14px;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .profile-success-container {
+    background: #1f2937;
+    box-shadow: 
+      0 20px 60px rgba(0, 0, 0, 0.5),
+      0 0 0 1px rgba(255, 255, 255, 0.1);
+  }
+
+  .success-title {
+    color: #f9fafb;
+  }
+
+  .success-description {
+    color: #9ca3af;
+  }
+
+  .success-btn-secondary {
+    background: #374151;
+    color: #f3f4f6;
+  }
+
+  .success-btn-secondary:hover {
+    background: #4b5563;
+  }
+}
