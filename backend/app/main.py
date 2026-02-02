@@ -6,6 +6,7 @@ from app.db import init_db
 from app.routes import auth, health, dashboard, reports, assistant, recommendations
 from app.routes.profile import router as profile_router
 from app.routes.websocket import router as websocket_router
+from app.routes.documents import router as documents_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -35,8 +36,9 @@ app.add_middleware(
     allow_origins=origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allow_headers=["*"],
-    expose_headers=["*"],
+    allow_headers=["Content-Type", "Authorization", "Accept", "Origin"],
+    expose_headers=["Content-Type", "Authorization"],
+    max_age=3600,
 )
 
 # Include routers
@@ -48,6 +50,7 @@ app.include_router(assistant.router)
 app.include_router(recommendations.router)
 app.include_router(profile_router)
 app.include_router(websocket_router)
+app.include_router(documents_router)
 
 @app.get("/")
 async def root():
@@ -58,8 +61,10 @@ async def root():
             "auth": "/api/auth",
             "dashboard": "/api/dashboard",
             "reports": "/api/reports",
+            "documents": "/api/documents",
             "assistant": "/api/assistant",
             "recommendations": "/api/recommendations",
+            "profile": "/api/profile",
             "websocket": "ws://localhost:8000/ws?token=<jwt>"
         }
     }

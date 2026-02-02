@@ -1,0 +1,130 @@
+"""
+Alembic Migration: Add Document Classification and Missing Data Pipeline
+
+Creates tables for:
+- document_ocr: Stores OCR text and extraction metadata
+- missing_data_tasks: Tracks required parameters not extracted
+- health_index_snapshots: Stores computed health scores over time
+
+Updates:
+- reports table: Add classification columns (category, doc_type, etc.)
+- observations table: Add source, user_corrected columns
+"""
+
+from alembic import op
+import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
+
+# revision identifiers, used by Alembic.
+revision = '4b7c2e891234_add_ocr_pipeline_tables'
+down_revision = '3a8f12d90123_add_health_profile_tables'
+branch_labels = None
+depends_on = None
+
+
+def upgrade() -> None:
+    # ===========================================================================
+    # 1. Create document_ocr table
+    # ===========================================================================
+    op.create_table(
+        'document_ocr',
+        sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text('gen_random_uuid()')),
+        sa.Column('document_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('reports.id', ondelete='CASCADE'), nullable=False, unique=True),
+        sa.Column('ocr_text', sa.Text, nullable=True),
+        sa.Column('ocr_json', postgresql.JSONB, nullable=True),  # page_stats, method, confidence
+        sa.Column('extraction_method', sa.String(20), nullable=True),  # text/ocr/hybrid
+        sa.Column('total_chars', sa.Integer, nullable=True),
+        sa.Column('total_pages', sa.Integer, nullable=True),
+        sa.Column('created_at', sa.DateTime, server_default=sa.text('NOW()'), nullable=False),
+    )
+    op.create_index('ix_document_ocr_document_id', 'document_ocr', ['document_id'])
+
+    # ===========================================================================
+    # 2. Create missing_data_tasks table
+    # ===========================================================================
+    op.create_table(
+        'missing_data_tasks',
+        sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text('gen_random_uuid()')),
+        sa.Column('user_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('users.id', ondelete='CASCADE'), nullable=False),
+        sa.Column('document_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('reports.id', ondelete='CASCADE'), nullable=False),
+        sa.Column('metric_key', sa.String(100), nullable=False),
+        sa.Column('label', sa.String(200), nullable=False),  # Human-readable label
+        sa.Column('expected_unit', sa.String(50), nullable=True),
+        sa.Column('required', sa.Boolean, default=False, nullable=False),
+        sa.Column('status', sa.String(20), default='pending', nullable=False),  # pending/resolved/skipped
+        sa.Column('created_at', sa.DateTime, server_default=sa.text('NOW()'), nullable=False),
+        sa.Column('resolved_at', sa.DateTime, nullable=True),
+    )
+    op.create_index('ix_missing_data_tasks_user_document', 'missing_data_tasks', ['user_id', 'document_id'])
+    op.create_index('ix_missing_data_tasks_status', 'missing_data_tasks', ['user_id', 'status'])
+
+    # ===========================================================================
+    # 3. Create health_index_snapshots table
+    # ===========================================================================
+    op.create_table(
+        'health_index_snapshots',
+        sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text('gen_random_uuid()')),
+        sa.Column('user_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('users.id', ondelete='CASCADE'), nullable=False),
+        sa.Column('score', sa.Float, nullable=False),
+        sa.Column('confidence', sa.Float, nullable=True),
+        sa.Column('contributions', postgresql.JSONB, nullable=True),  # Factor breakdown
+        sa.Column('missing_inputs', postgresql.JSONB, nullable=True),  # What data was missing
+        sa.Column('created_at', sa.DateTime, server_default=sa.text('NOW()'), nullable=False),
+    )
+    op.create_index('ix_health_index_snapshots_user_created', 'health_index_snapshots', ['user_id', 'created_at'])
+
+    # ===========================================================================
+    # 4. Add classification columns to reports table
+    # ===========================================================================
+    op.add_column('reports', sa.Column('category', sa.String(50), nullable=True))
+    op.add_column('reports', sa.Column('doc_type', sa.String(50), nullable=True))
+    op.add_column('reports', sa.Column('classification_confidence', sa.Float, nullable=True))
+    op.add_column('reports', sa.Column('classification_rules_matched', postgresql.JSONB, nullable=True))
+    op.add_column('reports', sa.Column('extraction_source', sa.String(20), nullable=True))  # regex/grok/manual
+    
+    op.create_index('ix_reports_category', 'reports', ['category'])
+    op.create_index('ix_reports_doc_type', 'reports', ['doc_type'])
+    op.create_index('ix_reports_user_uploaded', 'reports', ['user_id', 'uploaded_at'])
+
+    # ===========================================================================
+    # 5. Add source and user_corrected columns to observations table
+    # ===========================================================================
+    op.add_column('observations', sa.Column('source', sa.String(20), nullable=True))  # regex/grok/manual
+    op.add_column('observations', sa.Column('confidence', sa.Float, nullable=True))
+    op.add_column('observations', sa.Column('user_corrected', sa.Boolean, default=False, nullable=False, server_default='false'))
+    
+    # Index for fetching latest metrics per user
+    op.create_index('ix_observations_user_metric_observed', 'observations', ['user_id', 'metric_name', 'observed_at'])
+    op.create_index('ix_observations_user_abnormal', 'observations', ['user_id', 'is_abnormal'])
+
+
+def downgrade() -> None:
+    # Drop indexes
+    op.drop_index('ix_observations_user_abnormal', 'observations')
+    op.drop_index('ix_observations_user_metric_observed', 'observations')
+    op.drop_index('ix_reports_user_uploaded', 'reports')
+    op.drop_index('ix_reports_doc_type', 'reports')
+    op.drop_index('ix_reports_category', 'reports')
+    
+    # Remove columns from observations
+    op.drop_column('observations', 'user_corrected')
+    op.drop_column('observations', 'confidence')
+    op.drop_column('observations', 'source')
+    
+    # Remove columns from reports
+    op.drop_column('reports', 'extraction_source')
+    op.drop_column('reports', 'classification_rules_matched')
+    op.drop_column('reports', 'classification_confidence')
+    op.drop_column('reports', 'doc_type')
+    op.drop_column('reports', 'category')
+    
+    # Drop tables
+    op.drop_index('ix_health_index_snapshots_user_created', 'health_index_snapshots')
+    op.drop_table('health_index_snapshots')
+    
+    op.drop_index('ix_missing_data_tasks_status', 'missing_data_tasks')
+    op.drop_index('ix_missing_data_tasks_user_document', 'missing_data_tasks')
+    op.drop_table('missing_data_tasks')
+    
+    op.drop_index('ix_document_ocr_document_id', 'document_ocr')
+    op.drop_table('document_ocr')

@@ -96,9 +96,16 @@ class Report(Base):
     uploaded_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     processed_at = Column(DateTime, nullable=True)
     
+    # Classification results (regex-based)
+    category = Column(String(50), nullable=True, index=True)  # lab/dental/mri/xray/prescription/sleep
+    doc_type = Column(String(50), nullable=True, index=True)  # blood_panel/lipid_panel/checkup/etc.
+    classification_confidence = Column(Float, nullable=True)  # 0-1
+    classification_rules_matched = Column(JSONB, nullable=True)  # List of rules that matched
+    
     # Extraction results
     raw_text = Column(Text, nullable=True)  # Full OCR text
     extraction_method = Column(String, nullable=True)  # "text", "ocr", "hybrid", "failed"
+    extraction_source = Column(String(20), nullable=True)  # regex/grok/grok_fallback/manual
     page_stats = Column(JSON, nullable=True)  # Per-page extraction statistics
     extracted_data = Column(JSON, nullable=True)  # Structured extraction
     extraction_confidence = Column(Float, nullable=True)
@@ -131,6 +138,11 @@ class Observation(Base):
     reference_max = Column(Numeric(10, 3), nullable=True)
     is_abnormal = Column(Boolean, default=False, index=True)
     flag = Column(String, nullable=True)  # "Low", "High", "Normal", "Critical"
+    
+    # Extraction metadata
+    source = Column(String(20), nullable=True)  # regex/grok/grok_fallback/manual
+    confidence = Column(Float, nullable=True)  # 0-1 extraction confidence
+    user_corrected = Column(Boolean, default=False, nullable=False)  # True if user manually entered/corrected
     
     # Additional context
     notes = Column(Text, nullable=True)
@@ -451,3 +463,101 @@ class ProfileRecommendation(Base):
     
     # Relationships
     user = relationship("User", back_populates="profile_recommendations")
+
+
+# ============================================================================
+# DOCUMENT OCR PIPELINE MODELS
+# ============================================================================
+
+class DocumentCategory(str, enum.Enum):
+    LAB = "lab"
+    DENTAL = "dental"
+    MRI = "mri"
+    XRAY = "xray"
+    PRESCRIPTION = "prescription"
+    SLEEP = "sleep"
+    UNKNOWN = "unknown"
+
+
+class DocumentType(str, enum.Enum):
+    BLOOD_PANEL = "blood_panel"
+    LIPID_PANEL = "lipid_panel"
+    CHECKUP = "checkup"
+    BRAIN_SCAN = "brain_scan"
+    CHEST = "chest"
+    DENTAL_EXAM = "dental_exam"
+    PRESCRIPTION = "prescription"
+    SLEEP_STUDY = "sleep_study"
+    UNKNOWN = "unknown"
+
+
+class ExtractionSource(str, enum.Enum):
+    REGEX = "regex"
+    GROK = "grok"
+    GROK_FALLBACK = "grok_fallback"
+    MANUAL = "manual"
+
+
+class MissingDataStatus(str, enum.Enum):
+    PENDING = "pending"
+    RESOLVED = "resolved"
+    SKIPPED = "skipped"
+
+
+class DocumentOCR(Base):
+    """Stores OCR extraction results for a document"""
+    __tablename__ = "document_ocr"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    document_id = Column(UUID(as_uuid=True), ForeignKey("reports.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    
+    ocr_text = Column(Text, nullable=True)  # Full extracted text
+    ocr_json = Column(JSONB, nullable=True)  # Page stats, confidence per page, method used
+    extraction_method = Column(String(20), nullable=True)  # text/ocr/hybrid
+    total_chars = Column(Integer, nullable=True)
+    total_pages = Column(Integer, nullable=True)
+    
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    
+    # Relationship
+    document = relationship("Report", backref="ocr_data")
+
+
+class MissingDataTask(Base):
+    """Tracks required parameters not extracted from documents"""
+    __tablename__ = "missing_data_tasks"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    document_id = Column(UUID(as_uuid=True), ForeignKey("reports.id", ondelete="CASCADE"), nullable=False, index=True)
+    
+    metric_key = Column(String(100), nullable=False)  # Canonical metric key
+    label = Column(String(200), nullable=False)  # Human-readable label for UI
+    expected_unit = Column(String(50), nullable=True)  # Expected unit for this metric
+    required = Column(Boolean, default=False, nullable=False)  # Is this critical?
+    status = Column(String(20), default="pending", nullable=False)  # pending/resolved/skipped
+    
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    resolved_at = Column(DateTime, nullable=True)
+    
+    # Relationships
+    user = relationship("User", backref="missing_data_tasks")
+    document = relationship("Report", backref="missing_data_tasks")
+
+
+class HealthIndexSnapshot(Base):
+    """Stores computed health index scores over time"""
+    __tablename__ = "health_index_snapshots"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    
+    score = Column(Float, nullable=False)  # 0-100
+    confidence = Column(Float, nullable=True)  # 0-1
+    contributions = Column(JSONB, nullable=True)  # Factor breakdown {"sleep": 0.25, "glucose": 0.18}
+    missing_inputs = Column(JSONB, nullable=True)  # What data was missing ["hba1c", "ldl"]
+    
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    
+    # Relationship
+    user = relationship("User", backref="health_index_snapshots")
