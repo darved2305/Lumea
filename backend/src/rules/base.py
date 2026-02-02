@@ -123,6 +123,8 @@ class UserContext:
     metrics: Dict[str, MetricData] = field(default_factory=dict)
     available_test_names: List[str] = field(default_factory=list)
     days_since_last_report: Optional[int] = None
+    age: Optional[int] = None
+    gender: Optional[str] = None
 
 
 class Rule(ABC):

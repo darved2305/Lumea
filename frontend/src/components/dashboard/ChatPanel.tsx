@@ -12,11 +12,14 @@ function ChatPanel({ compact: _compact = false }: ChatPanelProps) {
   const { messages, isTyping, suggestions, sendMessage } = useAIAssistant();
   const [inputValue, setInputValue] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Auto-scroll to bottom when new messages arrive
+  // Auto-scroll to bottom when new messages arrive, unless user scrolled up
   useEffect(() => {
+    if (!shouldAutoScroll) return;
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
@@ -32,6 +35,7 @@ function ChatPanel({ compact: _compact = false }: ChatPanelProps) {
     if (inputValue.trim()) {
       sendMessage(inputValue.trim());
       setInputValue('');
+      setShouldAutoScroll(true);
     }
   };
 
@@ -49,11 +53,22 @@ function ChatPanel({ compact: _compact = false }: ChatPanelProps) {
   const formatTimestamp = (date: Date) => {
     return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   };
+  
+  const handleMessagesScroll = () => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+    setShouldAutoScroll(distanceFromBottom < 80);
+  };
 
   const renderContent = () => (
     <>
       {/* Messages */}
-      <div className="chat-messages-container dash-scrollbar">
+      <div
+        className="chat-messages-container dash-scrollbar"
+        ref={messagesContainerRef}
+        onScroll={handleMessagesScroll}
+      >
         {messages.map((message) => (
           <motion.div
             key={message.id}

@@ -33,13 +33,31 @@ services:
       - ./backend/uploads:/app/uploads
       # Persist PaddleOCR models
       - paddle_models:/root/.paddleocr
+      # Persist ChromaDB vector store
+      - chroma_data:/app/chroma_db
+      # Persist Hugging Face model/cache locally
+      - hf_cache:/root/.cache/huggingface
     environment:
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-ggw}:${POSTGRES_PASSWORD:-ggwpassword}@db:5432/${POSTGRES_DB:-ggwdb}
       - JWT_SECRET=${JWT_SECRET:-dev-secret-change-in-production}
       - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
       - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-10080}
       - FRONTEND_ORIGIN=http://localhost:5173
-      - USE_GEMINI=${USE_GEMINI:-false}
+      # ChromaDB Configuration
+      - CHROMA_PERSIST_DIR=/app/chroma_db
+      - RAG_TOP_K=5
+      # Hugging Face cache configuration (local MedGemma)
+      - HF_HOME=/root/.cache/huggingface
+      - TRANSFORMERS_CACHE=/root/.cache/huggingface
+      # Hugging Face auth (required for gated models like MedGemma)
+      - HF_TOKEN=${HF_TOKEN:-}
+      # Ollama (local, not cloud)
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-hf.co/unsloth/medgemma-4b-it-GGUF:Q6_K_XL}
+      - OLLAMA_PULL_ON_START=${OLLAMA_PULL_ON_START:-true}
+      - OLLAMA_PULL_LOG_STEP_PCT=${OLLAMA_PULL_LOG_STEP_PCT:-5}
+      # Gemini Fallback (optional, for other features)
+      - USE_GEMINI_FALLBACK=${USE_GEMINI_FALLBACK:-true}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/"]
@@ -74,3 +92,5 @@ services:
 volumes:
   postgres_data:
   paddle_models:
+  chroma_data:
+  hf_cache:

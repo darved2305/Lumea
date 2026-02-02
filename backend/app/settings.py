@@ -8,8 +8,18 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 10080
     
-    # Optional Gemini integration for rewording recommendations
-    USE_GEMINI: bool = False
+    # Ollama LLM Configuration
+    OLLAMA_BASE_URL: str = "http://ollama:11434"  # Docker service name
+    OLLAMA_MODEL: str = "medgemma:4b"
+    OLLAMA_TIMEOUT: int = 120  # seconds
+    
+    # ChromaDB Configuration
+    CHROMA_PERSIST_DIR: str = "/app/chroma_db"
+    EMBEDDING_MODEL: str = "all-MiniLM-L6-v2"
+    RAG_TOP_K: int = 5
+    
+    # Gemini Fallback (optional)
+    USE_GEMINI_FALLBACK: bool = True
     GEMINI_API_KEY: Optional[str] = None
     
     # Grok/xAI API for LLM extraction fallback

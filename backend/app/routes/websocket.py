@@ -87,6 +87,80 @@ async def get_user_from_token(token: str, db: AsyncSession) -> User | None:
     return result.scalar_one_or_none()
 
 
+async def handle_chat_request(
+    websocket: WebSocket,
+    user_id: str,
+    message_content: str,
+    session_id: str = None
+):
+    """
+    Handle streaming chat request via WebSocket.
+    
+    Sends:
+    - chat_start: Indicates response generation started
+    - chat_token: Each token as it's generated
+    - chat_complete: Final message with citations
+    - chat_error: On any error
+    """
+    import uuid as uuid_module
+    from app.services.rag_service import get_rag_service
+    from app.services.llm_service import get_llm_service
+    from app.db import async_session
+    
+    try:
+        # Send start event
+        await websocket.send_json({
+            "type": "chat_start",
+            "data": {"message": "Generating response..."},
+            "timestamp": datetime.utcnow().isoformat()
+        })
+        
+        # Get services
+        rag_service = get_rag_service()
+        llm_service = get_llm_service()
+        
+        # Get user context from RAG
+        async with async_session() as db:
+            context = await rag_service.get_user_context(
+                user_id=uuid_module.UUID(user_id),
+                query=message_content,
+                db=db
+            )
+        
+        # Stream response from LLM
+        full_response = ""
+        async for token in llm_service.stream_generate(
+            user_message=message_content,
+            context=context
+        ):
+            full_response += token
+            await websocket.send_json({
+                "type": "chat_token",
+                "data": {"token": token},
+                "timestamp": datetime.utcnow().isoformat()
+            })
+        
+        # Send completion event
+        await websocket.send_json({
+            "type": "chat_complete",
+            "data": {
+                "full_response": full_response,
+                "citations": [],  # TODO: Extract citations from context
+                "session_id": session_id
+            },
+            "timestamp": datetime.utcnow().isoformat()
+        })
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        await websocket.send_json({
+            "type": "chat_error",
+            "data": {"error": str(e)},
+            "timestamp": datetime.utcnow().isoformat()
+        })
+
+
 @router.websocket("/ws")
 async def websocket_endpoint(
     websocket: WebSocket,
@@ -169,6 +243,14 @@ async def websocket_endpoint(
                             "data": {"topics": message.get("topics", [])},
                             "timestamp": datetime.utcnow().isoformat()
                         })
+                    elif msg_type == "chat_request":
+                        # Handle streaming chat request
+                        await handle_chat_request(
+                            websocket=websocket,
+                            user_id=user_id,
+                            message_content=message.get("message", ""),
+                            session_id=message.get("session_id")
+                        )
                 
                 except json.JSONDecodeError:
                     # Ignore malformed JSON

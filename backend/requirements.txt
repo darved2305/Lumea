@@ -11,9 +11,25 @@ alembic==1.13.1
 aiofiles==24.1.0
 pillow>=10.4.0
 email-validator>=2.0.0
+httpx>=0.27.0
 
 # PDF/OCR extraction (text-first approach)
 pdfplumber>=0.11.0
 PyMuPDF>=1.24.0
 paddleocr>=2.7.0
 paddlepaddle>=2.6.0
+
+# RAG and LLM
+langchain>=0.1.0
+langchain-community>=0.0.10
+chromadb>=0.4.0
+sentence-transformers>=2.2.0
+ollama>=0.1.0
+google-generativeai>=0.4.0
+
+# Local MedGemma via Hugging Face
+transformers>=4.56.0
+torch>=2.2.0
+accelerate>=0.30.0
+safetensors>=0.4.0
+huggingface_hub>=0.23.0

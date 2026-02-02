@@ -131,25 +131,150 @@ export function useLiveSeries(metric: string, range: '1D' | '1W' | '1M') {
   return { data, isLive, toggleLive };
 }
 
-// Hook for AI assistant chat functionality in dashboard
+// Hook for AI assistant chat functionality in dashboard with WebSocket streaming
 export function useAIAssistant() {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: '1',
       role: 'assistant',
-      content: `Hello! I'm your AI Health Assistant. I'm here to help you understand your health data and provide personalized recommendations. 
+      content: `Hello! I'm your AI Health Assistant powered by MedGemma. I'm here to help you understand your health data and provide personalized insights based on your medical reports.
 
-Feel free to ask me anything about your health index, metrics, or what you can do to improve your wellness.`,
+Ask me anything about your health metrics, lab results, or what you can do to improve your wellness.`,
       timestamp: new Date(),
     },
   ]);
   const [isTyping, setIsTyping] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const wsRef = useRef<WebSocket | null>(null);
+  const currentMessageIdRef = useRef<string | null>(null);
+  const tokenBufferRef = useRef('');
+  const flushTimerRef = useRef<number | null>(null);
 
-  // Update suggestions - use default score of 70 (middle suggestions)
-  // Real score-based suggestions would need integration with health summary API
+  // Update suggestions
   useEffect(() => {
     setSuggestions(getQuestionSuggestions(70));
+  }, []);
+
+  // Setup WebSocket connection for chat
+  useEffect(() => {
+    const token = localStorage.getItem('access_token');
+    if (!token) return;
+
+    const ws = new WebSocket(`ws://localhost:8000/ws?token=${token}`);
+    wsRef.current = ws;
+
+    ws.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data);
+        const upsertAssistantMessage = (id: string, updater: (prev: ChatMessage) => ChatMessage) => {
+          setMessages(prev => {
+            const idx = prev.findIndex(m => m.id === id);
+            if (idx === -1) {
+              return [...prev, updater({
+                id,
+                role: 'assistant',
+                content: '',
+                timestamp: new Date(),
+              })];
+            }
+            const next = [...prev];
+            next[idx] = updater(next[idx]);
+            return next;
+          });
+        };
+        const flushBufferedTokens = () => {
+          if (!currentMessageIdRef.current || !tokenBufferRef.current) return;
+          const chunk = tokenBufferRef.current;
+          tokenBufferRef.current = '';
+          upsertAssistantMessage(currentMessageIdRef.current, msg => ({
+            ...msg,
+            content: (msg.content || '') + chunk,
+          }));
+        };
+        const scheduleFlush = () => {
+          if (flushTimerRef.current) return;
+          flushTimerRef.current = window.setTimeout(() => {
+            flushTimerRef.current = null;
+            flushBufferedTokens();
+          }, 50);
+        };
+        
+        switch (message.type) {
+          case 'chat_start':
+            // Response generation started
+            setIsTyping(true);
+            currentMessageIdRef.current = Date.now().toString();
+            tokenBufferRef.current = '';
+            upsertAssistantMessage(currentMessageIdRef.current, msg => msg);
+            break;
+            
+          case 'chat_token':
+            // Append streamed token
+            if (currentMessageIdRef.current) {
+              tokenBufferRef.current += message.data.token;
+              scheduleFlush();
+            }
+            break;
+            
+          case 'chat_complete':
+            // Finalize the message
+            if (flushTimerRef.current) {
+              clearTimeout(flushTimerRef.current);
+              flushTimerRef.current = null;
+            }
+            flushBufferedTokens();
+            if (currentMessageIdRef.current) {
+              const finalContent = message.data.full_response;
+              if (finalContent) {
+                upsertAssistantMessage(currentMessageIdRef.current, msg => ({
+                  ...msg,
+                  content: finalContent,
+                  timestamp: new Date(),
+                }));
+              }
+            }
+            setIsTyping(false);
+            currentMessageIdRef.current = null;
+            break;
+            
+          case 'chat_error':
+            // Handle error
+            if (flushTimerRef.current) {
+              clearTimeout(flushTimerRef.current);
+              flushTimerRef.current = null;
+            }
+            tokenBufferRef.current = '';
+            if (currentMessageIdRef.current) {
+              upsertAssistantMessage(currentMessageIdRef.current, msg => ({
+                ...msg,
+                content: `Sorry, I encountered an error: ${message.data.error}. Please try again.`,
+                timestamp: new Date(),
+              }));
+            } else {
+              const errorMessage: ChatMessage = {
+                id: Date.now().toString(),
+                role: 'assistant',
+                content: `Sorry, I encountered an error: ${message.data.error}. Please try again.`,
+                timestamp: new Date(),
+              };
+              setMessages(prev => [...prev, errorMessage]);
+            }
+            setIsTyping(false);
+            currentMessageIdRef.current = null;
+            break;
+        }
+      } catch (e) {
+        console.error('Error parsing chat message:', e);
+      }
+    };
+
+    return () => {
+      if (flushTimerRef.current) {
+        clearTimeout(flushTimerRef.current);
+        flushTimerRef.current = null;
+      }
+      ws.close();
+    };
   }, []);
 
   const sendMessage = useCallback(async (content: string) => {
@@ -164,34 +289,39 @@ Feel free to ask me anything about your health index, metrics, or what you can d
     setMessages(prev => [...prev, userMessage]);
     setIsTyping(true);
 
-    try {
-      // Get AI response
-      const responseContent = await mockAssistantResponse(content);
-      
-      // Simulate typing delay for more natural feel
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      const assistantMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: responseContent,
-        timestamp: new Date(),
-      };
-      
-      setMessages(prev => [...prev, assistantMessage]);
-    } catch (error) {
-      console.error('Error getting response:', error);
-      
-      const errorMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again.',
-        timestamp: new Date(),
-      };
-      
-      setMessages(prev => [...prev, errorMessage]);
-    } finally {
-      setIsTyping(false);
+    // Send via WebSocket
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({
+        type: 'chat_request',
+        message: content,
+      }));
+    } else {
+      // Fallback to mock if WebSocket not connected
+      try {
+        const responseContent = await mockAssistantResponse(content);
+        
+        const assistantMessage: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: responseContent,
+          timestamp: new Date(),
+        };
+        
+        setMessages(prev => [...prev, assistantMessage]);
+      } catch (error) {
+        console.error('Error getting response:', error);
+        
+        const errorMessage: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: 'Sorry, I encountered an error. Please try again.',
+          timestamp: new Date(),
+        };
+        
+        setMessages(prev => [...prev, errorMessage]);
+      } finally {
+        setIsTyping(false);
+      }
     }
   }, []);
 

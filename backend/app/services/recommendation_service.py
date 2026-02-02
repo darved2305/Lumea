@@ -111,16 +111,18 @@ class RecommendationService:
         
         # Process health metrics into MetricData
         for hm in health_metrics:
-            # Add each metric value from the health metric
-            if hm.metric_name not in metrics:
-                metrics[hm.metric_name] = MetricData(
-                    name=hm.metric_name,
+            metric_key = getattr(hm, "metric_name", None) or getattr(hm, "metric_type", None)
+            if not metric_key:
+                continue
+            if metric_key not in metrics:
+                metrics[metric_key] = MetricData(
+                    name=metric_key,
                     value=hm.value,
-                    unit=hm.unit,
-                    reference_low=hm.reference_low,
-                    reference_high=hm.reference_high,
-                    days_since_last=self._days_since(hm.date),
-                    trend=hm.trend,
+                    unit=getattr(hm, "unit", "") or "",
+                    reference_min=getattr(hm, "reference_min", None),
+                    reference_max=getattr(hm, "reference_max", None),
+                    days_since_last=self._days_since(getattr(hm, "computed_at", None)),
+                    trend=getattr(hm, "trend", None),
                 )
         
         # Also get observations for more detailed data
@@ -136,29 +138,31 @@ class RecommendationService:
             metric_name = self._normalize_metric_name(obs.display_name or obs.metric_name)
             if metric_name and metric_name not in metrics:
                 value = obs.value
-                if value is not None:
-                    metrics[metric_name] = MetricData(
-                        name=metric_name,
-                        value=value,
-                        unit=obs.unit,
-                        reference_low=obs.reference_min,
-                        reference_high=obs.reference_max,
-                        days_since_last=self._days_since(obs.observed_at),
-                    )
+                if value is None:
+                    continue
+                metrics[metric_name] = MetricData(
+                    name=metric_name,
+                    value=float(value),
+                    unit=obs.unit,
+                    reference_min=float(obs.reference_min) if obs.reference_min is not None else None,
+                    reference_max=float(obs.reference_max) if obs.reference_max is not None else None,
+                    days_since_last=self._days_since(obs.observed_at),
+                )
         
         # Calculate user age
         age = None
-        if self.user.date_of_birth:
+        date_of_birth = getattr(self.user, "date_of_birth", None)
+        if date_of_birth:
             today = datetime.utcnow().date()
-            age = today.year - self.user.date_of_birth.year
-            if (today.month, today.day) < (self.user.date_of_birth.month, self.user.date_of_birth.day):
+            age = today.year - date_of_birth.year
+            if (today.month, today.day) < (date_of_birth.month, date_of_birth.day):
                 age -= 1
         
         return UserContext(
             user_id=str(self.user.id),
             metrics=metrics,
             age=age,
-            gender=self.user.gender,
+            gender=getattr(self.user, "gender", None),
         )
     
     def _days_since(self, date_value) -> Optional[int]:
