@@ -11,6 +11,14 @@ BACKEND_DIR = Path(__file__).resolve().parents[1]
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
+# MOCK MISSING DEPENDENCIES for CI/Agent environments
+# This allows tests to run without installing heavy external libs
+from unittest.mock import MagicMock
+import sys
+for module_name in ["mem0", "graphiti_core", "neo4j"]:
+    if module_name not in sys.modules:
+        sys.modules[module_name] = MagicMock()
+
 
 # Provide minimal env so pydantic-settings doesn't fail at import time.
 # We avoid connecting to a real DB by never calling init_db() in tests by default.

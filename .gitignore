@@ -78,3 +78,6 @@ logs/
 .vscode/settings.json
 .idea/
 backend/uploads/
+
+.claude
+docs/

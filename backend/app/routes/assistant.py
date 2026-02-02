@@ -82,8 +82,8 @@ async def get_session_history(
     assistant_service = AssistantService(db)
     
     try:
-        messages = assistant_service.get_session_history(session_id, current_user.id)
-        
+        messages = await assistant_service.get_session_history(session_id, current_user.id)
+
         return {
             "session_id": session_id,
             "messages": [

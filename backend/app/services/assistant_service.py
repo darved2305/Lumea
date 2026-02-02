@@ -1,51 +1,60 @@
 """
-Assistant Service - AI Health Assistant with grounded responses
+Assistant Service - AI Health Assistant with Memory, Graph, and RAG
 """
 import uuid
 import json
+import logging
 from datetime import datetime, timedelta
-from typing import List, Dict, Any, Optional
-from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_
+from typing import List, Dict, Any, Optional, Tuple
+
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, desc
 
 from app.models import User, Report, Observation, HealthMetric, ChatSession, ChatMessage
 from app.schemas import Citation
+from app.services.memory_service import get_memory_service
+from app.services.graph_service import get_graph_service
+from app.services.rag_service import get_rag_service
+from app.services.llm_service import get_llm_service
 
+logger = logging.getLogger(__name__)
 
 class AssistantService:
     """
     AI Health Assistant Service
-    
-    Provides grounded, context-aware responses based ONLY on user's own data.
-    Uses retrieval-augmented generation (RAG) approach.
+
+    Integrates:
+    1. Mem0: Long-term memory for user preferences and facts
+    2. Graphiti: Knowledge graph for medical reasoning and temporal facts
+    3. RAG: Retrieval from uploaded reports and observations
+    4. LLM: Generative response (Ollama MedGemma / Gemini)
     """
-    
-    def __init__(self, db: Session):
+
+    def __init__(self, db: AsyncSession):
         self.db = db
-    
+        self.memory_service = get_memory_service()
+        self.graph_service = get_graph_service()
+        self.rag_service = get_rag_service()
+        self.llm_service = get_llm_service()
+
     async def chat(
         self,
         user_id: uuid.UUID,
         message: str,
         session_id: Optional[uuid.UUID] = None
-    ) -> tuple[str, List[Citation], uuid.UUID, uuid.UUID]:
+    ) -> Tuple[str, List[Citation], uuid.UUID, uuid.UUID]:
         """
-        Process chat message and generate response
-        
-        Args:
-            user_id: User ID
-            message: User's message
-            session_id: Existing session ID or None for new session
-        
-        Returns:
-            (response_content, citations, session_id, message_id)
+        Process chat message and generate response using full context.
         """
-        # Get or create session
+        # 1. Get or create session
         if session_id:
-            session = self.db.query(ChatSession).filter(
-                ChatSession.id == session_id,
-                ChatSession.user_id == user_id
-            ).first()
+            result = await self.db.execute(
+                select(ChatSession).where(
+                    ChatSession.id == session_id,
+                    ChatSession.user_id == user_id
+                )
+            )
+            session = result.scalar_one_or_none()
             if not session:
                 raise ValueError("Session not found")
             session.last_active_at = datetime.utcnow()
@@ -56,328 +65,156 @@ class AssistantService:
                 last_active_at=datetime.utcnow()
             )
             self.db.add(session)
-            self.db.commit()
-            self.db.refresh(session)
-        
-        # Save user message
+            await self.db.commit()
+            await self.db.refresh(session)
+            session_id = session.id
+
+        # 2. Save user message
         user_msg = ChatMessage(
-            session_id=session.id,
+            session_id=session_id,
             role="user",
             content=message,
             created_at=datetime.utcnow()
         )
         self.db.add(user_msg)
-        self.db.commit()
-        
-        # Retrieve user context
-        context = await self._retrieve_user_context(user_id, message)
-        
-        # Generate response
-        response_content, citations = await self._generate_response(
-            user_id, message, context
+        await self.db.commit()
+
+        # 3. Parallel Retrieval Phase
+        # We gather context from RAG, Memory, and Graph
+        rag_context, memory_context, graph_context = await self._gather_context(user_id, message)
+
+        # 4. Context Assembly
+        full_context = self._assemble_context(
+            rag_context=rag_context,
+            memory_context=memory_context,
+            graph_context=graph_context
         )
-        
+
+        # 5. LLM Generation
+        # Get chat history for continuity
+        history = await self.get_session_history(session_id, user_id)
+        chat_history_dicts = [{"role": m.role, "content": m.content} for m in history[:-1]] # exclude current msg which is already in prompt logic potentially
+
+        response_content = await self.llm_service.generate(
+            user_message=message,
+            context=full_context,
+            chat_history=chat_history_dicts
+        )
+
+        # 6. Post-processing & Storage
+        # Update Memory & Graph with new interaction
+        await self._update_memory_and_graph(user_id, message, response_content)
+
+        # Extract citations (placeholder logic, usually LLM would provide them structured)
+        citations = self._extract_citations(rag_context)
+
         # Save assistant message
         assistant_msg = ChatMessage(
-            session_id=session.id,
+            session_id=session_id,
             role="assistant",
             content=response_content,
-            metadata={"citations": [c.dict() for c in citations]},
+            metadata={
+                "citations": [c.dict() for c in citations],
+                "rag_sources": len(rag_context),
+                "memories_used": len(memory_context),
+                "graph_facts_used": len(graph_context)
+            },
             created_at=datetime.utcnow()
         )
         self.db.add(assistant_msg)
-        self.db.commit()
-        self.db.refresh(assistant_msg)
-        
-        return response_content, citations, session.id, assistant_msg.id
-    
-    async def _retrieve_user_context(
-        self, user_id: uuid.UUID, query: str
-    ) -> Dict[str, Any]:
+        await self.db.commit()
+        await self.db.refresh(assistant_msg)
+
+        return response_content, citations, session_id, assistant_msg.id
+
+    async def _gather_context(self, user_id: uuid.UUID, query: str) -> Tuple[str, List[Dict], List[str]]:
         """
-        Retrieve relevant user data for context
-        
-        Returns:
-            Dictionary with user profile, recent observations, abnormalities, reports
+        Retrieve context from all sources.
+        Returns: (rag_text, memories, graph_facts)
         """
-        # Get user profile
-        user = self.db.query(User).filter(User.id == user_id).first()
-        
-        # Get latest health index
-        latest_health = (
-            self.db.query(HealthMetric)
-            .filter(
-                HealthMetric.user_id == user_id,
-                HealthMetric.metric_type == "health_index"
+        # A. RAG Retrieval (Documents & Observations)
+        # Note: get_user_context returns a formatted string, we might want raw docs too if we want citations
+        # For now, we'll use the service's high-level method for the text, and query again if we need citation metadata
+        rag_text = await self.rag_service.get_user_context(user_id, query, self.db)
+
+        # B. Memory Retrieval (User facts/prefs)
+        memories = await self.memory_service.search(query, user_id=str(user_id), limit=5)
+
+        # C. Graph Retrieval (Medical knowledge/relationships)
+        graph_facts = await self.graph_service.search(query, limit=5)
+
+        return rag_text, memories, graph_facts
+
+    def _assemble_context(self, rag_context: str, memory_context: List[Dict], graph_context: List[str]) -> str:
+        """Combine all context sources into a structured string for the LLM."""
+        parts = []
+
+        # 1. User Memories (Preferences, facts)
+        if memory_context:
+            parts.append("--- RELEVANT MEMORIES (User Facts & Preferences) ---")
+            for m in memory_context:
+                parts.append(f"- {m.get('memory', '')}")
+
+        # 2. Knowledge Graph (Medical connections)
+        if graph_context:
+            parts.append("\n--- MEDICAL KNOWLEDGE GRAPH (Relationships & Facts) ---")
+            for f in graph_context:
+                parts.append(f"- {f}")
+
+        # 3. RAG Data (Reports & Lab Results)
+        if rag_context:
+            parts.append("\n--- MEDICAL DATA & REPORTS ---")
+            parts.append(rag_context)
+
+        return "\n".join(parts)
+
+    async def _update_memory_and_graph(self, user_id: uuid.UUID, user_msg: str, assistant_msg: str):
+        """
+        Background task to update long-term memory and knowledge graph.
+        """
+        try:
+            # Add to Mem0 (unstructured memory)
+            # We add the interaction. Mem0 extracts relevant facts automatically.
+            await self.memory_service.add(
+                f"User: {user_msg}\nAssistant: {assistant_msg}",
+                user_id=str(user_id),
+                metadata={"source": "chat"}
             )
-            .order_by(HealthMetric.computed_at.desc())
-            .first()
-        )
-        
-        # Get recent observations (last 30 days)
-        cutoff = datetime.utcnow() - timedelta(days=30)
-        recent_observations = (
-            self.db.query(Observation)
-            .filter(
-                Observation.user_id == user_id,
-                Observation.observed_at >= cutoff
+
+            # Add to Graphiti (structured episodes)
+            await self.graph_service.add_episode(
+                f"User asked: {user_msg}\nAssistant answered: {assistant_msg}",
+                source="user_chat"
             )
-            .order_by(Observation.observed_at.desc())
-            .limit(50)
-            .all()
-        )
-        
-        # Get abnormal observations
-        abnormal_observations = (
-            self.db.query(Observation)
-            .filter(
-                Observation.user_id == user_id,
-                Observation.is_abnormal == True,
-                Observation.observed_at >= cutoff
-            )
-            .order_by(Observation.observed_at.desc())
-            .limit(20)
-            .all()
-        )
-        
-        # Get recent reports
-        recent_reports = (
-            self.db.query(Report)
-            .filter(Report.user_id == user_id)
-            .order_by(Report.uploaded_at.desc())
-            .limit(3)
-            .all()
-        )
-        
-        context = {
-            "user": {
-                "name": user.full_name,
-                "email": user.email
-            },
-            "health_index": {
-                "score": float(latest_health.value) if latest_health else None,
-                "confidence": float(latest_health.confidence) if latest_health else None,
-                "contributions": latest_health.contributions if latest_health else None,
-                "computed_at": latest_health.computed_at.isoformat() if latest_health else None
-            },
-            "recent_observations": [
-                {
-                    "id": str(obs.id),
-                    "metric": obs.metric_name,
-                    "value": float(obs.value),
-                    "unit": obs.unit,
-                    "date": obs.observed_at.isoformat(),
-                    "is_abnormal": obs.is_abnormal
-                }
-                for obs in recent_observations
-            ],
-            "abnormal_observations": [
-                {
-                    "id": str(obs.id),
-                    "metric": obs.metric_name,
-                    "value": float(obs.value),
-                    "unit": obs.unit,
-                    "date": obs.observed_at.isoformat(),
-                    "reference_min": float(obs.reference_min) if obs.reference_min else None,
-                    "reference_max": float(obs.reference_max) if obs.reference_max else None
-                }
-                for obs in abnormal_observations
-            ],
-            "reports": [
-                {
-                    "id": str(rep.id),
-                    "filename": rep.filename,
-                    "date": rep.report_date.isoformat() if rep.report_date else rep.uploaded_at.isoformat(),
-                    "status": rep.status.value,
-                    "text_snippet": rep.raw_text[:500] if rep.raw_text else None
-                }
-                for rep in recent_reports
-            ]
-        }
-        
-        return context
-    
-    async def _generate_response(
-        self,
-        user_id: uuid.UUID,
-        query: str,
-        context: Dict[str, Any]
-    ) -> tuple[str, List[Citation]]:
+        except Exception as e:
+            logger.error(f"Error updating memory/graph: {e}")
+
+    def _extract_citations(self, rag_context_str: str) -> List[Citation]:
         """
-        Generate AI response using context
-        
-        MVP: Rule-based responses with templates
-        TODO: Integrate actual LLM API (OpenAI, Anthropic, local model)
-        
-        Returns:
-            (response_text, citations)
+        Attempt to reconstruct citations from the RAG context string.
+        This is a simplification. Ideally, we pass the raw RAG docs through.
         """
-        query_lower = query.lower()
-        
-        # Extract relevant info
-        health_index = context["health_index"]
-        recent_obs = context["recent_observations"]
-        abnormal_obs = context["abnormal_observations"]
-        reports = context["reports"]
-        
+        # Since we only have the string from `get_user_context`, we can't easily rebuild
+        # precise Citation objects without parsing or changing RAGService to return structured data.
+        # For MVP, we return empty citations or generic ones if we detect report content.
         citations = []
-        
-        # Rule-based response generation
-        
-        # Query about health index/score
-        if any(word in query_lower for word in ["index", "score", "overall", "health"]):
-            if health_index["score"]:
-                score = health_index["score"]
-                confidence = health_index["confidence"] * 100
-                contribs = health_index["contributions"]
-                
-                # Build response
-                response = f"Your current health index is **{score:.1f}%** (computed {health_index['computed_at'][:10]}) with {confidence:.0f}% confidence based on available data.\n\n"
-                
-                if contribs:
-                    response += "**Breakdown by factor:**\n"
-                    for key, data in contribs.items():
-                        factor_score = data["score"]
-                        contribution = data["contribution"]
-                        detail = data["detail"]
-                        status_emoji = "✓" if detail["status"] == "good" else "⚠" if detail["status"] == "warning" else "⚠"
-                        response += f"• {status_emoji} {detail['label']}: {factor_score:.0f}/100 (contributing {contribution:.1f}%)\n"
-                
-                response += "\n**Recommendations:**\n"
-                if contribs:
-                    # Find lowest scoring factor
-                    lowest = min(contribs.items(), key=lambda x: x[1]["score"])
-                    response += f"Focus on improving your **{lowest[1]['detail']['label']}** which is currently your lowest scoring factor.\n"
-                
-                # Add citation
-                citations.append(Citation(
-                    report_id=None,
-                    metric_name="health_index",
-                    value=f"{score:.1f}%",
-                    excerpt=f"Health index computed from your recent health data"
-                ))
-                
-                return response, citations
-            else:
-                return "I don't have enough data yet to compute your health index. Please upload some medical reports or add health observations to get started.", []
-        
-        # Query about specific metric
-        metric_keywords = {
-            "glucose": ["glucose", "sugar", "blood sugar"],
-            "blood pressure": ["blood pressure", "bp", "hypertension"],
-            "sleep": ["sleep", "rest", "sleeping"],
-            "activity": ["activity", "exercise", "steps", "workout"],
-            "stress": ["stress", "anxiety", "tension"],
-            "hydration": ["water", "hydration", "fluid"]
-        }
-        
-        for metric, keywords in metric_keywords.items():
-            if any(kw in query_lower for kw in keywords):
-                # Find relevant observations
-                relevant = [obs for obs in recent_obs if any(kw in obs["metric"] for kw in keywords)]
-                
-                if relevant:
-                    latest = relevant[0]
-                    response = f"Based on your recent data, your **{metric}** is:\n\n"
-                    response += f"**Latest reading:** {latest['value']} {latest['unit']} (recorded {latest['date'][:10]})\n\n"
-                    
-                    if latest["is_abnormal"]:
-                        response += "⚠ This value is outside the normal reference range. Consider consulting with your healthcare provider.\n\n"
-                    else:
-                        response += "✓ This value is within the normal range.\n\n"
-                    
-                    # Add trend if multiple readings
-                    if len(relevant) > 1:
-                        values = [r["value"] for r in relevant[:5]]
-                        avg = sum(values) / len(values)
-                        response += f"**Average (last {len(values)} readings):** {avg:.1f} {latest['unit']}\n\n"
-                    
-                    response += "**Recommendation:** Continue monitoring regularly and maintain healthy lifestyle habits."
-                    
-                    # Add citation
-                    citations.append(Citation(
-                        observation_id=uuid.UUID(latest["id"]),
-                        metric_name=latest["metric"],
-                        value=f"{latest['value']} {latest['unit']}",
-                        excerpt=f"From observation recorded on {latest['date'][:10]}"
-                    ))
-                    
-                    return response, citations
-                else:
-                    return f"I don't have any recent data about your {metric}. Upload a medical report or manually add observations to track this metric.", []
-        
-        # Query about abnormalities/concerns
-        if any(word in query_lower for word in ["abnormal", "concern", "worry", "problem", "issue", "wrong"]):
-            if abnormal_obs:
-                response = "Based on your recent data, here are the values outside normal ranges:\n\n"
-                for obs in abnormal_obs[:5]:
-                    response += f"• **{obs['metric']}:** {obs['value']} {obs['unit']} (recorded {obs['date'][:10]})\n"
-                    if obs['reference_min'] and obs['reference_max']:
-                        response += f"  Normal range: {obs['reference_min']}-{obs['reference_max']} {obs['unit']}\n"
-                    
-                    citations.append(Citation(
-                        observation_id=uuid.UUID(obs["id"]),
-                        metric_name=obs["metric"],
-                        value=f"{obs['value']} {obs['unit']}",
-                        excerpt=f"Abnormal value from {obs['date'][:10]}"
-                    ))
-                
-                response += "\n**Important:** These findings should be reviewed with your healthcare provider for proper medical advice."
-                return response, citations
-            else:
-                return "Good news! Based on your recent data, all your health metrics are within normal ranges. Keep up the healthy habits!", []
-        
-        # Query about reports
-        if any(word in query_lower for word in ["report", "upload", "document", "test", "lab"]):
-            if reports:
-                response = f"You have **{len(reports)} recent report(s):**\n\n"
-                for rep in reports:
-                    response += f"• **{rep['filename']}** (uploaded {rep['date'][:10]})\n"
-                    response += f"  Status: {rep['status']}\n"
-                    
-                    citations.append(Citation(
-                        report_id=uuid.UUID(rep["id"]),
-                        report_name=rep["filename"],
-                        report_date=datetime.fromisoformat(rep["date"]),
-                        excerpt=rep["text_snippet"][:200] if rep["text_snippet"] else None
-                    ))
-                
-                response += "\nYou can view detailed extracted data from each report in the Reports section."
-                return response, citations
-            else:
-                return "You haven't uploaded any medical reports yet. Upload your lab reports, prescriptions, or test results to get personalized health insights.", []
-        
-        # Default fallback
-        response = f"I can help you understand your health data! I have access to:\n\n"
-        response += f"• Your health index: {'Available' if health_index['score'] else 'Not yet computed'}\n"
-        response += f"• Recent observations: {len(recent_obs)} data points\n"
-        response += f"• Medical reports: {len(reports)} uploaded\n\n"
-        response += "Try asking me about:\n"
-        response += "• Your overall health score\n"
-        response += "• Specific metrics (glucose, blood pressure, sleep, etc.)\n"
-        response += "• Any abnormal values or concerns\n"
-        response += "• Your uploaded reports\n\n"
-        response += "What would you like to know?"
-        
-        return response, citations
-    
-    def get_session_history(
+        if "From report" in rag_context_str:
+            # Minimal dummy citation to indicate source usage
+            citations.append(Citation(
+                report_id=None,
+                metric_name="General",
+                value="Referenced Report",
+                excerpt="See context for details"
+            ))
+        return citations
+
+    async def get_session_history(
         self, session_id: uuid.UUID, user_id: uuid.UUID
     ) -> List[ChatMessage]:
         """Get chat history for a session"""
-        session = self.db.query(ChatSession).filter(
-            ChatSession.id == session_id,
-            ChatSession.user_id == user_id
-        ).first()
-        
-        if not session:
-            raise ValueError("Session not found")
-        
-        messages = (
-            self.db.query(ChatMessage)
-            .filter(ChatMessage.session_id == session_id)
+        result = await self.db.execute(
+            select(ChatMessage)
+            .where(ChatMessage.session_id == session_id)
             .order_by(ChatMessage.created_at)
-            .all()
         )
-        
-        return messages
+        return result.scalars().all()

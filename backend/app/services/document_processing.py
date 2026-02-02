@@ -20,7 +20,9 @@ from typing import Optional, List, Dict, Any, Set
 from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
+import asyncio
 
+from app.db import async_session_maker
 from app.models import (
     Report, ReportStatus, Observation, ObservationType,
     DocumentOCR, MissingDataTask, User
@@ -36,6 +38,9 @@ from app.services.metric_extractor import (
     METRIC_UNITS,
 )
 from app.services.grok_extractor import extract_document_metrics
+from app.services.memory_service import get_memory_service
+from app.services.graph_service import get_graph_service
+from app.services.rag_service import get_rag_service
 
 logger = logging.getLogger(__name__)
 
@@ -402,7 +407,10 @@ class DocumentProcessingService:
         metrics_info = await self.extract_and_save_metrics(
             report, doc_ocr.ocr_text, classification
         )
-        
+
+        # Trigger background sync (RAG, Graph, Memory)
+        asyncio.create_task(self._sync_to_memory_and_graph(report.id))
+
         return {
             "report_id": str(report.id),
             "status": report.status.value,
@@ -570,6 +578,65 @@ class DocumentProcessingService:
         await self.db.commit()
         return skipped
     
+    async def _sync_to_memory_and_graph(self, report_id: uuid.UUID):
+        """
+        Background task to sync processed document data to:
+        1. RAG (ChromaDB)
+        2. Knowledge Graph (Neo4j)
+        3. Memory (Mem0) - optionally for high-level events
+        """
+        try:
+            logger.info(f"Starting background sync for report {report_id}")
+
+            # Create a fresh session for background work
+            async with async_session_maker() as session:
+                # 1. Sync to RAG
+                rag_service = get_rag_service()
+                await rag_service.sync_user_reports(self.user.id, session)
+                await rag_service.sync_user_observations(self.user.id, session)
+
+                # 2. Sync to Graph
+                # Get the report and observations
+                result = await session.execute(
+                    select(Report).where(Report.id == report_id)
+                )
+                report = result.scalar_one_or_none()
+
+                if report:
+                    graph_service = get_graph_service()
+
+                    # Add episode about the upload
+                    await graph_service.add_episode(
+                        f"User uploaded medical report: {report.filename} (Type: {report.doc_type})",
+                        source="document_upload",
+                        timestamp=report.uploaded_at.isoformat() if report.uploaded_at else datetime.utcnow().isoformat()
+                    )
+
+                    # Get observations for this report
+                    obs_result = await session.execute(
+                        select(Observation).where(Observation.report_id == report_id)
+                    )
+                    observations = obs_result.scalars().all()
+
+                    if observations:
+                        # Format observations for graph
+                        obs_texts = []
+                        for obs in observations:
+                            status = "Abnormal" if obs.is_abnormal else "Normal"
+                            obs_texts.append(
+                                f"{obs.metric_name}: {obs.value} {obs.unit} ({status})"
+                            )
+
+                        await graph_service.add_observations(
+                            obs_texts,
+                            source=f"report_{report.filename}"
+                        )
+
+            logger.info(f"Background sync complete for report {report_id}")
+
+        except Exception as e:
+            logger.error(f"Background sync failed for report {report_id}: {e}")
+
     # =========================================================================
     # REPROCESSING
     # =========================================================================

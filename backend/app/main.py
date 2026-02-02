@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.settings import settings
 from app.db import init_db
+from app.services.graph_service import get_graph_service
 from app.routes import auth, health, dashboard, reports, assistant, recommendations
 from app.routes.profile import router as profile_router
 from app.routes.websocket import router as websocket_router
@@ -10,10 +11,18 @@ from app.routes.documents import router as documents_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Initialize Database
     try:
         await init_db()
     except Exception as e:
         print(f"DB init warning: {e}")
+
+    # Initialize Knowledge Graph
+    try:
+        await get_graph_service().initialize()
+    except Exception as e:
+        print(f"Graph service init warning: {e}")
+
     yield
 
 app = FastAPI(title="Co-Code GGW Health Platform API", lifespan=lifespan)
