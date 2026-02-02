@@ -16,8 +16,8 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = '4b7c2e891234_add_ocr_pipeline_tables'
-down_revision = '3a8f12d90123_add_health_profile_tables'
+revision = '4b7c2e891234'
+down_revision = '3a8f12d90123'
 branch_labels = None
 depends_on = None
 

@@ -1,8 +1,19 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import declarative_base
+from sqlalchemy.pool import NullPool
 from app.settings import settings
 
-engine = create_async_engine(settings.database_url, echo=False)
+# Use NullPool for async to avoid connection pool exhaustion issues
+# Each request gets a fresh connection that's returned immediately after use
+engine = create_async_engine(
+    settings.database_url, 
+    echo=False,
+    pool_pre_ping=True,  # Verify connections are alive before use
+    pool_size=20,        # Increase base pool size
+    max_overflow=40,     # Allow more overflow connections
+    pool_timeout=60,     # Wait longer before timeout
+    pool_recycle=1800,   # Recycle connections after 30 minutes
+)
 async_session_maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 # For backwards compatibility - also export as async_session
@@ -12,7 +23,10 @@ Base = declarative_base()
 
 async def get_db():
     async with async_session_maker() as session:
-        yield session
+        try:
+            yield session
+        finally:
+            await session.close()
 
 async def init_db():
     async with engine.begin() as conn:

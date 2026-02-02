@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { FileText, Download, Share2, Upload, Wifi, WifiOff } from 'lucide-react';
+import { Upload } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import DashboardNavbar from '../components/dashboard/DashboardNavbar';
 import HealthIndexCard from '../components/dashboard/HealthIndexCard';
+import HealthSummaryCard from '../components/dashboard/HealthSummaryCard';
 import ChatPanel from '../components/dashboard/ChatPanel';
 import TrendsCard from '../components/dashboard/TrendsCard';
 import RecommendationsPanel from '../components/RecommendationsPanel';
@@ -213,10 +214,13 @@ function Dashboard() {
 
           {/* Top Row: Health Index + Chat */}
           <div className="dashboard-main-grid">
-            <HealthIndexCard
-              selectedFactor={selectedFactor}
-              onFactorSelect={handleFactorSelect}
-            />
+            <div className="dashboard-health-column">
+              <HealthIndexCard
+                selectedFactor={selectedFactor}
+                onFactorSelect={handleFactorSelect}
+              />
+              <HealthSummaryCard />
+            </div>
             <ChatPanel />
           </div>
 

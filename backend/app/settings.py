@@ -22,7 +22,8 @@ class Settings(BaseSettings):
     USE_GEMINI_FALLBACK: bool = True
     GEMINI_API_KEY: Optional[str] = None
     
-    # Grok/xAI API for LLM extraction fallback
+    # Grok/xAI API for recommendations and LLM extraction
+    grok_api_key: Optional[str] = None
     xai_api_key: Optional[str] = None
     xai_api_base: str = "https://api.x.ai/v1"
     grok_model: str = "grok-beta"

@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Settings, LogOut, Home, LayoutDashboard, Bell, FileText } from 'lucide-react';
+import { Search, Settings, LogOut, Home, LayoutDashboard, Bell, FileText, Activity, Sparkles } from 'lucide-react';
+import { logout } from '../../utils/auth';
 import './DashboardNavbar.css';
 
 interface DashboardNavbarProps {
@@ -11,6 +12,7 @@ interface DashboardNavbarProps {
 
 function DashboardNavbar({ userName = 'User', userStatus = '87% Healthy' }: DashboardNavbarProps) {
   const location = useLocation();
+  const navigate = useNavigate();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -18,9 +20,17 @@ function DashboardNavbar({ userName = 'User', userStatus = '87% Healthy' }: Dash
     { label: 'Home', path: '/', icon: Home },
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { label: 'Reports', path: '/reports', icon: FileText },
+    { label: 'AI Summary', path: '/report-summary', icon: Sparkles },
+    { label: 'Recommendations', path: '/recommendations', icon: Activity },
   ];
 
   const isActive = (path: string) => location.pathname === path;
+
+  const handleLogout = async () => {
+    setIsUserMenuOpen(false);
+    await logout();
+    navigate('/', { replace: true });
+  };
 
   return (
     <motion.nav
@@ -133,11 +143,7 @@ function DashboardNavbar({ userName = 'User', userStatus = '87% Healthy' }: Dash
                   <div className="dashboard-user-dropdown-divider" />
                   <button
                     className="dashboard-user-dropdown-item"
-                    onClick={() => {
-                      setIsUserMenuOpen(false);
-                      // TODO: Implement logout
-                      console.log('Logout clicked');
-                    }}
+                    onClick={handleLogout}
                   >
                     <LogOut size={16} />
                     Logout

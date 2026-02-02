@@ -333,3 +333,58 @@
     gap: 12px;
   }
 }
+
+/* Debug Section - Dev Only */
+.settings-debug {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px dashed #e0e0e0;
+}
+
+.settings-debug-toggle {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 4px 0;
+  font-family: monospace;
+}
+
+.settings-debug-toggle:hover {
+  color: #666;
+}
+
+.settings-debug-content {
+  margin-top: 12px;
+  padding: 12px;
+  background: #f8f8f8;
+  border-radius: 8px;
+  font-family: monospace;
+  font-size: 12px;
+}
+
+.settings-debug-content .debug-timestamp {
+  margin: 0 0 8px 0;
+  color: #666;
+}
+
+.settings-debug-content details {
+  margin-top: 12px;
+}
+
+.settings-debug-content summary {
+  cursor: pointer;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.settings-debug-content pre {
+  background: white;
+  padding: 12px;
+  border-radius: 4px;
+  overflow: auto;
+  max-height: 200px;
+  font-size: 11px;
+  border: 1px solid #e0e0e0;
+}

@@ -58,6 +58,9 @@ interface RecommendationsPanelProps {
   apiBaseUrl?: string;
   maxInitialDisplay?: number;
   refreshTrigger?: number; // Increment this to trigger a refresh (from WebSocket events)
+  showGenerateButton?: boolean; // Show generate button for generating new recommendations
+  onRecommendationsGenerated?: () => void; // Callback after generating recommendations
+  variant?: 'dashboard' | 'page'; // Layout variant
 }
 
 // Action type to icon mapping
@@ -85,9 +88,13 @@ const RecommendationsPanel: React.FC<RecommendationsPanelProps> = ({
   apiBaseUrl = 'http://localhost:8000',
   maxInitialDisplay = 3,
   refreshTrigger = 0,
+  showGenerateButton = true,
+  onRecommendationsGenerated,
+  variant = 'dashboard',
 }) => {
   const [recommendations, setRecommendations] = useState<RecommendationsResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
@@ -133,6 +140,32 @@ const RecommendationsPanel: React.FC<RecommendationsPanelProps> = ({
       fetchRecommendations();
     }
   }, [refreshTrigger, fetchRecommendations]);
+
+  // Generate new recommendations
+  const handleGenerateRecommendations = async () => {
+    if (!authToken) return;
+    
+    setGenerating(true);
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/recommendations/generate`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        // Refresh recommendations after generating
+        await fetchRecommendations();
+        onRecommendationsGenerated?.();
+      }
+    } catch (err) {
+      console.error('Error generating recommendations:', err);
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   const toggleCardExpanded = (id: string) => {
     setExpandedCards(prev => {
@@ -181,19 +214,43 @@ const RecommendationsPanel: React.FC<RecommendationsPanelProps> = ({
 
   if (!recommendations || recommendations.items.length === 0) {
     return (
-      <div className="recommendations-panel">
+      <div className={`recommendations-panel ${variant === 'page' ? 'recommendations-panel-page' : ''}`}>
         <div className="recommendations-header">
           <h2>
             <Lightbulb size={22} />
             Recommendations
           </h2>
+          {showGenerateButton && (
+            <button
+              className="recommendations-generate-btn"
+              onClick={handleGenerateRecommendations}
+              disabled={generating}
+            >
+              {generating ? (
+                <><RefreshCw size={16} className="spinning" /> Generating...</>
+              ) : (
+                <><Sparkles size={16} /> Generate</>               )}
+            </button>
+          )}
         </div>
         <div className="recommendations-empty">
-          <CheckCircle2 size={48} />
-          <h3>Looking Good!</h3>
+          <Sparkles size={48} />
+          <h3>No recommendations yet</h3>
           <p>
-            No specific recommendations at this time. Keep up the healthy habits!
+            Generate personalized recommendations based on your health profile and reports.
           </p>
+          {showGenerateButton && (
+            <button
+              className="recommendations-generate-btn recommendations-generate-btn-lg"
+              onClick={handleGenerateRecommendations}
+              disabled={generating}
+            >
+              {generating ? (
+                <><RefreshCw size={18} className="spinning" /> Generating...</>
+              ) : (
+                <><Sparkles size={18} /> Generate Recommendations</>               )}
+            </button>
+          )}
         </div>
         <div className="recommendations-disclaimer">
           <Shield size={18} />
@@ -204,12 +261,26 @@ const RecommendationsPanel: React.FC<RecommendationsPanelProps> = ({
   }
 
   return (
-    <div className="recommendations-panel">
+    <div className={`recommendations-panel ${variant === 'page' ? 'recommendations-panel-page' : ''}`}>
       <div className="recommendations-header">
-        <h2>
-          <Lightbulb size={22} />
-          Recommendations
-        </h2>
+        <div className="recommendations-header-left">
+          <h2>
+            <Lightbulb size={22} />
+            Recommendations
+          </h2>
+          {showGenerateButton && (
+            <button
+              className="recommendations-generate-btn"
+              onClick={handleGenerateRecommendations}
+              disabled={generating}
+            >
+              {generating ? (
+                <><RefreshCw size={16} className="spinning" /> Generating...</>
+              ) : (
+                <><RefreshCw size={16} /> Refresh</>               )}
+            </button>
+          )}
+        </div>
         <div className="recommendations-badges">
           {recommendations.urgent_count > 0 && (
             <span className="badge urgent">

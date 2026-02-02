@@ -5,11 +5,25 @@
   margin-top: 24px;
 }
 
+.recommendations-panel-page {
+  max-width: 100%;
+  margin-top: 0;
+}
+
 .recommendations-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.recommendations-header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
 .recommendations-header h2 {
@@ -20,6 +34,45 @@
   font-weight: 600;
   color: #333;
   margin: 0;
+}
+
+.recommendations-generate-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: var(--dash-accent, #6b9175);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.recommendations-generate-btn:hover:not(:disabled) {
+  background: var(--dash-accent-dark, #4a7c59);
+  transform: translateY(-1px);
+}
+
+.recommendations-generate-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.recommendations-generate-btn-lg {
+  padding: 12px 20px;
+  font-size: 1rem;
+  margin-top: 16px;
+}
+
+.recommendations-generate-btn .spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .recommendations-badges {

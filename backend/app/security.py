@@ -1,8 +1,9 @@
 import bcrypt
+import logging
 from jose import jwt, JWTError
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING
-from fastapi import Depends, HTTPException
+from typing import TYPE_CHECKING, Optional
+from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -11,8 +12,10 @@ from app.settings import settings
 if TYPE_CHECKING:
     from app.models import User
 
-# HTTPBearer security scheme
-security = HTTPBearer()
+logger = logging.getLogger(__name__)
+
+# HTTPBearer security scheme - auto_error=False to handle missing tokens gracefully
+security = HTTPBearer(auto_error=False)
 
 def hash_password(password: str) -> str:
     password_bytes = password.encode('utf-8')
@@ -38,35 +41,72 @@ def decode_access_token(token: str) -> dict:
         return None
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
 ) -> "User":
     """
     Dependency to get the current authenticated user from JWT token.
     
+    Supports both:
+    - Authorization: Bearer <token> header
+    - auth_token cookie (for browser sessions)
+    
     Gets its own database session internally to avoid circular import issues.
-    Routes using this don't need to pass db separately.
     """
     from app.models import User
-    from app.db import get_db
     
-    # Get database session
-    async for db in get_db():
+    # Try to get token from multiple sources
+    token = None
+    
+    # 1. Try Bearer token from Authorization header
+    if credentials and credentials.credentials:
         token = credentials.credentials
-        payload = decode_access_token(token)
-        
-        if not payload:
-            raise HTTPException(status_code=401, detail="Invalid or expired token")
-        
-        user_id = payload.get("sub")
-        if not user_id:
-            raise HTTPException(status_code=401, detail="Invalid token payload")
-        
-        result = await db.execute(select(User).where(User.id == user_id))
-        user = result.scalar_one_or_none()
-        
-        if not user:
-            raise HTTPException(status_code=401, detail="User not found")
-        
-        return user
+        logger.debug(f"Auth: Got Bearer token from header")
     
-    raise HTTPException(status_code=500, detail="Database connection failed")
+    # 2. Fall back to cookie
+    if not token:
+        token = request.cookies.get("auth_token")
+        if token:
+            logger.debug(f"Auth: Got token from cookie")
+    
+    # 3. Try raw Authorization header (some clients may not use HTTPBearer format)
+    if not token:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:]
+            logger.debug(f"Auth: Got token from raw Authorization header")
+    
+    if not token:
+        logger.warning("Auth: No token found in request")
+        raise HTTPException(status_code=401, detail="Not authenticated - no token provided")
+    
+    # Decode token
+    payload = decode_access_token(token)
+    if not payload:
+        logger.warning("Auth: Invalid or expired token")
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    
+    user_id = payload.get("sub")
+    if not user_id:
+        logger.warning("Auth: Token missing 'sub' claim")
+        raise HTTPException(status_code=401, detail="Invalid token payload")
+    
+    # Get database session and fetch user - use context manager to ensure cleanup
+    from app.db import async_session_maker
+    
+    async with async_session_maker() as db:
+        try:
+            result = await db.execute(select(User).where(User.id == user_id))
+            user = result.scalar_one_or_none()
+            
+            if not user:
+                logger.warning(f"Auth: User {user_id} not found in database")
+                raise HTTPException(status_code=401, detail="User not found")
+            
+            logger.debug(f"Auth: Authenticated user {user.email}")
+            return user
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Auth: Database error - {e}")
+            raise HTTPException(status_code=500, detail="Database error during authentication")
