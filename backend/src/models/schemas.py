@@ -303,13 +303,14 @@ class AssistantChatRequest(BaseModel):
 
 
 class Citation(BaseModel):
-    report_id: Optional[UUID]
-    report_name: Optional[str]
-    report_date: Optional[datetime]
-    observation_id: Optional[UUID]
-    metric_name: Optional[str]
-    value: Optional[str]
-    excerpt: Optional[str]
+    # Optional fields must default to None in Pydantic v2, otherwise they are still required.
+    report_id: Optional[UUID] = None
+    report_name: Optional[str] = None
+    report_date: Optional[datetime] = None
+    observation_id: Optional[UUID] = None
+    metric_name: Optional[str] = None
+    value: Optional[str] = None
+    excerpt: Optional[str] = None
 
 
 class AssistantChatResponse(BaseModel):
