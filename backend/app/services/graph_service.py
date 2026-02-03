@@ -2,13 +2,22 @@ import logging
 import asyncio
 from typing import List, Dict, Any, Optional
 from neo4j import GraphDatabase
+
 try:
-    from graphiti_core import Graphiti as GraphitiClient
-except ImportError:
+    from graphiti_core import Graphiti
+    from graphiti_core.llm_client import OpenAIClient, LLMConfig
     try:
-        from graphiti_core import GraphitiClient
+        from graphiti_core.driver import Neo4jDriver
     except ImportError:
-        GraphitiClient = None
+        from graphiti_core.driver.neo4j_driver import Neo4jDriver
+    GRAPHITI_AVAILABLE = True
+except ImportError:
+    GRAPHITI_AVAILABLE = False
+    Graphiti = None
+    OpenAIClient = None
+    LLMConfig = None
+    Neo4jDriver = None
+
 from app.settings import settings
 
 # Configure logger
@@ -42,35 +51,52 @@ class GraphService:
         Initialize the Neo4j driver and Graphiti client asynchronously.
         This should be called at application startup.
         """
-        if GraphitiClient is None:
-            logger.warning("GraphitiClient not available, graph features disabled")
+        if not GRAPHITI_AVAILABLE:
+            logger.warning("Graphiti libraries not installed, graph features disabled")
             return
-            
+
         if self.client is not None:
             return
 
         def _sync_init():
             try:
-                # 1. Initialize Neo4j Driver
-                self.driver = GraphDatabase.driver(
-                    settings.NEO4J_URI,
+                logger.info("Initializing Graphiti with Neo4j and Ollama...")
+
+                # 1. Initialize Neo4j Driver for Graphiti
+                # Graphiti has its own driver wrapper
+                neo4j_driver = Neo4jDriver(
+                    uri=settings.NEO4J_URI,
                     auth=(settings.NEO4J_USER, settings.NEO4J_PASSWORD)
                 )
 
-                # Verify connection
-                self.driver.verify_connectivity()
-                logger.info("Neo4j connection verified successfully")
+                # 2. Initialize LLM Client (Ollama via OpenAI compatible endpoint)
+                llm_config = LLMConfig(
+                    api_key="ollama",  # Dummy key for Ollama
+                    base_url=f"{settings.OLLAMA_BASE_URL}/v1",
+                    model=settings.OLLAMA_MODEL,
+                    temperature=0.1,
+                    max_tokens=4096
+                )
 
-                # 2. Skip Graphiti initialization for now - requires investigation of correct API
-                # The Graphiti library API is being used incorrectly, causing initialization to fail
-                # Features will be degraded but the app will still function
-                if GraphitiClient is not None:
-                    logger.warning("Graphiti client available but skipping initialization pending API review")
+                llm_client = OpenAIClient(
+                    config=llm_config
+                )
+
+                # 3. Initialize Graphiti Client
+                self.client = Graphiti(
+                    llm_client=llm_client,
+                    graph_driver=neo4j_driver
+                )
+
+                # Build indices
+                self.client.build_indices_and_constraints()
+
+                logger.info("Graphiti initialized successfully")
 
             except Exception as e:
                 logger.error(f"Failed to initialize GraphService: {e}")
-                # Don't raise here to prevent app crash, but log heavily
                 # Service will be degraded (graph features won't work)
+                self.client = None
 
         await asyncio.to_thread(_sync_init)
 
@@ -89,9 +115,10 @@ class GraphService:
 
         def _sync_add():
             self.client.add_episode(
-                text=content,
-                source=source,
-                timestamp=timestamp
+                name=f"Episode from {source}",
+                episode_body=content,
+                source_description=source,
+                reference_time=timestamp
             )
 
         try:
@@ -120,8 +147,22 @@ class GraphService:
             return []
 
         def _sync_search():
+            # Graphiti search returns SearchResult objects
             results = self.client.search(query, limit=limit)
-            return results
+
+            # Format results into strings
+            formatted_results = []
+            if results and hasattr(results, 'edges'):
+                for edge in results.edges:
+                    formatted_results.append(
+                        f"{edge.source_node.name} -> {edge.relation} -> {edge.target_node.name}"
+                    )
+            elif isinstance(results, list):
+                # Handle case where it might return a list directly
+                for item in results:
+                    formatted_results.append(str(item))
+
+            return formatted_results
 
         try:
             return await asyncio.to_thread(_sync_search)
@@ -131,9 +172,16 @@ class GraphService:
 
     async def close(self):
         """Close the Neo4j driver"""
-        if self.driver:
-            await asyncio.to_thread(self.driver.close)
-            logger.info("Neo4j driver closed")
+        # Graphiti driver doesn't explicitly expose close, but we can try
+        if self.client and self.client.graph_driver:
+            try:
+                if hasattr(self.client.graph_driver, 'close'):
+                    await asyncio.to_thread(self.client.graph_driver.close)
+                elif hasattr(self.client.graph_driver, 'driver'):
+                     await asyncio.to_thread(self.client.graph_driver.driver.close)
+                logger.info("Graphiti driver closed")
+            except Exception as e:
+                logger.warning(f"Error closing graph driver: {e}")
 
 # Global instance
 graph_service = GraphService()
