@@ -5,7 +5,7 @@
  */
 import { useEffect, useRef, useCallback, useState } from 'react';
 
-export type WebSocketEventType = 
+export type WebSocketEventType =
   | 'connected'
   | 'ping'
   | 'pong'
@@ -75,7 +75,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
   const pongTimeoutRef = useRef<number | null>(null);
   const connectionTimeRef = useRef<number | null>(null);
   const shouldReconnectRef = useRef(true);
-  
+
   const [isConnected, setIsConnected] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
@@ -143,11 +143,6 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
       console.log('WebSocket already connecting/connected');
       return;
     }
-    // Don't create multiple connections
-    if (wsRef.current?.readyState === WebSocket.OPEN || wsRef.current?.readyState === WebSocket.CONNECTING) {
-      console.log('WebSocket already connecting/connected');
-      return;
-    }
 
     cleanup();
 
@@ -158,17 +153,17 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     ws.onopen = () => {
       console.log('✅ WebSocket connected');
       setIsConnected(true);
-      
+
       // Reset backoff after stable connection
       connectionTimeRef.current = window.setTimeout(() => {
         reconnectDelayRef.current = INITIAL_RECONNECT_DELAY_MS;
         console.log('Connection stable, backoff reset');
       }, CONNECTION_STABILITY_MS);
-      
+
       // Start ping interval
       pingIntervalRef.current = window.setInterval(sendPing, PING_INTERVAL_MS);
       resetPongTimeout();
-      
+
       options.onConnected?.();
     };
 
@@ -223,7 +218,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
       // Reconnect with exponential backoff
       const delay = Math.min(reconnectDelayRef.current, MAX_RECONNECT_DELAY_MS);
       console.log(`Reconnecting in ${delay}ms...`);
-      
+
       reconnectTimeoutRef.current = window.setTimeout(() => {
         // Increase delay for next time (exponential backoff)
         reconnectDelayRef.current = Math.min(reconnectDelayRef.current * 2, MAX_RECONNECT_DELAY_MS);
@@ -305,7 +300,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
   useEffect(() => {
     shouldReconnectRef.current = true;
     connect();
-    
+
     return () => {
       shouldReconnectRef.current = false;
       cleanup();

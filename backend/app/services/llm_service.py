@@ -169,7 +169,7 @@ class LLMService:
             
             if not self._gemini_client:
                 genai.configure(api_key=settings.GEMINI_API_KEY)
-                self._gemini_client = genai.GenerativeModel("gemini-1.5-flash")
+                self._gemini_client = genai.GenerativeModel("gemini-3-flash-preview")
             
             response = await asyncio.to_thread(
                 lambda: self._gemini_client.generate_content(

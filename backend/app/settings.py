@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     
     # Gemini Fallback (optional)
     USE_GEMINI_FALLBACK: bool = True
+    USE_GEMINI: bool = True # Alias for compatibility
     GEMINI_API_KEY: Optional[str] = None
     
     # Grok/xAI API for LLM extraction fallback

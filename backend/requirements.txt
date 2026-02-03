@@ -37,8 +37,8 @@ huggingface_hub>=0.23.0
 # Memory layer (Mem0)
 mem0ai>=0.1.0
 
-# Knowledge graph (Graphiti)
-graphiti-core>=0.5.0
+# Knowledge graph (Graphiti with Gemini support)
+graphiti-core[google-genai]>=0.5.0
 
 # Neo4j driver (required by both Mem0 and Graphiti)
 neo4j>=5.26.0

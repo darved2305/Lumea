@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { FileText, Download, Share2, Upload, Wifi, WifiOff } from 'lucide-react';
+import { Upload } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import DashboardNavbar from '../components/dashboard/DashboardNavbar';
 import HealthIndexCard from '../components/dashboard/HealthIndexCard';
@@ -34,7 +34,7 @@ function Dashboard() {
   const [recommendationsRefreshTrigger, setRecommendationsRefreshTrigger] = useState(0);
 
   // WebSocket for real-time updates
-  const { isConnected } = useWebSocket({
+  useWebSocket({
     onHealthIndexUpdated: useCallback((data: HealthIndexUpdate) => {
       setHealthIndex(data.score);
       setLastUpdated(new Date(data.updated_at));

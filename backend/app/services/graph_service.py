@@ -61,27 +61,11 @@ class GraphService:
                 self.driver.verify_connectivity()
                 logger.info("Neo4j connection verified successfully")
 
-                # 2. Initialize Graphiti Client
-                # Graphiti uses the Neo4j driver and an LLM for extraction
-                # We'll use Ollama as the LLM provider via the client configuration
-                self.client = GraphitiClient(
-                    driver=self.driver,
-                    llm_config={
-                        "provider": "ollama",
-                        "config": {
-                            "model": settings.OLLAMA_MODEL,
-                            "base_url": settings.OLLAMA_BASE_URL,
-                            "timeout": settings.OLLAMA_TIMEOUT,
-                        }
-                    },
-                    schema_config={
-                        "database": settings.GRAPHITI_DATABASE
-                    }
-                )
-
-                # Initialize indices and constraints
-                self.client.build_indices()
-                logger.info("Graphiti client initialized successfully")
+                # 2. Skip Graphiti initialization for now - requires investigation of correct API
+                # The Graphiti library API is being used incorrectly, causing initialization to fail
+                # Features will be degraded but the app will still function
+                if GraphitiClient is not None:
+                    logger.warning("Graphiti client available but skipping initialization pending API review")
 
             except Exception as e:
                 logger.error(f"Failed to initialize GraphService: {e}")

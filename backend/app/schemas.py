@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field, validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, ConfigDict
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 from uuid import UUID
@@ -19,8 +19,7 @@ class UserResponse(UserBase):
     id: UUID
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class TokenResponse(BaseModel):
     access_token: str
@@ -38,7 +37,8 @@ class PatientProfileCreate(BaseModel):
     last_dental_at: Optional[datetime] = None
     last_eye_exam_at: Optional[datetime] = None
 
-    @validator('conditions', pre=True, always=True)
+    @field_validator('conditions', mode='before')
+    @classmethod
     def validate_conditions(cls, v):
         if v is None:
             return []
@@ -71,8 +71,7 @@ class PatientProfileResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # Reminder schemas
 class ReminderItem(BaseModel):
@@ -96,8 +95,7 @@ class ChatMessageResponse(BaseModel):
     content: str
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ChatSessionResponse(BaseModel):
     id: UUID
@@ -161,8 +159,7 @@ class BootstrapResponse(BaseModel):
     health_index_confidence: Optional[float] = None
     last_report_date: Optional[datetime] = None
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # DASHBOARD
@@ -182,8 +179,7 @@ class DashboardSummary(BaseModel):
     last_updated: datetime
     factors: List[FactorContribution]
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TimeSeriesPoint(BaseModel):
@@ -205,8 +201,7 @@ class TrendsResponse(BaseModel):
     data: List[TimeSeriesPoint]
     stats: TrendsStats
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # REPORTS
@@ -222,8 +217,7 @@ class ReportListItem(BaseModel):
     extraction_confidence: Optional[float]
     observation_count: int = 0
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ReportDetail(BaseModel):
@@ -240,8 +234,7 @@ class ReportDetail(BaseModel):
     extraction_confidence: Optional[float]
     error_message: Optional[str]
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ExtractedValue(BaseModel):
@@ -279,8 +272,7 @@ class ObservationResponse(BaseModel):
     notes: Optional[str]
     created_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ASSISTANT
@@ -307,8 +299,7 @@ class AssistantChatResponse(BaseModel):
     citations: List[Citation]
     created_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # EVENTS (SSE)
@@ -350,8 +341,7 @@ class ProfileAnswerResponse(BaseModel):
     answer_data: AnswerData
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Condition schemas
@@ -371,8 +361,7 @@ class ProfileConditionResponse(BaseModel):
     is_active: bool
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Symptom schemas
@@ -393,8 +382,7 @@ class ProfileSymptomResponse(BaseModel):
     notes: Optional[str]
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Medication schemas
@@ -416,8 +404,7 @@ class ProfileMedicationResponse(BaseModel):
     is_active: bool
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Supplement schemas
@@ -435,8 +422,7 @@ class ProfileSupplementResponse(BaseModel):
     is_active: bool
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Allergy schemas
@@ -457,8 +443,7 @@ class ProfileAllergyResponse(BaseModel):
     notes: Optional[str]
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Family history schemas
@@ -479,8 +464,7 @@ class ProfileFamilyHistoryResponse(BaseModel):
     notes: Optional[str]
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Genetic test schemas
@@ -501,8 +485,7 @@ class ProfileGeneticTestResponse(BaseModel):
     notes: Optional[str]
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Core profile update schema
@@ -539,8 +522,7 @@ class DerivedFeatureResponse(BaseModel):
     feature_value: Dict[str, Any]
     computed_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ProfileCompletionResponse(BaseModel):
@@ -562,8 +544,7 @@ class ProfileRecommendationResponse(BaseModel):
     is_active: bool
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Full profile response
@@ -602,8 +583,7 @@ class UserProfileResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class FullProfileResponse(BaseModel):
