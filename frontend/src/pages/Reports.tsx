@@ -16,9 +16,8 @@ import {
 import DashboardNavbar from '../components/dashboard/DashboardNavbar';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { HealthProfileCard } from '../components/profile';
+import { API_BASE_URL } from '../config/api';
 import './Reports.css';
-
-const API_BASE = 'http://localhost:8000';
 
 // Types
 interface Report {
@@ -111,7 +110,7 @@ function Reports() {
 
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE}/api/reports`, {
+      const response = await fetch(`${API_BASE_URL}/api/reports`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -259,7 +258,7 @@ function Reports() {
           });
         };
 
-        xhr.open('POST', `${API_BASE}/api/reports/upload`);
+        xhr.open('POST', `${API_BASE_URL}/api/reports/upload`);
         xhr.setRequestHeader('Authorization', `Bearer ${token}`);
         // DO NOT set Content-Type - browser will set it with boundary for multipart
         xhr.send(formData);
@@ -327,7 +326,7 @@ function Reports() {
     if (!token) return;
 
     try {
-      const response = await fetch(`${API_BASE}/api/reports/${report.id}/debug`, {
+      const response = await fetch(`${API_BASE_URL}/api/reports/${report.id}/debug`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {
@@ -344,7 +343,7 @@ function Reports() {
     if (!token) return;
 
     try {
-      window.open(`${API_BASE}/api/reports/${report.id}/download?token=${token}`, '_blank');
+      window.open(`${API_BASE_URL}/api/reports/${report.id}/download?token=${token}`, '_blank');
     } catch (error) {
       console.error('Error downloading report:', error);
       alert('Download feature coming soon. File is stored at: ' + report.name);
@@ -373,7 +372,7 @@ function Reports() {
     if (!token) return;
 
     try {
-      const response = await fetch(`${API_BASE}/api/reports/${report.id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/reports/${report.id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });

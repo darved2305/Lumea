@@ -4,6 +4,7 @@
  * Replaces SSE with WebSocket for bidirectional communication
  */
 import { useEffect, useRef, useCallback, useState } from 'react';
+import { WS_BASE_URL } from '../config/api';
 
 export type WebSocketEventType =
   | 'connected'
@@ -60,7 +61,6 @@ interface UseWebSocketOptions {
   onError?: (error: Event) => void;
 }
 
-const WS_BASE_URL = 'ws://localhost:8000';
 const INITIAL_RECONNECT_DELAY_MS = 1000;
 const MAX_RECONNECT_DELAY_MS = 30000;
 const PING_INTERVAL_MS = 25000; // Ping every 25 seconds
@@ -75,6 +75,8 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
   const pongTimeoutRef = useRef<number | null>(null);
   const connectionTimeRef = useRef<number | null>(null);
   const shouldReconnectRef = useRef(true);
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
 
   const [isConnected, setIsConnected] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -163,14 +165,13 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
       // Start ping interval
       pingIntervalRef.current = window.setInterval(sendPing, PING_INTERVAL_MS);
       resetPongTimeout();
-
-      options.onConnected?.();
+      optionsRef.current.onConnected?.();
     };
 
     ws.onclose = (event) => {
       console.log(`WebSocket closed: code=${event.code}, reason="${event.reason}"`);
       setIsConnected(false);
-      options.onDisconnected?.();
+      optionsRef.current.onDisconnected?.();
 
       // Clear intervals
       if (pingIntervalRef.current) {
@@ -228,57 +229,56 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
 
     ws.onerror = (error) => {
       console.error('❌ WebSocket error:', error);
-      options.onError?.(error);
+      optionsRef.current.onError?.(error);
     };
 
     ws.onmessage = (event) => {
       try {
         const message: WebSocketMessage = JSON.parse(event.data);
-        setLastUpdated(new Date(message.timestamp));
+        const data = message.data ?? {};
+        if (message.timestamp) setLastUpdated(new Date(message.timestamp));
 
         switch (message.type) {
           case 'connected':
-            console.log('WebSocket handshake complete:', message.data.message);
+            console.log('WebSocket handshake complete:', data.message);
             break;
 
           case 'pong':
-            // Keepalive response - reset timeout
             resetPongTimeout();
             break;
 
           case 'ping':
-            // Server ping - respond with pong
             if (wsRef.current?.readyState === WebSocket.OPEN) {
               wsRef.current.send(JSON.stringify({ type: 'pong' }));
             }
             break;
 
           case 'health_index_updated':
-            options.onHealthIndexUpdated?.(message.data as HealthIndexUpdate);
+            optionsRef.current.onHealthIndexUpdated?.(data as HealthIndexUpdate);
             break;
 
           case 'report_processing_started':
-            options.onReportProcessingStarted?.(message.data as ReportProcessingUpdate);
+            optionsRef.current.onReportProcessingStarted?.(data as ReportProcessingUpdate);
             break;
 
           case 'report_parsed':
-            options.onReportParsed?.(message.data as ReportProcessingUpdate);
+            optionsRef.current.onReportParsed?.(data as ReportProcessingUpdate);
             break;
 
           case 'reports_list_updated':
-            options.onReportsListUpdated?.();
+            optionsRef.current.onReportsListUpdated?.();
             break;
 
           case 'trends_updated':
-            options.onTrendsUpdated?.(message.data.metrics);
+            optionsRef.current.onTrendsUpdated?.(data.metrics ?? []);
             break;
 
           case 'recommendations_updated':
-            options.onRecommendationsUpdated?.(message.data as RecommendationsUpdate);
+            optionsRef.current.onRecommendationsUpdated?.(data as RecommendationsUpdate);
             break;
 
           case 'profile_updated':
-            options.onProfileUpdated?.(message.data as ProfileUpdate);
+            optionsRef.current.onProfileUpdated?.(data as ProfileUpdate);
             break;
 
           default:
@@ -288,7 +288,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
         console.error('Error parsing WebSocket message:', e);
       }
     };
-  }, [getToken, cleanup, sendPing, resetPongTimeout, options]);
+  }, [getToken, cleanup, sendPing, resetPongTimeout]);
 
   const disconnect = useCallback(() => {
     shouldReconnectRef.current = false;

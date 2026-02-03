@@ -9,8 +9,9 @@ import {
   type TimeSeriesPoint,
   type ChatMessage,
 } from '../services/dashboardData';
+import { API_BASE_URL, WS_BASE_URL } from '../config/api';
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = API_BASE_URL;
 
 // Hook for health summary data - fetches from REAL API
 export function useHealthSummary() {
@@ -160,7 +161,7 @@ Ask me anything about your health metrics, lab results, or what you can do to im
     const token = localStorage.getItem('access_token');
     if (!token) return;
 
-    const ws = new WebSocket(`ws://localhost:8000/ws?token=${token}`);
+    const ws = new WebSocket(`${WS_BASE_URL}/ws?token=${token}`);
     wsRef.current = ws;
 
     ws.onmessage = (event) => {
@@ -209,22 +210,20 @@ Ask me anything about your health metrics, lab results, or what you can do to im
             break;
             
           case 'chat_token':
-            // Append streamed token
-            if (currentMessageIdRef.current) {
+            if (currentMessageIdRef.current && message.data?.token != null) {
               tokenBufferRef.current += message.data.token;
               scheduleFlush();
             }
             break;
-            
+
           case 'chat_complete':
-            // Finalize the message
             if (flushTimerRef.current) {
               clearTimeout(flushTimerRef.current);
               flushTimerRef.current = null;
             }
             flushBufferedTokens();
             if (currentMessageIdRef.current) {
-              const finalContent = message.data.full_response;
+              const finalContent = message.data?.full_response;
               if (finalContent) {
                 upsertAssistantMessage(currentMessageIdRef.current, msg => ({
                   ...msg,
@@ -237,24 +236,24 @@ Ask me anything about your health metrics, lab results, or what you can do to im
             currentMessageIdRef.current = null;
             break;
             
-          case 'chat_error':
-            // Handle error
+          case 'chat_error': {
             if (flushTimerRef.current) {
               clearTimeout(flushTimerRef.current);
               flushTimerRef.current = null;
             }
             tokenBufferRef.current = '';
+            const errText = message.data?.error != null ? String(message.data.error) : 'Unknown error';
             if (currentMessageIdRef.current) {
               upsertAssistantMessage(currentMessageIdRef.current, msg => ({
                 ...msg,
-                content: `Sorry, I encountered an error: ${message.data.error}. Please try again.`,
+                content: `Sorry, I encountered an error: ${errText}. Please try again.`,
                 timestamp: new Date(),
               }));
             } else {
               const errorMessage: ChatMessage = {
                 id: Date.now().toString(),
                 role: 'assistant',
-                content: `Sorry, I encountered an error: ${message.data.error}. Please try again.`,
+                content: `Sorry, I encountered an error: ${errText}. Please try again.`,
                 timestamp: new Date(),
               };
               setMessages(prev => [...prev, errorMessage]);
@@ -262,6 +261,7 @@ Ask me anything about your health metrics, lab results, or what you can do to im
             setIsTyping(false);
             currentMessageIdRef.current = null;
             break;
+          }
         }
       } catch (e) {
         console.error('Error parsing chat message:', e);

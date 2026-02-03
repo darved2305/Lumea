@@ -200,8 +200,11 @@ def _parse_grok_response(content: str) -> List[Dict[str, Any]]:
             return []
     
     try:
-        recommendations = json.loads(json_str)
-        # Validate structure
+        parsed = json.loads(json_str)
+        if not isinstance(parsed, list):
+            logger.warning("Grok response is not a list, got %s", type(parsed).__name__)
+            return []
+        recommendations = parsed
         valid_recs = []
         for rec in recommendations:
             if isinstance(rec, dict) and "title" in rec and "priority" in rec:

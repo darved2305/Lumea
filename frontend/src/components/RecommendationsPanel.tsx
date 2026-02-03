@@ -21,6 +21,7 @@ import {
   Sparkles,
   XCircle,
 } from 'lucide-react';
+import { API_BASE_URL } from '../config/api';
 import './RecommendationsPanel.css';
 
 // Types
@@ -53,6 +54,16 @@ interface RecommendationsResponse {
   warning_count: number;
 }
 
+/** Stored API returns priority as "high"|"medium"|"low" and description instead of why */
+interface StoredItem {
+  id: string;
+  title: string;
+  description?: string;
+  priority: string;
+  actions?: string[] | { type?: string; text: string }[];
+  evidence?: string[];
+}
+
 interface RecommendationsPanelProps {
   authToken?: string;
   apiBaseUrl?: string;
@@ -83,9 +94,29 @@ const severityIcons: Record<string, React.ReactNode> = {
   INFO: <Info size={18} />,
 };
 
+function mapStoredToRecommendation(stored: StoredItem): Recommendation {
+  const severityMap = { high: 'URGENT' as const, medium: 'WARNING' as const, low: 'INFO' as const };
+  const severity = severityMap[stored.priority as keyof typeof severityMap] ?? 'INFO';
+  const rawActions = stored.actions ?? [];
+  const actions: Action[] = rawActions.map((a) => {
+    if (typeof a === 'string') return { type: 'GENERAL' as const, text: a };
+    const text = a?.text != null ? String(a.text) : '';
+    return { type: ((a?.type as Action['type']) ?? 'GENERAL'), text };
+  });
+  return {
+    id: stored.id,
+    title: stored.title ?? '',
+    severity,
+    why: stored.description ?? '',
+    actions,
+    followup: [],
+    sources: [],
+  };
+}
+
 const RecommendationsPanel: React.FC<RecommendationsPanelProps> = ({
   authToken,
-  apiBaseUrl = 'http://localhost:8000',
+  apiBaseUrl = API_BASE_URL,
   maxInitialDisplay = 3,
   refreshTrigger = 0,
   showGenerateButton = true,
@@ -109,20 +140,35 @@ const RecommendationsPanel: React.FC<RecommendationsPanelProps> = ({
     setLoading(true);
     setError(null);
 
-    try {
-      const response = await fetch(`${apiBaseUrl}/api/recommendations`, {
-        headers: {
-          Authorization: `Bearer ${authToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
+    const headers = {
+      Authorization: `Bearer ${authToken}`,
+      'Content-Type': 'application/json',
+    };
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch recommendations: ${response.status}`);
+    try {
+      // Prefer stored (Grok-generated) when available; otherwise use rule-based
+      const [storedRes, ruleRes] = await Promise.all([
+        fetch(`${apiBaseUrl}/api/recommendations/stored`, { headers }),
+        fetch(`${apiBaseUrl}/api/recommendations`, { headers }),
+      ]);
+
+      if (storedRes.ok) {
+        const storedData = await storedRes.json();
+        if (storedData.items?.length > 0) {
+          const mapped: RecommendationsResponse = {
+            ...storedData,
+            items: storedData.items.map((item: StoredItem) => mapStoredToRecommendation(item)),
+          };
+          setRecommendations(mapped);
+          return;
+        }
       }
 
-      const data: RecommendationsResponse = await response.json();
-      setRecommendations(data);
+      if (!ruleRes.ok) {
+        throw new Error(`Failed to fetch recommendations: ${ruleRes.status}`);
+      }
+      const ruleData: RecommendationsResponse = await ruleRes.json();
+      setRecommendations(ruleData);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load recommendations');
     } finally {
@@ -144,8 +190,9 @@ const RecommendationsPanel: React.FC<RecommendationsPanelProps> = ({
   // Generate new recommendations
   const handleGenerateRecommendations = async () => {
     if (!authToken) return;
-    
+
     setGenerating(true);
+    setError(null);
     try {
       const response = await fetch(`${apiBaseUrl}/api/recommendations/generate`, {
         method: 'POST',
@@ -156,11 +203,23 @@ const RecommendationsPanel: React.FC<RecommendationsPanelProps> = ({
       });
 
       if (response.ok) {
-        // Refresh recommendations after generating
         await fetchRecommendations();
         onRecommendationsGenerated?.();
+      } else {
+        let message = `Generate failed (${response.status})`;
+        try {
+          const body = await response.json();
+          if (body?.error && typeof body.error === 'string') {
+            message = body.error;
+          }
+        } catch {
+          // ignore parse error
+        }
+        setError(message);
       }
     } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to generate recommendations';
+      setError(message);
       console.error('Error generating recommendations:', err);
     } finally {
       setGenerating(false);
@@ -312,13 +371,13 @@ const RecommendationsPanel: React.FC<RecommendationsPanelProps> = ({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ delay: index * 0.05 }}
-              className={`recommendation-card ${item.severity.toLowerCase()}`}
+              className={`recommendation-card ${(item.severity ?? 'info').toLowerCase()}`}
             >
               <div className="recommendation-header">
-                <h3 className="recommendation-title">{item.title}</h3>
-                <span className={`severity-tag ${item.severity.toLowerCase()}`}>
-                  {severityIcons[item.severity]}
-                  {item.severity}
+                <h3 className="recommendation-title">{item.title ?? ''}</h3>
+                <span className={`severity-tag ${(item.severity ?? 'info').toLowerCase()}`}>
+                  {severityIcons[item.severity ?? 'INFO']}
+                  {item.severity ?? 'INFO'}
                 </span>
               </div>
 
@@ -327,42 +386,42 @@ const RecommendationsPanel: React.FC<RecommendationsPanelProps> = ({
               <div className="recommendation-actions">
                 <h4>Suggested Actions</h4>
                 <div className="actions-list">
-                  {item.actions.slice(0, expandedCards.has(item.id) ? undefined : 3).map((action, idx) => (
-                    <span key={idx} className={`action-tag ${action.type.toLowerCase()}`}>
+                  {(item.actions ?? []).slice(0, expandedCards.has(item.id) ? undefined : 3).map((action, idx) => (
+                    <span key={idx} className={`action-tag ${(action.type ?? 'general').toLowerCase()}`}>
                       {actionIcons[action.type] || <ChevronRight size={14} />}
-                      {action.text}
+                      {action.text ?? ''}
                     </span>
                   ))}
-                  {item.actions.length > 3 && !expandedCards.has(item.id) && (
+                  {(item.actions ?? []).length > 3 && !expandedCards.has(item.id) && (
                     <button
                       className="action-tag"
                       onClick={() => toggleCardExpanded(item.id)}
                       style={{ cursor: 'pointer', background: '#f0f0f0' }}
                     >
-                      +{item.actions.length - 3} more
+                      +{(item.actions ?? []).length - 3} more
                     </button>
                   )}
                 </div>
               </div>
 
-              {item.followup.length > 0 && (
+              {(item.followup ?? []).length > 0 && (
                 <div className="recommendation-followup">
                   <h4>Follow-up</h4>
                   <div className="followup-list">
-                    {item.followup.map((follow, idx) => (
+                    {(item.followup ?? []).map((follow, idx) => (
                       <div key={idx} className="followup-item">
                         {actionIcons[follow.type] || <ChevronRight size={14} />}
-                        {follow.text}
+                        {follow.text ?? ''}
                       </div>
                     ))}
                   </div>
                 </div>
               )}
 
-              {item.sources.length > 0 && expandedCards.has(item.id) && (
+              {(item.sources ?? []).length > 0 && expandedCards.has(item.id) && (
                 <div className="recommendation-sources">
                   <div className="sources-list">
-                    {item.sources.map((source, idx) => (
+                    {(item.sources ?? []).map((source, idx) => (
                       source.url ? (
                         <a
                           key={idx}
@@ -371,11 +430,11 @@ const RecommendationsPanel: React.FC<RecommendationsPanelProps> = ({
                           rel="noopener noreferrer"
                           className="source-link"
                         >
-                          📎 {source.name}
+                          📎 {source.name ?? 'Source'}
                         </a>
                       ) : (
                         <span key={idx} className="source-link">
-                          📎 {source.name}
+                          📎 {source.name ?? 'Source'}
                         </span>
                       )
                     ))}
@@ -383,7 +442,7 @@ const RecommendationsPanel: React.FC<RecommendationsPanelProps> = ({
                 </div>
               )}
 
-              {(item.actions.length > 3 || item.sources.length > 0) && (
+              {((item.actions ?? []).length > 3 || (item.sources ?? []).length > 0) && (
                 <button
                   className="expand-toggle"
                   onClick={() => toggleCardExpanded(item.id)}

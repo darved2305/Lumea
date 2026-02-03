@@ -9,11 +9,10 @@ import ChatPanel from '../components/dashboard/ChatPanel';
 import TrendsCard from '../components/dashboard/TrendsCard';
 import RecommendationsPanel from '../components/RecommendationsPanel';
 import { useWebSocket, HealthIndexUpdate } from '../hooks/useWebSocket';
+import { API_BASE_URL } from '../config/api';
 import '../styles/dashboardTokens.css';
 import '../styles/dashboardBase.css';
 import './Dashboard.css';
-
-const API_BASE = 'http://localhost:8000';
 
 interface UserSummary {
   id: string;
@@ -65,7 +64,7 @@ function Dashboard() {
     setAuthToken(token);
 
     try {
-      const response = await fetch(`${API_BASE}/api/me/bootstrap`, {
+      const response = await fetch(`${API_BASE_URL}/api/me/bootstrap`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -233,7 +232,7 @@ function Dashboard() {
           >
             <RecommendationsPanel
               authToken={authToken || undefined}
-              apiBaseUrl={API_BASE}
+              apiBaseUrl={API_BASE_URL}
               maxInitialDisplay={3}
               refreshTrigger={recommendationsRefreshTrigger}
             />
@@ -244,7 +243,7 @@ function Dashboard() {
             <TrendsCard
               selectedMetric={selectedFactor}
               authToken={authToken || undefined}
-              apiBaseUrl={API_BASE}
+              apiBaseUrl={API_BASE_URL}
               refreshTrigger={recommendationsRefreshTrigger}
             />
           </div>

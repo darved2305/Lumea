@@ -1,6 +1,7 @@
 /**
  * Authentication utilities and route protection
  */
+import { API_BASE_URL } from '../config/api';
 
 export const isAuthenticated = (): boolean => {
   const token = localStorage.getItem('access_token');
@@ -27,7 +28,7 @@ export const logout = async (): Promise<void> => {
   if (token) {
     try {
       // Call backend logout endpoint
-      await fetch('http://localhost:8000/api/auth/logout', {
+      await fetch(`${API_BASE_URL}/api/auth/logout`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

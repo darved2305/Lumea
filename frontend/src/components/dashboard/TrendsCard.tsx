@@ -34,7 +34,7 @@ const metrics = [
 function TrendsCard({
   selectedMetric: initialMetric = 'index',
   authToken,
-  apiBaseUrl = 'http://localhost:8000',
+  apiBaseUrl,
   refreshTrigger = 0,
 }: TrendsCardProps) {
   const [selectedMetric, setSelectedMetric] = useState(initialMetric);

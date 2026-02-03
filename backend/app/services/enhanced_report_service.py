@@ -17,9 +17,9 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from src.models import Report, Observation, ReportStatus, ObservationType
-from src.services.pdf_extractor import PDFExtractor
-from src.services.lab_parser import LabParser
+from app.models import Report, Observation, ReportStatus, ObservationType
+from app.services.pdf_extractor import PDFExtractor
+from app.services.lab_parser import LabParser
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -42,7 +42,7 @@ class EnhancedReportService:
         Full pipeline: extract text -> parse metrics -> save observations -> emit events
         """
         # Import here to avoid circular import
-        from src.routes.websocket import (
+        from app.routes.websocket import (
             emit_report_processing_started,
             emit_report_parsed,
             emit_reports_list_updated

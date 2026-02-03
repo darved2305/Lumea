@@ -9,6 +9,7 @@
  * NO fake data, NO random generation, NO setInterval updates.
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { API_BASE_URL } from '../config/api';
 
 export interface TrendDataPoint {
   timestamp: number;  // Unix timestamp (ms)
@@ -46,8 +47,6 @@ interface UseTrendsResult {
   refetch: () => void;
   lastFetchedAt: Date | null;
 }
-
-const API_BASE_URL = 'http://localhost:8000';
 
 const emptyStats: TrendStats = {
   current: 0,

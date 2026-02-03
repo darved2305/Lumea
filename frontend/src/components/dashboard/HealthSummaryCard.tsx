@@ -8,9 +8,8 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { AlertCircle, CheckCircle, Info, ArrowRight } from 'lucide-react';
 import { getAuthToken } from '../../utils/auth';
+import { API_BASE_URL } from '../../config/api';
 import './HealthSummaryCard.css';
-
-const API_BASE = 'http://localhost:8000';
 
 interface SummaryItem {
   type: 'positive' | 'alert' | 'focus';
@@ -34,7 +33,7 @@ export default function HealthSummaryCard() {
 
     try {
       // Fetch recommendations summary
-      const response = await fetch(`${API_BASE}/api/recommendations/summary`, {
+      const response = await fetch(`${API_BASE_URL}/api/recommendations/summary`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 

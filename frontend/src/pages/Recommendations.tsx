@@ -10,11 +10,10 @@ import { motion } from 'framer-motion';
 import DashboardNavbar from '../components/dashboard/DashboardNavbar';
 import RecommendationsPanel from '../components/RecommendationsPanel';
 import { getAuthToken } from '../utils/auth';
+import { API_BASE_URL } from '../config/api';
 import '../styles/dashboardTokens.css';
 import '../styles/dashboardBase.css';
 import './Recommendations.css';
-
-const API_BASE = 'http://localhost:8000';
 
 export default function Recommendations() {
   const navigate = useNavigate();
@@ -32,7 +31,7 @@ export default function Recommendations() {
     setAuthToken(token);
     
     // Fetch user info
-    fetch(`${API_BASE}/api/me/bootstrap`, {
+    fetch(`${API_BASE_URL}/api/me/bootstrap`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(res => res.ok ? res.json() : null)
@@ -93,7 +92,7 @@ export default function Recommendations() {
           >
             <RecommendationsPanel
               authToken={authToken || undefined}
-              apiBaseUrl={API_BASE}
+              apiBaseUrl={API_BASE_URL}
               maxInitialDisplay={20}
               refreshTrigger={refreshTrigger}
               showGenerateButton={true}

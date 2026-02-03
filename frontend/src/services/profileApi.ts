@@ -3,8 +3,9 @@
  * 
  * Handles all API calls for the health profile feature.
  */
+import { API_BASE_URL } from '../config/api';
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = API_BASE_URL;
 
 function getAuthHeaders(): HeadersInit {
   const token = localStorage.getItem('access_token');
