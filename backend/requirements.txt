@@ -2,6 +2,7 @@ fastapi==0.115.0
 uvicorn[standard]==0.31.0
 sqlalchemy==2.0.35
 asyncpg>=0.29.0
+psycopg2-binary>=2.9.9
 passlib[bcrypt]==1.7.4
 python-jose[cryptography]==3.3.0
 python-multipart==0.0.12
@@ -12,6 +13,9 @@ aiofiles==24.1.0
 pillow>=10.4.0
 email-validator>=2.0.0
 httpx>=0.27.0
+
+# Numpy - required for sentence-transformers, chromadb, etc.
+numpy>=1.24.0,<2.0.0
 
 # PDF/OCR extraction (text-first approach)
 pdfplumber>=0.11.0
@@ -29,9 +33,11 @@ google-generativeai>=0.4.0
 
 # Local MedGemma via Hugging Face
 transformers>=4.56.0
-# CPU-only torch to avoid pulling CUDA/NVIDIA wheels
+# CPU-only torch to avoid pulling CUDA/NVIDIA wheels.
+# Note: Some PyTorch CPU indexes don't publish a `+cpu` local version tag for older releases,
+# so pin the plain version.
 --extra-index-url https://download.pytorch.org/whl/cpu
-torch==2.2.0+cpu
+torch==2.2.0
 accelerate>=0.30.0
 safetensors>=0.4.0
 huggingface_hub>=0.23.0

@@ -62,7 +62,7 @@ class LLMService:
             return False
     
     async def _ensure_provider(self) -> str:
-        """Determine which provider to use. Returns 'ollama' or 'gemini'."""
+        """Determine which provider to use. Returns 'ollama', 'gemini', or 'disabled'."""
         if self._ollama_available is None:
             self._ollama_available = await self.check_ollama_health()
         
@@ -73,10 +73,9 @@ class LLMService:
             logger.info("Using Gemini API fallback")
             return "gemini"
         
-        raise RuntimeError(
-            "No LLM provider available. "
-            "Ensure Ollama is running or provide GEMINI_API_KEY."
-        )
+        # Make LLM optional: return a friendly message rather than hard-failing
+        # core app features when neither provider is configured.
+        return "disabled"
     
     async def stream_generate(
         self,
@@ -103,9 +102,15 @@ class LLMService:
         if provider == "ollama":
             async for token in self._stream_ollama(full_prompt):
                 yield token
-        else:
+        elif provider == "gemini":
             async for token in self._stream_gemini(full_prompt):
                 yield token
+        else:
+            yield (
+                "LLM is not configured. "
+                "Start Ollama (and set `OLLAMA_BASE_URL`/`OLLAMA_MODEL`) "
+                "or set `GEMINI_API_KEY` with `USE_GEMINI_FALLBACK=true`."
+            )
     
     def _build_prompt(
         self,

@@ -19,6 +19,9 @@ async def lifespan(app: FastAPI):
     try:
         await init_db()
     except Exception as e:
+        if getattr(settings, "AUTO_MIGRATE", False):
+            logger.error("DB init/migrations failed; refusing to start with an unknown schema", exc_info=True)
+            raise
         logger.debug(f"DB init (non-critical): {e}")
 
     # Initialize Knowledge Graph

@@ -377,17 +377,117 @@ async def _gather_user_context(user_id: str, db: AsyncSession) -> Dict[str, Any]
 
 
 def _convert_rule_recommendations(rule_recs: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """Convert rule-based recommendations to our storage format."""
+    """Convert rule-based recommendations to our storage format.
+    
+    Maps RuleResult.to_dict() format to our storage/API format:
+    - RuleResult has: id, title, severity, why, actions (list of {type, text}), 
+      followup, sources, metric_name, metric_value, metric_unit, reference_min/max, trend
+    - Storage format needs: title, priority, category, summary, actions (list of strings), evidence
+    """
     converted = []
     
     for item in rule_recs.get("items", []):
+        # Map severity to priority (rule results use 'severity' field)
+        severity = item.get("severity", "info").lower()
+        priority_map = {"urgent": "high", "warning": "medium", "info": "low"}
+        priority = priority_map.get(severity, "medium")
+        
+        # Derive category from rule ID (e.g., "lipids_ldl_high" -> "lipids")
+        rule_id = item.get("id", "")
+        category = _derive_category_from_rule_id(rule_id)
+        
+        # Build dynamic summary with actual metric values
+        summary = item.get("why", "")
+        if item.get("metric_value") is not None:
+            metric_info = f"{item.get('metric_name', 'Metric')}: {item.get('metric_value')} {item.get('metric_unit', '')}"
+            if item.get("reference_max") is not None:
+                metric_info += f" (ref max: {item.get('reference_max')})"
+            elif item.get("reference_min") is not None:
+                metric_info += f" (ref min: {item.get('reference_min')})"
+            if item.get("trend"):
+                metric_info += f" | Trend: {item.get('trend')}"
+            summary = f"{summary}\n\n📊 {metric_info}"
+        
+        # Extract action text from list of {type, text} dicts
+        actions = []
+        for action in item.get("actions", []):
+            if isinstance(action, dict):
+                actions.append(action.get("text", ""))
+            elif isinstance(action, str):
+                actions.append(action)
+        
+        # Also include followup actions
+        for followup in item.get("followup", []):
+            if isinstance(followup, dict):
+                text = followup.get("text", "")
+                if text:
+                    actions.append(f"📋 {text}")
+            elif isinstance(followup, str) and followup:
+                actions.append(f"📋 {followup}")
+        
+        # Build evidence from sources and rationale
+        evidence = []
+        for source in item.get("sources", []):
+            if isinstance(source, dict):
+                source_text = source.get("name", "")
+                if source.get("url"):
+                    source_text += f" ({source.get('url')})"
+                if source_text:
+                    evidence.append(source_text)
+            elif isinstance(source, str):
+                evidence.append(source)
+        
+        # Add the explanation as evidence if not already in summary
+        if item.get("why") and not evidence:
+            evidence.append(item.get("why"))
+        
         converted.append({
-            "title": item.get("title", ""),
-            "priority": item.get("severity", "medium").lower(),
-            "category": item.get("category", "lifestyle"),
-            "summary": item.get("description", ""),
-            "actions": [item.get("action", "")] if item.get("action") else [],
-            "evidence": [item.get("rationale", "")] if item.get("rationale") else []
+            "title": item.get("title", "Health Recommendation"),
+            "priority": priority,
+            "category": category,
+            "summary": summary.strip(),
+            "actions": [a for a in actions if a],  # Filter empty strings
+            "evidence": [e for e in evidence if e],
+            # Preserve dynamic data for potential future use
+            "metric_data": {
+                "name": item.get("metric_name"),
+                "value": item.get("metric_value"),
+                "unit": item.get("metric_unit"),
+                "reference_min": item.get("reference_min"),
+                "reference_max": item.get("reference_max"),
+                "trend": item.get("trend"),
+            } if item.get("metric_value") is not None else None
         })
     
     return converted
+
+
+def _derive_category_from_rule_id(rule_id: str) -> str:
+    """Derive recommendation category from rule ID.
+    
+    Rule IDs follow patterns like:
+    - lipids_ldl_high, lipids_hdl_low -> nutrition
+    - glucose_hba1c_high -> medical_followup  
+    - lifestyle_sleep_low -> lifestyle
+    - cardiovascular_bp_high -> medical_followup
+    - missing_tests -> checkup
+    """
+    if not rule_id:
+        return "lifestyle"
+    
+    rule_id = rule_id.lower()
+    
+    if rule_id.startswith("lipids_"):
+        return "nutrition"
+    elif rule_id.startswith("glucose_"):
+        return "medical_followup"
+    elif rule_id.startswith("lifestyle_"):
+        return "lifestyle"
+    elif rule_id.startswith("cardiovascular_") or rule_id.startswith("bp_"):
+        return "medical_followup"
+    elif rule_id.startswith("vitamin_"):
+        return "nutrition"
+    elif "missing" in rule_id or "test" in rule_id:
+        return "checkup"
+    else:
+        return "lifestyle"

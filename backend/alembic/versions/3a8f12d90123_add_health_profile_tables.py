@@ -21,9 +21,13 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema - add health profile tables."""
+    bind = op.get_bind()
+    insp = sa.inspect(bind)
+    existing_tables = set(insp.get_table_names())
     
     # 1. user_profiles - core profile data (1 row per user)
-    op.create_table('user_profiles',
+    if 'user_profiles' not in existing_tables:
+        op.create_table('user_profiles',
         sa.Column('id', sa.UUID(), nullable=False),
         sa.Column('user_id', sa.UUID(), nullable=False),
         
@@ -62,10 +66,11 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
         sa.UniqueConstraint('user_id', name='uq_user_profiles_user_id')
     )
-    op.create_index('ix_user_profiles_user_id', 'user_profiles', ['user_id'], unique=True)
+        op.create_index('ix_user_profiles_user_id', 'user_profiles', ['user_id'], unique=True)
     
     # 2. profile_answers - flexible JSONB storage for any question answer
-    op.create_table('profile_answers',
+    if 'profile_answers' not in existing_tables:
+        op.create_table('profile_answers',
         sa.Column('id', sa.UUID(), nullable=False),
         sa.Column('user_id', sa.UUID(), nullable=False),
         sa.Column('question_id', sa.String(100), nullable=False),  # e.g., "height_cm", "family_history_mother_diabetes"
@@ -78,11 +83,12 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
         sa.UniqueConstraint('user_id', 'question_id', name='uq_profile_answers_user_question')
     )
-    op.create_index('ix_profile_answers_user_id', 'profile_answers', ['user_id'])
-    op.create_index('ix_profile_answers_question_id', 'profile_answers', ['question_id'])
+        op.create_index('ix_profile_answers_user_id', 'profile_answers', ['user_id'])
+        op.create_index('ix_profile_answers_question_id', 'profile_answers', ['question_id'])
     
     # 3. profile_conditions - diagnosed conditions (normalized)
-    op.create_table('profile_conditions',
+    if 'profile_conditions' not in existing_tables:
+        op.create_table('profile_conditions',
         sa.Column('id', sa.UUID(), nullable=False),
         sa.Column('user_id', sa.UUID(), nullable=False),
         sa.Column('condition_code', sa.String(50), nullable=False),  # diabetes, high_bp, etc.
@@ -96,10 +102,11 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
         sa.UniqueConstraint('user_id', 'condition_code', name='uq_profile_conditions_user_condition')
     )
-    op.create_index('ix_profile_conditions_user_id', 'profile_conditions', ['user_id'])
+        op.create_index('ix_profile_conditions_user_id', 'profile_conditions', ['user_id'])
     
     # 4. profile_symptoms - recurring symptoms
-    op.create_table('profile_symptoms',
+    if 'profile_symptoms' not in existing_tables:
+        op.create_table('profile_symptoms',
         sa.Column('id', sa.UUID(), nullable=False),
         sa.Column('user_id', sa.UUID(), nullable=False),
         sa.Column('symptom_code', sa.String(50), nullable=False),
@@ -112,10 +119,11 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint('id'),
         sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE')
     )
-    op.create_index('ix_profile_symptoms_user_id', 'profile_symptoms', ['user_id'])
+        op.create_index('ix_profile_symptoms_user_id', 'profile_symptoms', ['user_id'])
     
     # 5. profile_medications - current medications
-    op.create_table('profile_medications',
+    if 'profile_medications' not in existing_tables:
+        op.create_table('profile_medications',
         sa.Column('id', sa.UUID(), nullable=False),
         sa.Column('user_id', sa.UUID(), nullable=False),
         sa.Column('name', sa.String(200), nullable=False),
@@ -129,10 +137,11 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint('id'),
         sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE')
     )
-    op.create_index('ix_profile_medications_user_id', 'profile_medications', ['user_id'])
+        op.create_index('ix_profile_medications_user_id', 'profile_medications', ['user_id'])
     
     # 6. profile_supplements - supplements/vitamins
-    op.create_table('profile_supplements',
+    if 'profile_supplements' not in existing_tables:
+        op.create_table('profile_supplements',
         sa.Column('id', sa.UUID(), nullable=False),
         sa.Column('user_id', sa.UUID(), nullable=False),
         sa.Column('name', sa.String(200), nullable=False),
@@ -144,10 +153,11 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint('id'),
         sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE')
     )
-    op.create_index('ix_profile_supplements_user_id', 'profile_supplements', ['user_id'])
+        op.create_index('ix_profile_supplements_user_id', 'profile_supplements', ['user_id'])
     
     # 7. profile_allergies - allergies
-    op.create_table('profile_allergies',
+    if 'profile_allergies' not in existing_tables:
+        op.create_table('profile_allergies',
         sa.Column('id', sa.UUID(), nullable=False),
         sa.Column('user_id', sa.UUID(), nullable=False),
         sa.Column('allergen', sa.String(200), nullable=False),
@@ -160,10 +170,11 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint('id'),
         sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE')
     )
-    op.create_index('ix_profile_allergies_user_id', 'profile_allergies', ['user_id'])
+        op.create_index('ix_profile_allergies_user_id', 'profile_allergies', ['user_id'])
     
     # 8. profile_family_history - family medical history
-    op.create_table('profile_family_history',
+    if 'profile_family_history' not in existing_tables:
+        op.create_table('profile_family_history',
         sa.Column('id', sa.UUID(), nullable=False),
         sa.Column('user_id', sa.UUID(), nullable=False),
         sa.Column('relative_type', sa.String(50), nullable=False),  # mother/father/sibling/grandparent_maternal/grandparent_paternal
@@ -176,10 +187,11 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint('id'),
         sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE')
     )
-    op.create_index('ix_profile_family_history_user_id', 'profile_family_history', ['user_id'])
+        op.create_index('ix_profile_family_history_user_id', 'profile_family_history', ['user_id'])
     
     # 9. profile_genetic_tests - genetic test results
-    op.create_table('profile_genetic_tests',
+    if 'profile_genetic_tests' not in existing_tables:
+        op.create_table('profile_genetic_tests',
         sa.Column('id', sa.UUID(), nullable=False),
         sa.Column('user_id', sa.UUID(), nullable=False),
         sa.Column('mutation_name', sa.String(100), nullable=False),  # BRCA1, BRCA2, etc.
@@ -192,10 +204,11 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint('id'),
         sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE')
     )
-    op.create_index('ix_profile_genetic_tests_user_id', 'profile_genetic_tests', ['user_id'])
+        op.create_index('ix_profile_genetic_tests_user_id', 'profile_genetic_tests', ['user_id'])
     
     # 10. derived_features - computed values (BMI, risk scores, completeness)
-    op.create_table('derived_features',
+    if 'derived_features' not in existing_tables:
+        op.create_table('derived_features',
         sa.Column('id', sa.UUID(), nullable=False),
         sa.Column('user_id', sa.UUID(), nullable=False),
         sa.Column('feature_name', sa.String(100), nullable=False),  # bmi, bmi_category, age_computed, completeness_score, etc.
@@ -208,11 +221,12 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
         sa.UniqueConstraint('user_id', 'feature_name', name='uq_derived_features_user_feature')
     )
-    op.create_index('ix_derived_features_user_id', 'derived_features', ['user_id'])
-    op.create_index('ix_derived_features_feature_name', 'derived_features', ['feature_name'])
+        op.create_index('ix_derived_features_user_id', 'derived_features', ['user_id'])
+        op.create_index('ix_derived_features_feature_name', 'derived_features', ['feature_name'])
     
     # 11. profile_recommendations - generated recommendations with evidence
-    op.create_table('profile_recommendations',
+    if 'profile_recommendations' not in existing_tables:
+        op.create_table('profile_recommendations',
         sa.Column('id', sa.UUID(), nullable=False),
         sa.Column('user_id', sa.UUID(), nullable=False),
         sa.Column('recommendation_type', sa.String(50), nullable=False),  # lifestyle/screening/followup/urgent
@@ -231,9 +245,9 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint('id'),
         sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE')
     )
-    op.create_index('ix_profile_recommendations_user_id', 'profile_recommendations', ['user_id'])
-    op.create_index('ix_profile_recommendations_type', 'profile_recommendations', ['recommendation_type'])
-    op.create_index('ix_profile_recommendations_active', 'profile_recommendations', ['is_active'])
+        op.create_index('ix_profile_recommendations_user_id', 'profile_recommendations', ['user_id'])
+        op.create_index('ix_profile_recommendations_type', 'profile_recommendations', ['recommendation_type'])
+        op.create_index('ix_profile_recommendations_active', 'profile_recommendations', ['is_active'])
 
 
 def downgrade() -> None:

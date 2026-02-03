@@ -33,6 +33,9 @@ services:
     volumes:
       # Mount source code for hot reload
       - ./backend/app:/app/app:cached
+      # Mount Alembic migrations so schema fixes don't require rebuilding the image
+      - ./backend/alembic:/app/alembic:cached
+      - ./backend/alembic.ini:/app/alembic.ini:cached
       - ./backend/uploads:/app/uploads
       # Persist PaddleOCR models
       - paddle_models:/root/.paddleocr

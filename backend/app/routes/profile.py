@@ -16,7 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 
-from app.db import get_db
+from app.db import get_db, async_session_maker
 from app.security import get_current_user
 from app.models import User
 from app.services.profile_service import ProfileService
@@ -138,8 +138,9 @@ async def update_profile(
         # Trigger recompute in background
         async def bg_recompute():
             try:
-                recompute_service = RecomputeService(db, current_user)
-                await recompute_service.recompute_all(emit_events=True)
+                async with async_session_maker() as session:
+                    recompute_service = RecomputeService(session, current_user)
+                    await recompute_service.recompute_all(emit_events=True)
             except Exception as e:
                 logger.error(f"Background recompute failed: {e}")
         
@@ -201,8 +202,9 @@ async def upsert_answers(
         # Trigger recompute
         async def bg_recompute():
             try:
-                recompute_service = RecomputeService(db, current_user)
-                await recompute_service.recompute_all(emit_events=True)
+                async with async_session_maker() as session:
+                    recompute_service = RecomputeService(session, current_user)
+                    await recompute_service.recompute_all(emit_events=True)
             except Exception as e:
                 logger.error(f"Background recompute failed: {e}")
         
@@ -261,8 +263,9 @@ async def set_conditions(
     # Trigger recompute
     async def bg_recompute():
         try:
-            recompute_service = RecomputeService(db, current_user)
-            await recompute_service.recompute_all(emit_events=True)
+            async with async_session_maker() as session:
+                recompute_service = RecomputeService(session, current_user)
+                await recompute_service.recompute_all(emit_events=True)
         except Exception as e:
             logger.error(f"Background recompute failed: {e}")
     
@@ -335,8 +338,9 @@ async def set_medications(
     # Trigger recompute
     async def bg_recompute():
         try:
-            recompute_service = RecomputeService(db, current_user)
-            await recompute_service.recompute_all(emit_events=True)
+            async with async_session_maker() as session:
+                recompute_service = RecomputeService(session, current_user)
+                await recompute_service.recompute_all(emit_events=True)
         except Exception as e:
             logger.error(f"Background recompute failed: {e}")
     
@@ -418,8 +422,9 @@ async def set_allergies(
     # Trigger recompute
     async def bg_recompute():
         try:
-            recompute_service = RecomputeService(db, current_user)
-            await recompute_service.recompute_all(emit_events=True)
+            async with async_session_maker() as session:
+                recompute_service = RecomputeService(session, current_user)
+                await recompute_service.recompute_all(emit_events=True)
         except Exception as e:
             logger.error(f"Background recompute failed: {e}")
     
@@ -465,8 +470,9 @@ async def set_family_history(
     # Trigger recompute
     async def bg_recompute():
         try:
-            recompute_service = RecomputeService(db, current_user)
-            await recompute_service.recompute_all(emit_events=True)
+            async with async_session_maker() as session:
+                recompute_service = RecomputeService(session, current_user)
+                await recompute_service.recompute_all(emit_events=True)
         except Exception as e:
             logger.error(f"Background recompute failed: {e}")
     

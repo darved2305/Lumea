@@ -82,7 +82,7 @@ class AssistantService:
             session_id=session.id,
             role="assistant",
             content=response_content,
-            metadata={"citations": [c.dict() for c in citations]},
+            message_metadata={"citations": [c.dict() for c in citations]},
             created_at=datetime.utcnow()
         )
         self.db.add(assistant_msg)

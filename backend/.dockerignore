@@ -35,6 +35,9 @@ tests/
 # Uploads (mounted as volume)
 uploads/
 
+# Chroma persistence (mounted as volume in docker-compose; should not be part of build context)
+chroma_db/
+
 # Misc
 .DS_Store
 *.log

@@ -113,7 +113,7 @@ class AssistantService:
             session_id=session_id,
             role="assistant",
             content=response_content,
-            metadata={
+            message_metadata={
                 "citations": [c.dict() for c in citations],
                 "rag_sources": len(rag_context),
                 "memories_used": len(memory_context),

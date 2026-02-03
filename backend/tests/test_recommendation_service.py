@@ -83,3 +83,83 @@ def test_normalize_metric_name_maps_common_variants():
     assert service._normalize_metric_name("LDL Cholesterol") == "ldl"
     assert service._normalize_metric_name("HbA1c/Hemoglobin.total") == "hba1c"
     assert service._normalize_metric_name("Systolic Blood Pressure") == "systolic_bp"
+
+
+def test_convert_rule_recommendations_extracts_dynamic_data():
+    """Test that _convert_rule_recommendations correctly maps RuleResult.to_dict() format."""
+    from app.services.grok_recommendation_service import _convert_rule_recommendations
+    
+    # Mock input matching RuleResult.to_dict() format
+    rule_recommendations = {
+        "items": [
+            {
+                "id": "lipids_ldl_high",
+                "title": "LDL cholesterol is high",
+                "severity": "warning",
+                "why": "Your LDL is 165 mg/dL (optimal: <130 mg/dL)",
+                "actions": [
+                    {"type": "exercise", "text": "Aim for 150 minutes/week of moderate cardio"},
+                    {"type": "diet", "text": "Increase soluble fiber intake"},
+                ],
+                "followup": [
+                    {"type": "test", "text": "Repeat lipid panel in 8-12 weeks"},
+                    {"type": "doctor", "text": "Consider discussing with a clinician"},
+                ],
+                "sources": [
+                    {"name": "AHA Cholesterol Guidelines", "url": "https://www.heart.org/en/health-topics/cholesterol"},
+                ],
+                "metric_name": "LDL Cholesterol",
+                "metric_value": 165.0,
+                "metric_unit": "mg/dL",
+                "reference_min": None,
+                "reference_max": 130,
+                "trend": "rising",
+            }
+        ],
+        "total_count": 1,
+        "urgent_count": 0,
+        "warning_count": 1,
+    }
+    
+    converted = _convert_rule_recommendations(rule_recommendations)
+    
+    assert len(converted) == 1
+    rec = converted[0]
+    
+    # Check proper field mapping
+    assert rec["title"] == "LDL cholesterol is high"
+    assert rec["priority"] == "medium"  # warning -> medium
+    assert rec["category"] == "nutrition"  # lipids_ prefix -> nutrition
+    
+    # Check summary includes dynamic metric data
+    assert "165" in rec["summary"]
+    assert "LDL" in rec["summary"] or "ldl" in rec["summary"].lower()
+    assert "rising" in rec["summary"].lower()
+    
+    # Check actions are extracted from list of dicts
+    assert len(rec["actions"]) >= 2
+    assert any("cardio" in a.lower() for a in rec["actions"])
+    assert any("fiber" in a.lower() for a in rec["actions"])
+    
+    # Check followup actions are included
+    assert any("lipid panel" in a.lower() for a in rec["actions"])
+    
+    # Check evidence from sources
+    assert len(rec["evidence"]) >= 1
+    assert any("AHA" in e for e in rec["evidence"])
+    
+    # Check metric_data preserved
+    assert rec["metric_data"] is not None
+    assert rec["metric_data"]["value"] == 165.0
+    assert rec["metric_data"]["trend"] == "rising"
+
+
+def test_convert_rule_recommendations_handles_empty_input():
+    """Test that empty recommendations are handled gracefully."""
+    from app.services.grok_recommendation_service import _convert_rule_recommendations
+    
+    result = _convert_rule_recommendations({"items": []})
+    assert result == []
+    
+    result = _convert_rule_recommendations({})
+    assert result == []

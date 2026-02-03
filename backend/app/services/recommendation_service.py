@@ -110,8 +110,10 @@ class RecommendationService:
         health_metrics = result.scalars().all()
         
         # Process health metrics into MetricData
+        # Note: HealthMetric model uses 'metric_type', not 'metric_name'
         for hm in health_metrics:
-            metric_key = getattr(hm, "metric_name", None) or getattr(hm, "metric_type", None)
+            # Try metric_type first (actual column name), fallback to metric_name for compatibility
+            metric_key = getattr(hm, "metric_type", None) or getattr(hm, "metric_name", None)
             if not metric_key:
                 continue
             if metric_key not in metrics:
@@ -226,15 +228,30 @@ class RecommendationService:
     def _extract_value(self, obs: Observation) -> Optional[float]:
         """
         Extract numeric value from an observation.
-        """
-        if obs.value_quantity is not None:
-            return float(obs.value_quantity)
         
-        if obs.value_string:
+        Note: Observation model uses 'value' column (Numeric type), not value_quantity/value_string.
+        """
+        # Primary: Use the 'value' column (Numeric type in the model)
+        if obs.value is not None:
             try:
-                # Try to parse numeric value from string
+                return float(obs.value)
+            except (ValueError, TypeError):
+                pass
+        
+        # Fallback: Check for value_quantity (legacy/alternative models)
+        value_qty = getattr(obs, 'value_quantity', None)
+        if value_qty is not None:
+            try:
+                return float(value_qty)
+            except (ValueError, TypeError):
+                pass
+        
+        # Fallback: Try to parse from value_string if present
+        value_str = getattr(obs, 'value_string', None)
+        if value_str:
+            try:
                 import re
-                match = re.search(r'[\d.]+', obs.value_string)
+                match = re.search(r'[\d.]+', str(value_str))
                 if match:
                     return float(match.group())
             except (ValueError, AttributeError):

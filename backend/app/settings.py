@@ -7,6 +7,11 @@ class Settings(BaseSettings):
     frontend_origin: str = "http://localhost:5173"
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 10080
+
+    # Database schema management
+    # In development, prefer Alembic migrations over SQLAlchemy create_all()
+    # so existing databases get schema changes (new columns/indexes).
+    AUTO_MIGRATE: bool = True
     
     # Ollama LLM Configuration
     OLLAMA_BASE_URL: str = "http://host.docker.internal:11434"  # Host machine via Docker

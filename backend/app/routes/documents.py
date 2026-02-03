@@ -19,6 +19,7 @@ from sqlalchemy import select
 from pydantic import BaseModel, Field, ConfigDict
 
 from app.db import get_db
+from app.db import async_session_maker
 from app.security import get_current_user
 from app.models import User, Report, MissingDataTask, Observation
 from app.services.document_processing import DocumentProcessingService
@@ -168,8 +169,10 @@ async def upload_document(
         # Trigger recompute in background
         async def bg_recompute():
             try:
-                recompute_service = RecomputeService(db, current_user)
-                await recompute_service.recompute_all(emit_events=True)
+                # Use a fresh DB session; request-scoped `db` is closed after response.
+                async with async_session_maker() as session:
+                    recompute_service = RecomputeService(session, current_user)
+                    await recompute_service.recompute_all(emit_events=True)
             except Exception as e:
                 logger.error(f"Background recompute failed: {e}")
         
@@ -373,11 +376,12 @@ async def resolve_missing_tasks(
             values=[v.model_dump() for v in request.values]
         )
         
-        # Trigger recompute in background
+        # Trigger recompute in background (fresh session)
         async def bg_recompute():
             try:
-                recompute_service = RecomputeService(db, current_user)
-                await recompute_service.recompute_all(emit_events=True)
+                async with async_session_maker() as session:
+                    recompute_service = RecomputeService(session, current_user)
+                    await recompute_service.recompute_all(emit_events=True)
             except Exception as e:
                 logger.error(f"Background recompute failed: {e}")
         
@@ -433,11 +437,12 @@ async def reprocess_document(
     try:
         result = await service.reprocess_document(document_id)
         
-        # Trigger recompute in background
+        # Trigger recompute in background (fresh session)
         async def bg_recompute():
             try:
-                recompute_service = RecomputeService(db, current_user)
-                await recompute_service.recompute_all(emit_events=True)
+                async with async_session_maker() as session:
+                    recompute_service = RecomputeService(session, current_user)
+                    await recompute_service.recompute_all(emit_events=True)
             except Exception as e:
                 logger.error(f"Background recompute failed: {e}")
         

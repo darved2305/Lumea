@@ -4,8 +4,8 @@ Metrics Service - Compute health scores and trends
 import uuid
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional, Tuple
-from sqlalchemy.orm import Session
-from sqlalchemy import func, and_
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import func, and_, select
 
 from app.models import Observation, HealthMetric, User, ObservationType
 from app.schemas import FactorContribution, TimeSeriesPoint, TrendsStats
@@ -14,7 +14,7 @@ from app.schemas import FactorContribution, TimeSeriesPoint, TrendsStats
 class MetricsService:
     """Service for computing and retrieving health metrics"""
     
-    def __init__(self, db: Session):
+    def __init__(self, db: AsyncSession):
         self.db = db
     
     # ========================================================================
@@ -516,21 +516,8 @@ class MetricsService:
     # HELPERS
     # ========================================================================
     
-    def get_latest_health_index(self, user_id: uuid.UUID) -> Optional[HealthMetric]:
-        """Get most recent health index metric (sync version)"""
-        return (
-            self.db.query(HealthMetric)
-            .filter(
-                HealthMetric.user_id == user_id,
-                HealthMetric.metric_type == "health_index"
-            )
-            .order_by(HealthMetric.computed_at.desc())
-            .first()
-        )
-
-    async def get_latest_health_index_async(self, user_id: uuid.UUID) -> Optional[HealthMetric]:
-        """Get most recent health index metric (async version)"""
-        from sqlalchemy import select
+    async def get_latest_health_index(self, user_id: uuid.UUID) -> Optional[HealthMetric]:
+        """Get most recent health index metric"""
         result = await self.db.execute(
             select(HealthMetric)
             .where(
@@ -541,3 +528,6 @@ class MetricsService:
             .limit(1)
         )
         return result.scalars().first()
+
+    # Alias for backwards compatibility
+    get_latest_health_index_async = get_latest_health_index

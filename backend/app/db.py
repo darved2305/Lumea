@@ -1,3 +1,5 @@
+import asyncio
+from pathlib import Path
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.pool import NullPool
@@ -28,6 +30,25 @@ async def get_db():
         finally:
             await session.close()
 
+async def run_migrations() -> None:
+    """
+    Run Alembic migrations to `head` (best for dev/local).
+    Uses the sync driver path configured in `backend/alembic/env.py`.
+    """
+    from alembic import command
+    from alembic.config import Config
+
+    backend_dir = Path(__file__).resolve().parents[1]
+    alembic_ini = backend_dir / "alembic.ini"
+    cfg = Config(str(alembic_ini))
+
+    await asyncio.to_thread(command.upgrade, cfg, "head")
+
 async def init_db():
+    if settings.AUTO_MIGRATE:
+        # Prefer migrations; create_all() does not add columns to existing tables.
+        await run_migrations()
+        return
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

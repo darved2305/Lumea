@@ -67,10 +67,22 @@ class RAGService:
         return self._embedding_model
     
     def _embed_texts(self, texts: List[str]) -> List[List[float]]:
-        """Embed texts using sentence-transformers."""
-        model = self._get_embedding_model()
-        embeddings = model.encode(texts, convert_to_numpy=True)
-        return embeddings.tolist()
+        """Embed texts using sentence-transformers.
+        
+        Note: sentence-transformers may show warnings about 'embeddings.position_ids'
+        being unexpected - this is normal and doesn't affect functionality.
+        """
+        try:
+            model = self._get_embedding_model()
+            # Use convert_to_tensor=False to avoid numpy issues, then convert
+            embeddings = model.encode(texts, convert_to_tensor=False)
+            # Ensure we return plain Python lists
+            if hasattr(embeddings, 'tolist'):
+                return embeddings.tolist()
+            return [list(e) for e in embeddings]
+        except Exception as e:
+            logger.error(f"Embedding failed: {e}")
+            raise ValueError(f"Failed to embed texts: {e}")
     
     async def sync_user_reports(self, user_id: uuid.UUID, db: AsyncSession) -> int:
         """

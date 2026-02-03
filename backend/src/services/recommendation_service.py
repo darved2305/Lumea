@@ -110,8 +110,10 @@ class RecommendationService:
         health_metrics = result.scalars().all()
         
         # Process computed health metrics into MetricData
+        # Note: HealthMetric model uses 'metric_type', not 'metric_name'
         for hm in health_metrics:
-            metric_key = getattr(hm, "metric_name", None) or getattr(hm, "metric_type", None)
+            # Try metric_type first (actual column name), fallback to metric_name for compatibility
+            metric_key = getattr(hm, "metric_type", None) or getattr(hm, "metric_name", None)
             if not metric_key:
                 logger.warning(f"HealthMetric {hm.id} missing metric_type, skipping")
                 continue
