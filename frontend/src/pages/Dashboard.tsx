@@ -35,7 +35,7 @@ function Dashboard() {
   const [recommendationsRefreshTrigger, setRecommendationsRefreshTrigger] = useState(0);
 
   // WebSocket for real-time updates
-  const { isConnected } = useWebSocket({
+  useWebSocket({
     onHealthIndexUpdated: useCallback((data: HealthIndexUpdate) => {
       setHealthIndex(data.score);
       setLastUpdated(new Date(data.updated_at));

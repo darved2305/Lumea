@@ -16,7 +16,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 from app.db import get_db
 from app.security import get_current_user
@@ -63,8 +63,7 @@ class MissingTaskResponse(BaseModel):
     expected_unit: Optional[str]
     required: bool
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class MissingTasksListResponse(BaseModel):
@@ -111,8 +110,7 @@ class DocumentDetailResponse(BaseModel):
     observation_count: int
     missing_task_count: int
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ObservationBriefResponse(BaseModel):
@@ -126,8 +124,7 @@ class ObservationBriefResponse(BaseModel):
     source: Optional[str]
     user_corrected: bool
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ============================================================================

@@ -2,7 +2,6 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search,
-  Filter,
   Eye,
   Download,
   RefreshCw,
@@ -13,8 +12,6 @@ import {
   Clock,
   AlertCircle,
   FolderOpen,
-  Wifi,
-  WifiOff,
 } from 'lucide-react';
 import DashboardNavbar from '../components/dashboard/DashboardNavbar';
 import { useWebSocket } from '../hooks/useWebSocket';
@@ -80,7 +77,7 @@ function Reports() {
   const itemsPerPage = 5;
 
   // WebSocket for real-time updates
-  const { isConnected } = useWebSocket({
+  useWebSocket({
     onReportsListUpdated: useCallback(() => {
       console.log('WS: Reports list updated, refetching...');
       fetchReports();

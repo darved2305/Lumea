@@ -9,8 +9,8 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 10080
     
     # Ollama LLM Configuration
-    OLLAMA_BASE_URL: str = "http://ollama:11434"  # Docker service name
-    OLLAMA_MODEL: str = "medgemma:4b"
+    OLLAMA_BASE_URL: str = "http://host.docker.internal:11434"  # Host machine via Docker
+    OLLAMA_MODEL: str = "hf.co/unsloth/medgemma-4b-it-GGUF:Q6_K_XL"
     OLLAMA_TIMEOUT: int = 120  # seconds
     
     # ChromaDB Configuration
@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     
     # Gemini Fallback (optional)
     USE_GEMINI_FALLBACK: bool = True
+    USE_GEMINI: bool = True # Alias for compatibility
     GEMINI_API_KEY: Optional[str] = None
     
     # Groq API for recommendations and LLM extraction
@@ -37,6 +38,18 @@ class Settings(BaseSettings):
     openai_api_key: Optional[str] = None
     openai_api_base: str = "https://api.openai.com/v1"
     openai_model: str = "gpt-4o-mini"
+
+    # Neo4j (for Mem0 graph memory and Graphiti)
+    NEO4J_URI: str = "bolt://neo4j:7687"
+    NEO4J_USER: str = "neo4j"
+    NEO4J_PASSWORD: str = "changeme"
+
+    # Memory service (Mem0)
+    MEM0_COLLECTION: str = "user_memories"
+
+    # Graph service (Graphiti)
+    # Note: Neo4j Community Edition only supports "neo4j" database name
+    GRAPHITI_DATABASE: str = "neo4j"
 
     class Config:
         env_file = ".env"
