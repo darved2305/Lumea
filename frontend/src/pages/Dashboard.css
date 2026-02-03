@@ -103,6 +103,12 @@
   margin-bottom: var(--dash-spacing-xl);
 }
 
+.dashboard-health-column {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
 .dashboard-full-width {
   grid-column: 1 / -1;
 }

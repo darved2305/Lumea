@@ -129,20 +129,30 @@ async def update_profile(
     
     Triggers recompute of derived features and health index in background.
     """
-    service = ProfileService(db, current_user)
-    profile = await service.update_profile(data)
-    
-    # Trigger recompute in background
-    async def bg_recompute():
-        try:
-            recompute_service = RecomputeService(db, current_user)
-            await recompute_service.recompute_all(emit_events=True)
-        except Exception as e:
-            logger.error(f"Background recompute failed: {e}")
-    
-    background_tasks.add_task(bg_recompute)
-    
-    return UserProfileResponse.model_validate(profile)
+    try:
+        logger.info(f"Profile PATCH for user {current_user.id}: {data.model_dump(exclude_unset=True)}")
+        
+        service = ProfileService(db, current_user)
+        profile = await service.update_profile(data)
+        
+        # Trigger recompute in background
+        async def bg_recompute():
+            try:
+                recompute_service = RecomputeService(db, current_user)
+                await recompute_service.recompute_all(emit_events=True)
+            except Exception as e:
+                logger.error(f"Background recompute failed: {e}")
+        
+        background_tasks.add_task(bg_recompute)
+        
+        return UserProfileResponse.model_validate(profile)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Profile update failed for user {current_user.id}: {e}", exc_info=True)
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to update profile: {str(e)}")
 
 
 # ============================================================================
@@ -182,27 +192,36 @@ async def upsert_answers(
     - question_id: unique identifier for the question
     - answer_data: { value, unit?, unknown, skipped }
     """
-    service = ProfileService(db, current_user)
-    answers = await service.upsert_answers(request.answers)
-    
-    # Trigger recompute
-    async def bg_recompute():
-        try:
-            recompute_service = RecomputeService(db, current_user)
-            await recompute_service.recompute_all(emit_events=True)
-        except Exception as e:
-            logger.error(f"Background recompute failed: {e}")
-    
-    background_tasks.add_task(bg_recompute)
-    
-    return [
-        ProfileAnswerResponse(
-            question_id=a.question_id,
-            answer_data=AnswerData(**a.answer_data) if a.answer_data else AnswerData(),
-            updated_at=a.updated_at
-        )
-        for a in answers
-    ]
+    try:
+        logger.info(f"Upserting {len(request.answers)} answers for user {current_user.id}")
+        
+        service = ProfileService(db, current_user)
+        answers = await service.upsert_answers(request.answers)
+        
+        # Trigger recompute
+        async def bg_recompute():
+            try:
+                recompute_service = RecomputeService(db, current_user)
+                await recompute_service.recompute_all(emit_events=True)
+            except Exception as e:
+                logger.error(f"Background recompute failed: {e}")
+        
+        background_tasks.add_task(bg_recompute)
+        
+        return [
+            ProfileAnswerResponse(
+                question_id=a.question_id,
+                answer_data=AnswerData(**a.answer_data) if a.answer_data else AnswerData(),
+                updated_at=a.updated_at
+            )
+            for a in answers
+        ]
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to upsert answers for user {current_user.id}: {e}", exc_info=True)
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to save answers: {str(e)}")
 
 
 # ============================================================================

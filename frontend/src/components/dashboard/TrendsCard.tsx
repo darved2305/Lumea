@@ -234,15 +234,6 @@ function TrendsCard({
           <div className="trends-title-row">
             <h3 className="trends-title">Medical Trends</h3>
             <div className="trends-header-actions">
-              {/* Refresh button */}
-              <button
-                className="trends-refresh-btn"
-                onClick={refetch}
-                disabled={loading}
-                title="Refresh data"
-              >
-                <RefreshCw size={16} className={loading ? 'spinning' : ''} />
-              </button>
               <button
                 className="trends-expand-btn"
                 onClick={() => setIsModalOpen(true)}
@@ -298,24 +289,27 @@ function TrendsCard({
             <div className="trends-stat-item">
               <span className="trends-stat-label">Current</span>
               <span className="trends-stat-value">{stats.current}</span>
-              {stats.change !== 0 && (
+              {stats.change !== 0 && !isNaN(stats.change) && isFinite(stats.change) && (
                 <span className={`trends-stat-change ${stats.change > 0 ? 'positive' : 'negative'}`}>
                   {stats.change > 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
                   {Math.abs(stats.change)}%
                 </span>
               )}
+              {(isNaN(stats.change) || !isFinite(stats.change)) && (
+                <span className="trends-stat-change neutral">—</span>
+              )}
             </div>
             <div className="trends-stat-item">
               <span className="trends-stat-label">Average</span>
-              <span className="trends-stat-value">{stats.avg}</span>
+              <span className="trends-stat-value">{isNaN(stats.avg) ? '—' : stats.avg}</span>
             </div>
             <div className="trends-stat-item">
               <span className="trends-stat-label">Min</span>
-              <span className="trends-stat-value">{stats.min}</span>
+              <span className="trends-stat-value">{isNaN(stats.min) ? '—' : stats.min}</span>
             </div>
             <div className="trends-stat-item">
               <span className="trends-stat-label">Max</span>
-              <span className="trends-stat-value">{stats.max}</span>
+              <span className="trends-stat-value">{isNaN(stats.max) ? '—' : stats.max}</span>
             </div>
           </div>
         )}
@@ -380,16 +374,6 @@ function TrendsCard({
                     </button>
                   ))}
                 </div>
-
-                {/* Refresh */}
-                <button
-                  className="trends-refresh-btn"
-                  onClick={refetch}
-                  disabled={loading}
-                >
-                  <RefreshCw size={16} className={loading ? 'spinning' : ''} />
-                  Refresh
-                </button>
               </div>
 
               <div className="trends-modal-chart">
@@ -402,24 +386,27 @@ function TrendsCard({
                   <div className="trends-stat-item">
                     <span className="trends-stat-label">Current</span>
                     <span className="trends-stat-value">{stats.current}</span>
-                    {stats.change !== 0 && (
+                    {stats.change !== 0 && !isNaN(stats.change) && isFinite(stats.change) && (
                       <span className={`trends-stat-change ${stats.change > 0 ? 'positive' : 'negative'}`}>
                         {stats.change > 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
                         {Math.abs(stats.change)}%
                       </span>
                     )}
+                    {(isNaN(stats.change) || !isFinite(stats.change)) && (
+                      <span className="trends-stat-change neutral">—</span>
+                    )}
                   </div>
                   <div className="trends-stat-item">
                     <span className="trends-stat-label">Average</span>
-                    <span className="trends-stat-value">{stats.avg}</span>
+                    <span className="trends-stat-value">{isNaN(stats.avg) ? '—' : stats.avg}</span>
                   </div>
                   <div className="trends-stat-item">
                     <span className="trends-stat-label">Minimum</span>
-                    <span className="trends-stat-value">{stats.min}</span>
+                    <span className="trends-stat-value">{isNaN(stats.min) ? '—' : stats.min}</span>
                   </div>
                   <div className="trends-stat-item">
                     <span className="trends-stat-label">Maximum</span>
-                    <span className="trends-stat-value">{stats.max}</span>
+                    <span className="trends-stat-value">{isNaN(stats.max) ? '—' : stats.max}</span>
                   </div>
                 </div>
               )}

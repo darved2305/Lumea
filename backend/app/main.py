@@ -9,6 +9,7 @@ from app.routes import auth, health, dashboard, reports, assistant, recommendati
 from app.routes.profile import router as profile_router
 from app.routes.websocket import router as websocket_router
 from app.routes.documents import router as documents_router
+from app.routes.ai_summary import router as ai_summary_router
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +64,7 @@ app.include_router(recommendations.router)
 app.include_router(profile_router)
 app.include_router(websocket_router)
 app.include_router(documents_router)
+app.include_router(ai_summary_router)
 
 @app.get("/")
 async def root():
@@ -77,6 +79,7 @@ async def root():
             "assistant": "/api/assistant",
             "recommendations": "/api/recommendations",
             "profile": "/api/profile",
+            "ai_summary": "/api/ai",
             "websocket": "ws://localhost:8000/ws?token=<jwt>"
         }
     }

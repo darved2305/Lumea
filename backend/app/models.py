@@ -561,3 +561,46 @@ class HealthIndexSnapshot(Base):
     
     # Relationship
     user = relationship("User", backref="health_index_snapshots")
+
+
+# ============================================================================
+# AI REPORT SUMMARY MODELS
+# ============================================================================
+
+class ReportAISummary(Base):
+    """Stores AI-generated summaries for individual reports"""
+    __tablename__ = "report_ai_summaries"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    report_id = Column(UUID(as_uuid=True), ForeignKey("reports.id", ondelete="CASCADE"), nullable=False, index=True)
+    
+    summary_json = Column(JSONB, nullable=False)  # AI summary output
+    model_name = Column(String(100), nullable=False)  # e.g., "grok-beta"
+    source_hash = Column(String(64), nullable=False, index=True)  # Hash of source text for cache invalidation
+    
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    
+    # Relationships
+    user = relationship("User", backref="ai_summaries")
+    report = relationship("Report", backref="ai_summaries")
+
+
+class ReportAIComparison(Base):
+    """Stores AI-generated comparisons between multiple reports"""
+    __tablename__ = "report_ai_comparisons"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    
+    report_ids_json = Column(JSONB, nullable=False)  # List of report IDs being compared
+    comparison_json = Column(JSONB, nullable=False)  # AI comparison output
+    model_name = Column(String(100), nullable=False)  # e.g., "grok-beta"
+    source_hash = Column(String(64), nullable=False, index=True)  # Hash of combined source texts
+    
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    
+    # Relationships
+    user = relationship("User", backref="ai_comparisons")

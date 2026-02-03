@@ -18,8 +18,16 @@ from src.utils import compute_reminders
 router = APIRouter(prefix="/api", tags=["health"])
 
 async def get_current_user(request: Request, db: AsyncSession = Depends(get_db)) -> User:
-    """Extract and verify JWT from httpOnly cookie"""
+    """Extract and verify JWT from httpOnly cookie or Authorization header"""
+    # Try cookie first (for browser sessions)
     token = request.cookies.get("auth_token")
+    
+    # Fall back to Authorization header (for API calls)
+    if not token:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.replace("Bearer ", "")
+    
     if not token:
         raise HTTPException(status_code=401, detail="Not authenticated")
     
@@ -68,6 +76,7 @@ async def get_profile(
 # Create or update patient profile
 @router.post("/profile", response_model=PatientProfileResponse)
 @router.put("/profile", response_model=PatientProfileResponse)
+@router.patch("/profile", response_model=PatientProfileResponse)
 async def upsert_profile(
     profile_data: PatientProfileUpdate,
     response: Response,

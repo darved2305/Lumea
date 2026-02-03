@@ -24,18 +24,28 @@ import {
   Shield
 } from 'lucide-react';
 import { fetchFullProfile, FullProfile } from '../services/profileApi';
+import { logout } from '../utils/auth';
 import './Settings.css';
+
+// Debug mode - set to true to show saved profile data
+const DEV_DEBUG_MODE = process.env.NODE_ENV === 'development';
 
 export default function Settings() {
   const navigate = useNavigate();
   const [profile, setProfile] = useState<FullProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [userEmail, setUserEmail] = useState<string>('');
+  const [showDebug, setShowDebug] = useState(false);
 
   const loadProfile = useCallback(async () => {
     try {
       const data = await fetchFullProfile();
       setProfile(data);
+      
+      // Debug logging
+      if (DEV_DEBUG_MODE) {
+        console.log('[Settings] Fetched profile data:', data);
+      }
       
       // Get email from JWT token if available
       const token = localStorage.getItem('access_token');
@@ -58,9 +68,9 @@ export default function Settings() {
     loadProfile();
   }, [loadProfile]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('access_token');
-    navigate('/login');
+  const handleLogout = async () => {
+    await logout();
+    navigate('/', { replace: true });
   };
 
   const handleBack = () => {
@@ -180,6 +190,39 @@ export default function Settings() {
                 {isProfileComplete ? 'View & Edit Profile' : 'Complete Profile'}
                 <ChevronRight size={16} />
               </button>
+              
+              {/* Debug Section - Dev Only */}
+              {DEV_DEBUG_MODE && (
+                <div className="settings-debug">
+                  <button 
+                    className="settings-debug-toggle"
+                    onClick={() => setShowDebug(!showDebug)}
+                  >
+                    {showDebug ? '▼' : '▶'} Debug Info (Dev Only)
+                  </button>
+                  
+                  {showDebug && profile && (
+                    <div className="settings-debug-content">
+                      <p className="debug-timestamp">
+                        <strong>Last saved:</strong> {profile.profile?.updated_at || 'Never'}
+                      </p>
+                      <p className="debug-timestamp">
+                        <strong>Wizard Step:</strong> {profile.profile?.wizard_current_step || 1}
+                      </p>
+                      <p className="debug-timestamp">
+                        <strong>Answers Count:</strong> {profile.answers?.length || 0}
+                      </p>
+                      <p className="debug-timestamp">
+                        <strong>Conditions Count:</strong> {profile.conditions?.length || 0}
+                      </p>
+                      <details>
+                        <summary>Raw Profile Data</summary>
+                        <pre>{JSON.stringify(profile.profile, null, 2)}</pre>
+                      </details>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </section>
 

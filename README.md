@@ -1,586 +1,606 @@
-# Co-Code GGW - Unified Medical Companion Platform
+# Co-Code GGW Health Platform
 
-A comprehensive full-stack health companion platform built with modern technologies to enable preventive health management, intelligent health reminders, and real-time health insights through AI-powered analysis.
+A full-stack health companion platform for preventive health management. Upload medical reports, extract health metrics via OCR, track trends, and receive AI-powered health recommendations.
 
-![Status](https://img.shields.io/badge/status-active-success)
-![License](https://img.shields.io/badge/license-MIT-blue)
-![Python](https://img.shields.io/badge/Python-3.10+-blue)
-![React](https://img.shields.io/badge/React-18.0+-61dafb)
+> ⚠️ **Disclaimer**: This platform is a support tool for personal health tracking. It does not provide medical advice, diagnosis, or treatment. Always consult a licensed healthcare professional for medical decisions.
 
 ---
 
-## 🎯 Overview
+## Table of Contents
 
-Co-Code GGW is a production-ready health technology platform designed to bridge the gap between users and personalized preventive healthcare. The platform combines artificial intelligence, secure data management, and real-time analytics to provide actionable health insights.
-
-**Key Objectives:**
-- Empower users with data-driven health insights
-- Automate health management through intelligent reminders
-- Provide AI-powered health guidance and recommendations
-- Enable seamless health data extraction from lab reports
-- Maintain enterprise-grade security and data privacy
-
----
-
-## ✨ Core Features
-
-### 🔐 Authentication & User Management
-- **Multi-factor security** with JWT-based authentication
-- **Role-based access control** (RBAC) for differentiated access levels
-- **Secure password storage** using bcrypt hashing
-- **Session management** with automatic token refresh
-- **Email verification** for account security
-- Support for both guest and authenticated users
-
-### 👤 Health Profile Management
-- **Comprehensive health intake forms** with multi-step validation
-- **Real-time calculations** for BMI and health metrics
-- **Medical condition tracking** with severity levels
-- **Medication & allergy documentation** with interaction warnings
-- **Preventive care schedule** (blood tests, dental, eye exams, vaccinations)
-- **Family health history** documentation
-
-### 📋 Lab Report Processing
-- **Advanced PDF parsing** with OCR fallback capability
-- **Automated metric extraction** from lab reports
-- **Reference range validation** for abnormality detection
-- **Real-time processing pipeline** with WebSocket notifications
-- **Metric standardization** for consistent data analysis
-- Support for 50+ lab tests across multiple categories
-
-**Supported Test Categories:**
-- Complete Blood Count (CBC)
-- Glucose & Diabetes Markers
-- Lipid Profile
-- Kidney Function Tests
-- Liver Function Tests
-- Electrolytes Panel
-- Thyroid Function
-- Vitamin Levels
-- Coagulation Studies
-
-### 🧠 AI-Powered Health Intelligence
-- **Dynamic health index calculation** based on multiple metrics
-- **Personalized recommendations** using rule-based engine
-- **Trend analysis** across time periods (1D, 1W, 1M)
-- **Risk assessment** with confidence scoring
-- **Interactive health assistant** powered by Gemini AI
-- **Natural language processing** for health queries
-
-### 🔔 Intelligent Reminder System
-- **Automated reminder generation** based on medical conditions
-- **Urgency-based categorization** (Overdue, Soon, OK)
-- **Customizable notification intervals**
-- **Historical tracking** for completed check-ups
-- **Database persistence** for registered users
-
-### 📊 Dashboard & Analytics
-- **Real-time health metrics visualization**
-- **Interactive trend charts** with multiple time ranges
-- **Health summary cards** with key indicators
-- **Performance metrics** for ongoing health monitoring
-- **Data export capabilities** in multiple formats
-
-### 🔄 Real-Time Updates
-- **WebSocket-based live notifications**
-- **Automatic UI synchronization** across tabs/devices
-- **Event-driven architecture** for instant updates
-- **Connection pooling** for scalability
-- **Graceful reconnection** on network failures
-
-### 🌐 Multi-Language Support
-- English, Hindi, Marathi language support
-- **i18n implementation** for internationalization
-- Dynamic language switching without page reload
-- Translated health recommendations and UI elements
+- [Overview](#overview)
+- [Tech Stack](#tech-stack)
+- [Architecture](#architecture)
+- [Features](#features)
+- [Getting Started](#getting-started)
+- [Environment Variables](#environment-variables)
+- [Database](#database)
+- [API Reference](#api-reference)
+- [WebSocket Events](#websocket-events)
+- [Testing](#testing)
+- [Deployment](#deployment)
+- [Contributing](#contributing)
+- [License](#license)
 
 ---
 
-## 🏗️ Architecture
+## Overview
 
-### Technology Stack
+Co-Code GGW is a unified medical companion platform that enables users to:
 
-**Frontend:**
-- React 18.0+ with TypeScript
-- Vite (build tooling)
-- Tailwind CSS (styling)
-- i18n-js (internationalization)
-- Axios (HTTP client)
-- WebSocket API (real-time updates)
+- **Upload medical reports** (PDF, images) and automatically extract health metrics via OCR
+- **Track health profiles** with comprehensive intake forms (conditions, medications, allergies, family history)
+- **Monitor health trends** with a computed Health Index and interactive charts
+- **Receive AI recommendations** based on extracted lab values and health patterns
+- **Compare reports over time** with AI-powered summaries and trend analysis
+- **Chat with an AI assistant** grounded in your personal health data
 
-**Backend:**
-- FastAPI (async web framework)
-- SQLAlchemy ORM (database abstraction)
-- PostgreSQL (data persistence via Neon)
-- Pydantic (data validation)
-- Alembic (database migrations)
-- PyMuPDF/pdfplumber (PDF parsing)
-- Google Gemini API (AI capabilities)
+---
 
-**Infrastructure:**
-- Neon PostgreSQL (Cloud database)
-- JWT tokens (stateless authentication)
-- CORS protection (cross-origin security)
-- WebSocket connections (real-time communication)
+## Tech Stack
 
-### Project Structure
+| Layer | Technology |
+|-------|------------|
+| **Frontend** | React 18, TypeScript, Vite, Framer Motion, Recharts, React Router, i18next |
+| **Backend** | FastAPI (Python 3.10+), SQLAlchemy 2.0, Pydantic |
+| **Database** | PostgreSQL (Neon or local), Alembic migrations |
+| **OCR/Extraction** | PaddleOCR, pdfplumber, PyMuPDF |
+| **AI/LLM** | Grok API (xAI), Ollama (MedGemma), Gemini fallback, ChromaDB (RAG) |
+| **Realtime** | WebSocket (FastAPI native) |
+| **Auth** | JWT (python-jose), bcrypt |
 
+---
+
+## Architecture
+
+```mermaid
+flowchart TB
+    subgraph Client["Frontend (React)"]
+        UI[React UI]
+        WS[WebSocket Client]
+    end
+
+    subgraph API["Backend (FastAPI)"]
+        Auth[Auth Routes]
+        Dashboard[Dashboard Routes]
+        Reports[Reports Routes]
+        Profile[Profile Routes]
+        Recommendations[Recommendations Routes]
+        AISummary[AI Summary Routes]
+        Assistant[Assistant Routes]
+        WSServer[WebSocket Server]
+    end
+
+    subgraph Services["Backend Services"]
+        OCR[PDF/OCR Extractor]
+        Classifier[Document Classifier]
+        MetricExtractor[Metric Extractor]
+        MetricsService[Metrics Service]
+        RecommendationEngine[Recommendation Engine]
+        AISummaryService[AI Summary Service]
+        RAG[RAG Service]
+        LLM[LLM Service]
+    end
+
+    subgraph External["External Services"]
+        GrokAPI[Grok API]
+        Ollama[Ollama / MedGemma]
+        Gemini[Gemini API]
+    end
+
+    subgraph Storage["Data Layer"]
+        DB[(PostgreSQL / Neon)]
+        ChromaDB[(ChromaDB Vector Store)]
+        FileStorage[File Storage]
+    end
+
+    UI --> Auth
+    UI --> Dashboard
+    UI --> Reports
+    UI --> Profile
+    UI --> Recommendations
+    UI --> AISummary
+    UI --> Assistant
+    WS <--> WSServer
+
+    Reports --> OCR
+    OCR --> Classifier
+    Classifier --> MetricExtractor
+    MetricExtractor --> MetricsService
+    MetricsService --> RecommendationEngine
+
+    AISummary --> AISummaryService
+    AISummaryService --> GrokAPI
+    Assistant --> RAG
+    RAG --> ChromaDB
+    RAG --> LLM
+    LLM --> Ollama
+    LLM --> Gemini
+
+    Auth --> DB
+    Dashboard --> DB
+    Reports --> DB
+    Reports --> FileStorage
+    Profile --> DB
+    Recommendations --> DB
+    AISummary --> DB
 ```
-Co-Code ggw/
-├── backend/
-│   ├── app/
-│   │   ├── routes/              # API endpoints
-│   │   │   ├── auth.py          # Authentication endpoints
-│   │   │   ├── dashboard.py     # Health dashboard APIs
-│   │   │   ├── recommendations.py # AI recommendations
-│   │   │   ├── reports.py       # Lab report management
-│   │   │   ├── health.py        # Health check endpoints
-│   │   │   └── websocket.py     # WebSocket management
-│   │   ├── services/            # Business logic
-│   │   │   ├── metrics_service.py         # Health index computation
-│   │   │   ├── recommendation_service.py  # Rule-based recommendations
-│   │   │   └── enhanced_report_service.py # Report processing pipeline
-│   │   ├── extraction/          # Lab data extraction
-│   │   │   ├── lab_parser.py    # Metric extraction logic
-│   │   │   └── pdf_extractor.py # PDF text extraction
-│   │   ├── models.py            # SQLAlchemy models
-│   │   ├── schemas.py           # Pydantic request/response models
-│   │   ├── db.py                # Database configuration
-│   │   ├── security.py          # JWT & password utilities
-│   │   ├── settings.py          # Environment configuration
-│   │   └── main.py              # FastAPI application entry
-│   ├── alembic/                 # Database migrations
-│   ├── migrate.py               # Migration runner
-│   ├── requirements.txt         # Python dependencies
-│   └── start.bat                # Windows startup script
-│
-├── frontend/
-│   ├── src/
-│   │   ├── components/          # Reusable React components
-│   │   │   ├── dashboard/       # Dashboard components
-│   │   │   ├── health-chat/     # Chat interface
-│   │   │   ├── ui/              # Generic UI components
-│   │   │   └── [Feature Components]
-│   │   ├── pages/               # Full-page components
-│   │   │   ├── HomePage.tsx     # Landing page
-│   │   │   ├── Dashboard.tsx    # Main dashboard
-│   │   │   ├── HealthChat.tsx   # Chat page
-│   │   │   ├── Login.tsx        # Login page
-│   │   │   └── Signup.tsx       # Registration page
-│   │   ├── hooks/               # Custom React hooks
-│   │   │   ├── useDashboard.ts  # Dashboard data fetching
-│   │   │   ├── useWebSocket.ts  # WebSocket connection
-│   │   │   └── [Other Hooks]
-│   │   ├── services/            # API & utility functions
-│   │   │   ├── auth.ts          # Authentication API
-│   │   │   └── dashboardData.ts # Dashboard utilities
-│   │   ├── i18n/                # Internationalization
-│   │   │   └── locales/         # Language files (en, hi, mr)
-│   │   ├── App.tsx              # Main app component
-│   │   ├── main.tsx             # Entry point
-│   │   └── [Styling files]
-│   ├── package.json
-│   ├── tsconfig.json
-│   └── vite.config.ts
-│
-├── .env.example                 # Environment template
-├── .gitignore
-└── README.md
+
+### Data Flow: Report Upload to Health Index
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Frontend
+    participant Backend
+    participant OCR
+    participant Classifier
+    participant Extractor
+    participant DB
+    participant WebSocket
+
+    User->>Frontend: Upload PDF/Image
+    Frontend->>Backend: POST /api/reports/upload
+    Backend->>DB: Create report (status: uploaded)
+    Backend-->>Frontend: {id, status: uploaded}
+    
+    Backend->>OCR: Extract text (background)
+    OCR-->>Backend: Raw text
+    Backend->>Classifier: Classify document
+    Classifier-->>Backend: Category + doc_type
+    Backend->>Extractor: Extract metrics
+    Extractor-->>Backend: Observations[]
+    Backend->>DB: Save observations + update report
+    Backend->>DB: Recompute health index
+    Backend->>WebSocket: emit report_parsed
+    WebSocket-->>Frontend: report_parsed event
+    Frontend->>Frontend: Refresh UI
 ```
 
 ---
 
-## 🚀 Quick Start
+## Features
+
+### Document Upload & OCR
+- Supported formats: PDF, PNG, JPG, JPEG, TIFF
+- Max file size: 50MB
+- Automatic text extraction (text-first, OCR fallback)
+- Document classification: Lab, Dental, MRI, X-ray, Prescription, Sleep
+
+### Health Profile
+- Multi-step wizard with 6 steps (basics, measurements, conditions, medications, lifestyle, etc.)
+- Tracks conditions, symptoms, medications, supplements, allergies
+- Family medical history and genetic test results
+- Completion score with missing field tracking
+
+### Health Index & Trends
+- Computed health index (0-100) based on lab values
+- Factor contributions breakdown (glucose, lipids, vitamins, etc.)
+- Time-series trends (1D, 1W, 1M views)
+- Abnormal value flagging with reference ranges
+
+### AI Recommendations
+- Rule-based engine analyzing lab values vs reference ranges
+- Severity levels: INFO, WARNING, URGENT
+- Categories: lifestyle, screening, follow-up, urgent
+- Evidence-based with citations
+
+### AI Report Summary
+- Single report AI summary with key findings
+- Multi-report comparison (2-6 reports, same type)
+- Highlights: positive, needs attention, next steps
+- Cached results with hash-based invalidation
+
+### Health Assistant
+- RAG-powered chat grounded in user's health data
+- Citations from reports and observations
+- WebSocket streaming for real-time responses
+
+---
+
+## Getting Started
 
 ### Prerequisites
+
+- Node.js 18+ and npm/yarn
 - Python 3.10+
-- Node.js 16+ (with npm)
-- PostgreSQL database (Neon recommended for cloud)
-- Git
+- PostgreSQL 14+ (or Neon cloud database)
+- (Optional) Ollama for local LLM
 
-### Backend Setup
+### 1. Clone the Repository
 
-1. **Navigate to backend directory:**
-   ```bash
-   cd backend
-   ```
-
-2. **Create and activate virtual environment:**
-   ```bash
-   python -m venv venv
-   # On Windows:
-   venv\Scripts\activate
-   # On macOS/Linux:
-   source venv/bin/activate
-   ```
-
-3. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. **Configure environment variables:**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your database URL, JWT secret, and API keys
-   ```
-
-5. **Run database migrations:**
-   ```bash
-   python migrate.py
-   ```
-
-6. **Start development server:**
-   ```bash
-   python -m uvicorn app.main:app --reload --port 8000
-   ```
-   Backend will be available at `http://localhost:8000`
-
-### Frontend Setup
-
-1. **Navigate to frontend directory:**
-   ```bash
-   cd frontend
-   ```
-
-2. **Install dependencies:**
-   ```bash
-   npm install
-   ```
-
-3. **Start development server:**
-   ```bash
-   npm run dev
-   ```
-   Frontend will be available at `http://localhost:5175`
-
-### Verify Installation
-
-- Backend health check: `http://localhost:8000/api/health`
-- Frontend loads: `http://localhost:5175`
-- Login and test the interface
-
----
-
-## 📚 API Documentation
-
-### Authentication Endpoints
-
-**POST** `/api/auth/register`
-```json
-{
-  "email": "user@example.com",
-  "password": "securePassword123",
-  "name": "John Doe"
-}
-```
-
-**POST** `/api/auth/login`
-```json
-{
-  "email": "user@example.com",
-  "password": "securePassword123"
-}
-```
-
-### Health Dashboard Endpoints
-
-**GET** `/api/health-index`
-- Returns current health index score and confidence level
-
-**GET** `/api/health-index/debug`
-- Returns detailed health index computation breakdown
-
-**GET** `/api/dashboard/trends?metric=health_index&range=1w`
-- Supported metrics: `health_index`, `blood_pressure`, `glucose`, `cholesterol`
-- Supported ranges: `1d`, `1w`, `1m`
-
-**GET** `/api/recommendations`
-- Returns personalized health recommendations
-
-### Report Management Endpoints
-
-**POST** `/api/reports/upload`
-- Upload lab report PDF
-- Multipart form-data with file
-
-**GET** `/api/reports`
-- List all user's reports with processing status
-
-**GET** `/api/reports/{report_id}`
-- Get detailed report information with extracted metrics
-
-### WebSocket Connection
-
-**WebSocket** `/ws?token=<jwt_token>`
-
-Emitted Events:
-- `health_index_updated` - Health index recalculated
-- `trends_updated` - Trend data changed
-- `recommendations_updated` - New recommendations available
-- `reports_list_updated` - Reports list changed
-- `report_parsed` - Lab report parsing complete
-
----
-
-## 🔧 Configuration
-
-### Environment Variables
-
-Create `.env` file in backend directory:
-
-```env
-# Database
-DATABASE_URL=postgresql+asyncpg://user:password@host/dbname
-
-# JWT
-JWT_SECRET_KEY=your-super-secret-key-change-this
-JWT_ALGORITHM=HS256
-JWT_EXPIRATION_HOURS=24
-
-# API Keys
-GEMINI_API_KEY=your-google-gemini-api-key
-
-# CORS
-CORS_ORIGINS=http://localhost:5175,http://localhost:3000
-
-# Server
-SERVER_PORT=8000
-SERVER_HOST=0.0.0.0
-DEBUG=True
-```
-
-### Database Migrations
-
-Run pending migrations:
 ```bash
-python migrate.py
+git clone https://github.com/darved2305/Co-Code-2.0-ggw.git
+cd Co-Code-2.0-ggw
 ```
 
-Create new migration:
-```bash
-alembic revision --autogenerate -m "migration description"
-```
-
----
-
-## 🧪 Testing
-
-### Backend Tests
+### 2. Backend Setup
 
 ```bash
 cd backend
-pytest tests/ -v
+
+# Create virtual environment
+python -m venv .venv
+
+# Activate (Windows)
+.venv\Scripts\activate
+# Activate (macOS/Linux)
+source .venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Copy and configure environment
+cp .env.example .env
+# Edit .env with your DATABASE_URL, JWT_SECRET, GROK_API_KEY
+
+# Run database migrations
+alembic upgrade head
+
+# Start the server
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### Frontend Tests
+### 3. Frontend Setup
 
 ```bash
 cd frontend
-npm run test
-```
 
-### Manual Testing Scenarios
-
-1. **User Registration & Login**
-   - Register new account
-   - Login with credentials
-   - Verify JWT token in localStorage
-
-2. **Lab Report Upload**
-   - Upload sample PDF report
-   - Monitor processing status in WebSocket
-   - Verify metrics extraction
-
-3. **Health Dashboard**
-   - View health index (should update from DB)
-   - Check trends with different time ranges
-   - Validate recommendations display
-
-4. **Real-time Updates**
-   - Upload report in one tab
-   - Verify instant updates in other tabs
-   - Check WebSocket event emission
-
----
-
-## 📊 Data Models
-
-### User Model
-```python
-- id: UUID (primary key)
-- email: str (unique)
-- password_hash: str
-- name: str
-- created_at: datetime
-- updated_at: datetime
-```
-
-### Observation Model
-```python
-- id: UUID
-- user_id: UUID (foreign key)
-- metric_key: str (e.g., 'hemoglobin', 'glucose')
-- value: float
-- unit: str
-- ref_range_low: float
-- ref_range_high: float
-- flag: str (Normal, Low, High)
-- observed_at: datetime
-```
-
-### Report Model
-```python
-- id: UUID
-- user_id: UUID
-- file_path: str
-- status: str (Pending, Processing, Complete, Failed)
-- extracted_metrics_count: int
-- created_at: datetime
-- completed_at: datetime
-```
-
----
-
-## 🔒 Security Features
-
-- **JWT Authentication**: Stateless, token-based authentication
-- **Password Security**: Bcrypt hashing with salt
-- **CORS Protection**: Restricted cross-origin requests
-- **Environment Variables**: Sensitive data via .env
-- **Database Encryption**: Connection via SSL/TLS
-- **Input Validation**: Pydantic model validation
-- **SQL Injection Prevention**: Parameterized queries via SQLAlchemy
-- **XSS Protection**: React's built-in escaping
-
----
-
-## 🐛 Troubleshooting
-
-### Backend Issues
-
-**ImportError: No module named 'app'**
-```bash
-# Run from backend directory
-cd backend
-python -m uvicorn app.main:app --reload
-```
-
-**Database Connection Failed**
-```bash
-# Verify DATABASE_URL in .env
-# Test connection: python -c "from app.db import engine; print('OK')"
-```
-
-**Port Already in Use**
-```bash
-# Use different port
-python -m uvicorn app.main:app --port 8001
-```
-
-### Frontend Issues
-
-**Module Not Found Errors**
-```bash
-# Reinstall dependencies
-rm -rf node_modules package-lock.json
+# Install dependencies
 npm install
+
+# Start development server
+npm run dev
 ```
 
-**WebSocket Connection Failed**
+### 4. Access the Application
+
+- Frontend: http://localhost:5173
+- Backend API: http://localhost:8000
+- API Docs: http://localhost:8000/docs
+
+### Docker Setup (Alternative)
+
 ```bash
-# Check backend is running on correct port
-# Verify CORS settings in backend
-# Check JWT token is valid
+# From project root
+docker-compose up --build
+```
+
+Services:
+- Frontend: http://localhost:5173
+- Backend: http://localhost:8000
+- PostgreSQL: localhost:5432
+
+---
+
+## Environment Variables
+
+Create a `.env` file in the `backend/` directory:
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `DATABASE_URL` | PostgreSQL connection string (asyncpg) | `postgresql+asyncpg://user:pass@host:5432/db` |
+| `JWT_SECRET` | Secret key for JWT signing | `your-secret-key-min-32-chars` |
+| `JWT_ALGORITHM` | JWT algorithm | `HS256` |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | Token expiration | `10080` (7 days) |
+| `FRONTEND_ORIGIN` | CORS allowed origin | `http://localhost:5173` |
+| `GROK_API_KEY` | xAI Grok API key (for AI summaries) | `gsk_...` |
+| `GEMINI_API_KEY` | Google Gemini API key (optional fallback) | `AIza...` |
+| `OLLAMA_BASE_URL` | Ollama server URL (optional) | `http://localhost:11434` |
+| `OLLAMA_MODEL` | Ollama model name | `medgemma:4b` |
+| `USE_GEMINI_FALLBACK` | Enable Gemini fallback | `true` |
+
+See [backend/.env.example](backend/.env.example) for a complete template.
+
+---
+
+## Database
+
+### Migrations
+
+Migrations are managed with Alembic:
+
+```bash
+cd backend
+
+# Apply all migrations
+alembic upgrade head
+
+# Create a new migration
+alembic revision --autogenerate -m "description"
+
+# Check current revision
+alembic current
+```
+
+### Core Tables
+
+| Table | Description |
+|-------|-------------|
+| `users` | User accounts (email, password_hash, onboarding status) |
+| `login_events` | Login audit trail |
+| `reports` | Uploaded documents (file path, OCR text, classification) |
+| `observations` | Extracted health metrics (value, unit, reference range, flag) |
+| `health_metrics` | Computed scores (health_index, contributions) |
+| `user_profiles` | Health profile data (basics, measurements, lifestyle) |
+| `profile_conditions` | User medical conditions |
+| `profile_medications` | Current medications |
+| `profile_allergies` | Allergies and reactions |
+| `profile_family_history` | Family medical history |
+| `profile_recommendations` | Generated recommendations |
+| `chat_sessions` | Assistant chat sessions |
+| `chat_messages` | Chat message history |
+| `report_ai_summaries` | Cached AI report summaries |
+| `report_ai_comparisons` | Cached AI report comparisons |
+
+### Entity Relationships
+
+```mermaid
+erDiagram
+    users ||--o{ reports : uploads
+    users ||--o{ observations : has
+    users ||--o{ health_metrics : has
+    users ||--o| user_profiles : has
+    users ||--o{ profile_conditions : has
+    users ||--o{ profile_medications : takes
+    users ||--o{ profile_allergies : has
+    users ||--o{ chat_sessions : owns
+    users ||--o{ report_ai_summaries : generates
+    users ||--o{ report_ai_comparisons : generates
+    
+    reports ||--o{ observations : extracts
+    reports ||--o{ report_ai_summaries : summarized_by
+    
+    chat_sessions ||--o{ chat_messages : contains
 ```
 
 ---
 
-## 📈 Performance Optimization
+## API Reference
 
-- **Async Database Queries**: Non-blocking I/O operations
-- **PDF Parsing Fallback**: Multiple extraction methods for robustness
-- **WebSocket Pooling**: Efficient connection management
-- **Query Optimization**: Indexed database columns for fast retrieval
-- **Frontend Lazy Loading**: Dynamic imports for code splitting
-- **Caching Strategy**: Redis-compatible design for future enhancement
+### Authentication
 
----
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| POST | `/api/auth/register` | Create new account | No |
+| POST | `/api/auth/login` | Login, get JWT | No |
+| POST | `/api/auth/logout` | Logout, clear cookie | Yes |
 
-## 🔄 CI/CD Pipeline
+### Dashboard
 
-Current deployment workflow:
-1. Code commit to main branch
-2. Git pushes to repository
-3. Manual testing on development server
-4. Production deployment ready
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/api/me/bootstrap` | Get user state after login | Yes |
+| GET | `/api/dashboard/summary` | Health index with factor breakdown | Yes |
+| GET | `/api/dashboard/trends` | Time-series data for metrics | Yes |
 
-Recommended for production:
-- GitHub Actions for automated testing
-- Docker containerization
-- Kubernetes orchestration
-- Automated database backups
+### Reports
 
----
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/api/reports` | List user's reports | Yes |
+| POST | `/api/reports/upload` | Upload new report | Yes |
+| GET | `/api/reports/{id}` | Get report details | Yes |
+| POST | `/api/reports/{id}/confirm` | Confirm extracted values | Yes |
+| DELETE | `/api/reports/{id}` | Delete report | Yes |
+| GET | `/api/reports/{id}/debug` | Debug extraction info | Yes |
 
-## 📝 API Response Format
+### Profile
 
-**Success Response (200):**
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/api/profile` | Get full profile | Yes |
+| PUT | `/api/profile` | Update profile | Yes |
+| POST | `/api/profile/conditions` | Add conditions | Yes |
+| POST | `/api/profile/medications` | Add medications | Yes |
+| POST | `/api/profile/allergies` | Add allergies | Yes |
+| POST | `/api/profile/recompute` | Trigger recomputation | Yes |
+
+### Recommendations
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/api/recommendations` | Get recommendations | Yes |
+| GET | `/api/recommendations/summary` | Get summary counts | Yes |
+| POST | `/api/recommendations/regenerate` | Force regeneration | Yes |
+
+### AI Summary
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/api/ai/reports-for-summary` | List reports for selection | Yes |
+| GET | `/api/ai/reports/{id}/file` | Get report file | Yes |
+| POST | `/api/ai/report-summary` | Generate single report summary | Yes |
+| POST | `/api/ai/report-compare` | Compare multiple reports | Yes |
+| POST | `/api/ai/validate-comparison` | Validate selection | Yes |
+| GET | `/api/ai/categories` | Get distinct categories | Yes |
+
+### Assistant
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| POST | `/api/assistant/chat` | Chat with AI assistant | Yes |
+
+### Example Request/Response
+
+**POST /api/auth/login**
+
+Request:
 ```json
 {
-  "success": true,
-  "data": { /* response payload */ }
+  "email": "user@example.com",
+  "password": "securepassword"
 }
 ```
 
-**Error Response:**
+Response:
 ```json
 {
-  "success": false,
-  "error": "Error message",
-  "details": { /* error details */ }
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "email": "user@example.com",
+    "full_name": "John Doe",
+    "created_at": "2026-01-15T10:30:00Z"
+  }
+}
+```
+
+**POST /api/ai/report-summary**
+
+Request:
+```json
+{
+  "report_id": "550e8400-e29b-41d4-a716-446655440001",
+  "force_regenerate": false
+}
+```
+
+Response:
+```json
+{
+  "summary_json": {
+    "title": "Blood Panel Analysis - January 2026",
+    "highlights": {
+      "positive": ["Hemoglobin within normal range", "Glucose levels stable"],
+      "needs_attention": ["LDL cholesterol slightly elevated"],
+      "next_steps": ["Consider dietary changes", "Retest in 3 months"]
+    },
+    "plain_language_summary": "Your blood panel shows mostly healthy values...",
+    "key_findings": [
+      {"item": "LDL Cholesterol", "evidence": "142 mg/dL (ref: <100)"}
+    ],
+    "confidence": 0.85
+  },
+  "cached": false,
+  "generated_at": "2026-02-02T10:30:00Z",
+  "model_name": "grok-beta"
 }
 ```
 
 ---
 
-## 🤝 Contributing
+## WebSocket Events
 
-1. Create feature branch: `git checkout -b feature/your-feature`
-2. Make changes and commit: `git commit -m "Add feature"`
-3. Push to branch: `git push origin feature/your-feature`
-4. Open pull request
+Connect: `ws://localhost:8000/ws?token=<jwt_token>`
 
----
+### Events Sent to Client
 
-## 📄 License
+| Event | Payload | Description |
+|-------|---------|-------------|
+| `connected` | `{message, user_id}` | Connection established |
+| `pong` | `{timestamp}` | Response to ping |
+| `report_processing_started` | `{report_id, progress}` | OCR processing began |
+| `report_parsed` | `{report_id, extracted_metrics_count, status}` | OCR completed |
+| `health_index_updated` | `{score, breakdown, confidence, updated_at}` | Health index recalculated |
+| `trends_updated` | `{metrics: [...]}` | Trend data changed |
+| `reports_list_updated` | `{}` | Reports list changed |
+| `recommendations_updated` | `{count, urgent_count}` | Recommendations regenerated |
+| `profile_updated` | `{updated_at}` | Profile changed |
+| `chat_token` | `{token}` | Streaming chat token |
+| `chat_complete` | `{full_response, citations, session_id}` | Chat response complete |
 
-This project is licensed under the MIT License - see LICENSE file for details.
+### Events Received from Client
 
----
-
-## 📞 Support & Contact
-
-For issues, feature requests, or questions:
-- Open an issue in the repository
-- Check existing documentation
-- Review error logs and troubleshooting guide
-
----
-
-## 🎯 Roadmap
-
-- [ ] Mobile app (React Native)
-- [ ] Advanced ML health predictions
-- [ ] Insurance integration
-- [ ] Telemedicine appointment booking
-- [ ] Wearable device integration
-- [ ] Advanced data analytics dashboard
-- [ ] Multi-tenant SaaS setup
-- [ ] HIPAA compliance certification
+| Event | Payload | Description |
+|-------|---------|-------------|
+| `ping` | `{}` | Keepalive ping |
+| `subscribe` | `{topics: [...]}` | Subscribe to topics |
+| `chat_request` | `{message, session_id}` | Start streaming chat |
 
 ---
 
-**Last Updated:** January 2026  
-**Version:** 1.0.0  
-**Status:** Active Development
+## Testing
+
+### Run Tests
+
+```bash
+cd backend
+
+# Run all tests
+pytest
+
+# Run with verbose output
+pytest -v
+
+# Run specific test file
+pytest tests/test_routes_auth.py
+```
+
+### Test Files
+
+- `test_routes_auth.py` - Authentication endpoints
+- `test_routes_dashboard.py` - Dashboard endpoints
+- `test_routes_reports.py` - Report upload/management
+- `test_routes_recommendations.py` - Recommendation endpoints
+- `test_lab_parser.py` - Lab value extraction
+- `test_pdf_extractor.py` - PDF/OCR extraction
+- `test_metrics_service.py` - Health index computation
+- `test_websocket_manager.py` - WebSocket connection management
+
+### Manual QA Checklist
+
+1. ☐ Register a new account
+2. ☐ Login and verify dashboard loads
+3. ☐ Upload a PDF lab report
+4. ☐ Verify OCR extraction completes (WebSocket notification)
+5. ☐ Check extracted metrics appear in reports list
+6. ☐ Verify health index updates on dashboard
+7. ☐ Complete health profile wizard
+8. ☐ Check recommendations generate
+9. ☐ Open AI Summary page, select a report
+10. ☐ Generate AI summary, verify it displays
+11. ☐ Select 2 reports of same type, generate comparison
+12. ☐ Try selecting mixed types, verify warning appears
+
+---
+
+## Deployment
+
+### Docker Compose (Development/Staging)
+
+```bash
+docker-compose up -d
+```
+
+Includes:
+- PostgreSQL 16 (Alpine)
+- FastAPI backend with hot reload
+- Vite React frontend with hot reload
+
+### Production Considerations
+
+1. **Database**: Use Neon, Supabase, or managed PostgreSQL
+2. **Backend**: Deploy to Railway, Render, or AWS ECS
+3. **Frontend**: Deploy to Vercel, Netlify, or Cloudflare Pages
+4. **Secrets**: Use environment variables, never commit `.env`
+5. **HTTPS**: Enable secure cookies in production
+6. **CORS**: Update `FRONTEND_ORIGIN` for production domain
+
+---
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/my-feature`
+3. Make changes and test
+4. Commit with clear messages: `git commit -m "Add: feature description"`
+5. Push and create a Pull Request
+
+### Code Style
+
+- Backend: Follow PEP 8, use type hints
+- Frontend: Follow ESLint/Prettier config
+- Commits: Use conventional commit format
+
+---
+
+## License
+
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+
+---
+
+## Support
+
+For issues or questions, open a GitHub issue or contact the maintainers.

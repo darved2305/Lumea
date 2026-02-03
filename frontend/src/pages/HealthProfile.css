@@ -37,14 +37,16 @@
   border: none;
   border-radius: 8px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
   align-self: flex-start;
   margin-bottom: 32px;
+  transform: translateX(0);
 }
 
 .welcome-back-btn:hover {
   color: #1a1a2e;
   background: #f0f0f0;
+  transform: translateX(-4px);
 }
 
 .welcome-content {
@@ -106,6 +108,13 @@
   background: white;
   border: 1px solid #e0e0e0;
   border-radius: 12px;
+  transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+.benefit-item:hover {
+  border-color: #6b9175;
+  box-shadow: 0 2px 8px rgba(107, 145, 117, 0.1);
+  transform: translateY(-2px);
 }
 
 .benefit-item svg {
@@ -189,14 +198,20 @@
   border: 1px solid #e0e0e0;
   border-radius: 6px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
   white-space: nowrap;
+  transform: translateX(0);
 }
 
 .wizard-back-btn:hover {
   color: #1a1a2e;
   background: #f5f5f5;
   border-color: #d0d0d0;
+  transform: translateX(-4px);
+}
+
+.wizard-back-btn:active {
+  transform: translateX(-2px);
 }
 
 .health-profile-page .wizard-progress {
@@ -215,7 +230,8 @@
   height: 100%;
   background: #6b9175;
   border-radius: 4px;
-  transition: width 0.3s ease;
+  transition: width 0.6s cubic-bezier(0.4, 0.0, 0.2, 1);
+  box-shadow: 0 0 8px rgba(107, 145, 117, 0.3);
 }
 
 .health-profile-page .wizard-progress-text {
@@ -370,13 +386,20 @@
   border-radius: 8px;
   background: #fff;
   color: #1a1a2e;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+  transform: scale(1);
 }
 
 .health-profile-page .wizard-input:focus {
   outline: none;
   border-color: #6b9175;
-  box-shadow: 0 0 0 3px rgba(107, 145, 117, 0.1);
+  box-shadow: 0 0 0 3px rgba(107, 145, 117, 0.15);
+  transform: scale(1.01);
+}
+
+.health-profile-page .wizard-input:hover:not(:focus) {
+  border-color: #d0d0d0;
+  background: #fafafa;
 }
 
 .health-profile-page .wizard-input::placeholder {
@@ -457,18 +480,23 @@
   border: 1px solid #e0e0e0;
   border-radius: 8px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+  transform: scale(1);
 }
 
 .health-profile-page .wizard-radio:hover,
 .health-profile-page .wizard-checkbox:hover {
   border-color: #b8cfc0;
+  background: #fafafa;
+  transform: scale(1.01);
 }
 
 .health-profile-page .wizard-radio.selected,
 .health-profile-page .wizard-checkbox.selected {
   background: #f0f4f1;
   border-color: #6b9175;
+  transform: scale(1);
+  box-shadow: 0 0 0 3px rgba(107, 145, 117, 0.1);
 }
 
 .health-profile-page .wizard-radio input,
@@ -487,7 +515,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
 }
 
 .health-profile-page .wizard-radio.selected .radio-indicator {
@@ -500,6 +528,21 @@
   height: 8px;
   background: #6b9175;
   border-radius: 50%;
+  animation: radioPopIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes radioPopIn {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .health-profile-page .checkbox-indicator {
@@ -511,7 +554,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
   color: transparent;
 }
 
@@ -519,6 +562,19 @@
   background: #6b9175;
   border-color: #6b9175;
   color: white;
+  animation: checkboxPopIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes checkboxPopIn {
+  0% {
+    transform: scale(0.8);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 .health-profile-page .radio-label,
@@ -622,6 +678,8 @@
   padding: 16px 24px;
   border-top: 1px solid #e0e0e0;
   background: #fff;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
 .health-profile-page .wizard-footer-left,
@@ -629,6 +687,25 @@
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.health-profile-page .wizard-footer-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.health-profile-page .wizard-submit-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  color: #dc2626;
+  font-size: 0.875rem;
+  font-weight: 500;
 }
 
 /* Buttons */
@@ -642,8 +719,18 @@
   font-weight: 500;
   border-radius: 8px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
   border: none;
+  transform: scale(1);
+}
+
+.health-profile-page .wizard-btn:hover:not(:disabled) {
+  transform: scale(1.02);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.health-profile-page .wizard-btn:active:not(:disabled) {
+  transform: scale(0.98);
 }
 
 .health-profile-page .wizard-btn:disabled {
@@ -658,6 +745,7 @@
 
 .health-profile-page .wizard-btn-primary:hover:not(:disabled) {
   background: #5a7d63;
+  box-shadow: 0 4px 12px rgba(107, 145, 117, 0.3);
 }
 
 .health-profile-page .wizard-btn-secondary {

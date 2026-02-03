@@ -23,12 +23,18 @@ class Settings(BaseSettings):
     USE_GEMINI: bool = True # Alias for compatibility
     GEMINI_API_KEY: Optional[str] = None
     
-    # Grok/xAI API for LLM extraction fallback
+    # Groq API for recommendations and LLM extraction
+    groq_api_key: Optional[str] = None
+    groq_api_base: str = "https://api.groq.com/openai/v1"
+    groq_model: str = "llama-3.3-70b-versatile"  # Updated to current model
+    
+    # Grok/xAI API (alternative)
+    grok_api_key: Optional[str] = None
     xai_api_key: Optional[str] = None
     xai_api_base: str = "https://api.x.ai/v1"
     grok_model: str = "grok-beta"
     
-    # OpenAI API (alternative to Grok)
+    # OpenAI API (alternative)
     openai_api_key: Optional[str] = None
     openai_api_base: str = "https://api.openai.com/v1"
     openai_model: str = "gpt-4o-mini"

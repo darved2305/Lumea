@@ -49,6 +49,7 @@ import {
   updateWizardState,
   AnswerData,
 } from '../services/profileApi';
+import ProfileSuccessScreen from '../components/ProfileSuccessScreen';
 import './HealthProfile.css';
 
 type FormValues = Record<string, AnswerData>;
@@ -70,6 +71,8 @@ export default function HealthProfile() {
   const [currentStep, setCurrentStep] = useState(0);
   const [formValues, setFormValues] = useState<FormValues>({});
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Validation
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
@@ -122,8 +125,9 @@ export default function HealthProfile() {
           setCurrentStep(Math.max(0, (p.wizard_current_step || 1) - 1));
         }
 
-        // Load from answers
-        for (const answer of data.answers) {
+        // Load from answers (safely handle missing/null answers)
+        const answers = data.answers || [];
+        for (const answer of answers) {
           values[answer.question_id] = answer.answer_data;
 
           // Check for "other" text answers
@@ -134,11 +138,12 @@ export default function HealthProfile() {
         }
 
         // Load conditions as multiselect value
-        if (data.conditions.length > 0) {
-          const codes = data.conditions.map(c => c.condition_code);
+        const conditions = data.conditions || [];
+        if (conditions.length > 0) {
+          const codes = conditions.map(c => c.condition_code);
           // Check if any are "other" type
-          const hasOther = data.conditions.some(c => c.condition_code === 'other');
-          const otherCondition = data.conditions.find(c => c.condition_code === 'other');
+          const hasOther = conditions.some(c => c.condition_code === 'other');
+          const otherCondition = conditions.find(c => c.condition_code === 'other');
           if (hasOther && otherCondition?.condition_name !== 'Other') {
             otherTxts['diagnosed_conditions'] = otherCondition?.condition_name || '';
           }
@@ -312,6 +317,11 @@ export default function HealthProfile() {
 
   // Debounced autosave
   const debouncedSave = useCallback((values: FormValues, otherTxts: Record<string, string>) => {
+    // Don't autosave if there's already a save error
+    if (saveStatus === 'error') {
+      return;
+    }
+
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
@@ -324,12 +334,18 @@ export default function HealthProfile() {
     saveTimeoutRef.current = setTimeout(async () => {
       await saveFormData(values, otherTxts);
     }, 600);
-  }, []);
+  }, [saveStatus]);
 
   // Save form data to backend
   const saveFormData = async (values: FormValues, otherTxts: Record<string, string>) => {
+    // Skip if already saving to prevent concurrent saves
+    if (saving) {
+      return;
+    }
+
     setSaveStatus('saving');
     setSaving(true);
+    setSubmitError(null);
 
     try {
       // Collect profile fields to update
@@ -437,9 +453,18 @@ export default function HealthProfile() {
       // Reset save status after 2 seconds
       setTimeout(() => setSaveStatus('idle'), 2000);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving form:', error);
       setSaveStatus('error');
+      // Show error message to user
+      const errorMsg = error?.message || 'Failed to save. Please try again.';
+      setSubmitError(errorMsg);
+
+      // Clear error after 5 seconds
+      setTimeout(() => {
+        setSaveStatus('idle');
+        setSubmitError(null);
+      }, 5000);
     } finally {
       setSaving(false);
     }
@@ -483,6 +508,7 @@ export default function HealthProfile() {
   const handleNext = async () => {
     // Validate current step
     setShowErrors(true);
+    setSubmitError(null);
     const isValid = validateCurrentStep();
 
     if (!isValid) {
@@ -495,23 +521,32 @@ export default function HealthProfile() {
     }
 
     // Save current step
-    await saveFormData(formValues, otherTexts);
+    setSaving(true);
+    try {
+      await saveFormData(formValues, otherTexts);
 
-    if (currentStep < PROFILE_FORM_SCHEMA.length - 1) {
-      const nextStep = currentStep + 1;
-      setCurrentStep(nextStep);
-      setShowErrors(false);
-      setValidationErrors({});
-      await updateWizardState(nextStep + 1);
-      // Scroll to top of content
-      const wizardContent = document.querySelector('.wizard-content');
-      if (wizardContent) {
-        wizardContent.scrollTop = 0;
+      if (currentStep < PROFILE_FORM_SCHEMA.length - 1) {
+        const nextStep = currentStep + 1;
+        setCurrentStep(nextStep);
+        setShowErrors(false);
+        setValidationErrors({});
+        await updateWizardState(nextStep + 1);
+        // Scroll to top of content
+        const wizardContent = document.querySelector('.wizard-content');
+        if (wizardContent) {
+          wizardContent.scrollTop = 0;
+        }
+      } else {
+        // Complete wizard - mark as complete and show success screen
+        await updateWizardState(PROFILE_FORM_SCHEMA.length, true);
+        setShowSuccess(true);
       }
-    } else {
-      // Complete wizard - save and navigate back
-      await updateWizardState(PROFILE_FORM_SCHEMA.length, true);
-      navigate('/reports');
+    } catch (error: any) {
+      console.error('Error saving profile:', error);
+      setSaveStatus('error');
+      setSubmitError(error?.message || 'Failed to save profile. Please try again.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -559,12 +594,8 @@ export default function HealthProfile() {
     const isRequired = field.required || REQUIRED_FIELDS.includes(field.questionId);
 
     return (
-      <motion.div
-        key={field.questionId}
+      <div
         className={`wizard-field ${field.gridColumn === 'half' ? 'wizard-field-half' : 'wizard-field-full'} ${hasError ? 'has-error' : ''}`}
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -10 }}
       >
         <div className="wizard-field-header">
           <label className="wizard-field-label">
@@ -587,7 +618,7 @@ export default function HealthProfile() {
             <span>{validationErrors[field.questionId]}</span>
           </div>
         )}
-      </motion.div>
+      </div>
     );
   };
 
@@ -895,9 +926,20 @@ export default function HealthProfile() {
                 <ChevronRight size={18} />
               </button>
             </div>
+
           </div>
         </div>
       </div>
+    );
+  }
+
+  // Show success screen after completion
+  if (showSuccess) {
+    return (
+      <ProfileSuccessScreen
+        autoRedirect={true}
+        redirectDelay={2000}
+      />
     );
   }
 
@@ -950,10 +992,13 @@ export default function HealthProfile() {
           <AnimatePresence mode="wait">
             <motion.div
               key={currentStep}
-              initial={{ opacity: 0, x: 20 }}
+              initial={{ opacity: 0, x: 40 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.2 }}
+              exit={{ opacity: 0, x: -40 }}
+              transition={{
+                duration: 0.5,
+                ease: [0.4, 0.0, 0.2, 1]
+              }}
               className="wizard-step"
             >
               <div className="wizard-step-header">
@@ -962,7 +1007,20 @@ export default function HealthProfile() {
               </div>
 
               <div className="wizard-fields-grid">
-                {currentStepData.fields.map(field => renderField(field))}
+                {currentStepData.fields.map((field, index) => (
+                  <motion.div
+                    key={field.questionId}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{
+                      duration: 0.4,
+                      delay: index * 0.1,
+                      ease: [0.4, 0.0, 0.2, 1]
+                    }}
+                  >
+                    {renderField(field)}
+                  </motion.div>
+                ))}
               </div>
             </motion.div>
           </AnimatePresence>
@@ -979,6 +1037,15 @@ export default function HealthProfile() {
                 <ChevronLeft size={18} />
                 Back
               </button>
+            )}
+          </div>
+
+          <div className="wizard-footer-center">
+            {submitError && (
+              <div className="wizard-submit-error">
+                <AlertCircle size={16} />
+                <span>{submitError}</span>
+              </div>
             )}
           </div>
 

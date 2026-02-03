@@ -488,33 +488,36 @@ class ProfileGeneticTestResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-# Core profile update schema
+# Core profile update schema - tolerant validation for partial updates
 class UserProfileUpdate(BaseModel):
     # Step 1: Basics
     full_name: Optional[str] = Field(None, max_length=255)
     date_of_birth: Optional[datetime] = None
-    age_years: Optional[int] = Field(None, ge=0, le=120)
-    sex_at_birth: Optional[str] = Field(None, pattern="^(male|female|intersex|prefer_not)$")
+    age_years: Optional[int] = Field(None, ge=0, le=150)
+    sex_at_birth: Optional[str] = None  # Relaxed: any string or null
     gender: Optional[str] = Field(None, max_length=50)
     city: Optional[str] = Field(None, max_length=100)
     
-    # Step 2: Body Measurements
-    height_cm: Optional[float] = Field(None, ge=50, le=250)
-    weight_kg: Optional[float] = Field(None, ge=20, le=300)
-    waist_cm: Optional[float] = Field(None, ge=30, le=200)
-    activity_level: Optional[str] = Field(None, pattern="^(sedentary|moderate|active)$")
+    # Step 2: Body Measurements  
+    height_cm: Optional[float] = Field(None, ge=20, le=300)  # Very relaxed bounds
+    weight_kg: Optional[float] = Field(None, ge=1, le=500)   # Allow very low weight
+    waist_cm: Optional[float] = Field(None, ge=10, le=250)   # Relaxed bounds
+    activity_level: Optional[str] = None  # Relaxed: any string or null
     
     # Step 6: Lifestyle
-    smoking: Optional[str] = Field(None, pattern="^(never|former|current|prefer_not|unknown)$")
-    alcohol: Optional[str] = Field(None, pattern="^(none|occasional|frequent|unknown)$")
+    smoking: Optional[str] = None  # Relaxed: any string or null
+    alcohol: Optional[str] = None  # Relaxed: any string or null
     sleep_hours_avg: Optional[float] = Field(None, ge=0, le=24)
-    sleep_quality: Optional[str] = Field(None, pattern="^(good|ok|poor|unknown)$")
+    sleep_quality: Optional[str] = None  # Relaxed: any string or null
     exercise_minutes_per_week: Optional[int] = Field(None, ge=0, le=10080)
-    diet_pattern: Optional[str] = Field(None, pattern="^(veg|nonveg|mixed|unknown)$")
+    diet_pattern: Optional[str] = None  # Relaxed: any string or null
     
     # Wizard state
-    wizard_current_step: Optional[int] = Field(None, ge=1, le=7)
+    wizard_current_step: Optional[int] = Field(None, ge=1, le=10)
     wizard_completed: Optional[bool] = None
+    
+    class Config:
+        extra = "ignore"  # Ignore extra fields not in schema
 
 
 class DerivedFeatureResponse(BaseModel):
@@ -599,3 +602,103 @@ class FullProfileResponse(BaseModel):
     genetic_tests: List[ProfileGeneticTestResponse]
     derived_features: List[DerivedFeatureResponse]
     completion: ProfileCompletionResponse
+
+
+# ============================================================================
+# AI REPORT SUMMARY SCHEMAS
+# ============================================================================
+
+class KeyFinding(BaseModel):
+    """A key finding from a report"""
+    item: str
+    evidence: str
+
+
+class SummaryHighlights(BaseModel):
+    """Summary highlights with categorized items"""
+    positive: List[str] = []
+    needs_attention: List[str] = []
+    next_steps: List[str] = []
+
+
+class ReportSummaryJSON(BaseModel):
+    """AI-generated summary structure for a single report"""
+    title: str
+    highlights: SummaryHighlights
+    plain_language_summary: str
+    key_findings: List[KeyFinding] = []
+    confidence: float = Field(ge=0, le=1)
+
+
+class KeyDifference(BaseModel):
+    """A key difference between reports"""
+    metric: str
+    from_value: Optional[str] = Field(None, alias="from")
+    to_value: Optional[str] = Field(None, alias="to")
+    evidence: str
+
+    class Config:
+        populate_by_name = True
+
+
+class ReportComparisonJSON(BaseModel):
+    """AI-generated comparison structure for multiple reports"""
+    title: str
+    overall_change: str
+    improvements: List[str] = []
+    worsened: List[str] = []
+    stable: List[str] = []
+    key_differences: List[KeyDifference] = []
+    next_steps: List[str] = []
+    confidence: float = Field(ge=0, le=1)
+
+
+class GenerateSummaryRequest(BaseModel):
+    """Request to generate AI summary for a report"""
+    report_id: UUID
+    force_regenerate: bool = False
+
+
+class GenerateCompareRequest(BaseModel):
+    """Request to generate AI comparison for multiple reports"""
+    report_ids: List[UUID] = Field(..., min_length=2, max_length=6)
+    force_regenerate: bool = False
+
+
+class SummaryResponse(BaseModel):
+    """Response containing AI summary"""
+    summary_json: ReportSummaryJSON
+    cached: bool
+    generated_at: datetime
+    model_name: str
+
+    class Config:
+        from_attributes = True
+
+
+class ComparisonResponse(BaseModel):
+    """Response containing AI comparison"""
+    comparison_json: ReportComparisonJSON
+    cached: bool
+    generated_at: datetime
+    model_name: str
+
+    class Config:
+        from_attributes = True
+
+
+class ReportForSummary(BaseModel):
+    """Report data for summary/comparison"""
+    id: UUID
+    filename: str
+    category: Optional[str]
+    doc_type: Optional[str]
+    report_date: Optional[datetime]
+    uploaded_at: datetime
+    file_path: str
+    file_type: str
+    preview_url: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
