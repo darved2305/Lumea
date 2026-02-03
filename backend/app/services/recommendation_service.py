@@ -69,7 +69,7 @@ class RecommendationService:
             results.sort(key=lambda r: (severity_order.get(r.severity, 3),))
             
             # Optionally apply LLM rewording - but catch errors
-            if settings.USE_GEMINI and settings.GEMINI_API_KEY:
+            if settings.USE_GEMINI_FALLBACK and settings.GEMINI_API_KEY:
                 try:
                     results = await self._reword_with_gemini(results)
                 except Exception as e:

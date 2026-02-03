@@ -39,12 +39,31 @@ async def generate_grok_recommendations(
     Returns:
         List of recommendation dictionaries
     """
-    # Check if Grok API key is configured
-    grok_key = settings.grok_api_key or settings.xai_api_key
+    # Check if any LLM API key is configured (Groq, Grok, or OpenAI)
+    api_key = settings.groq_api_key or settings.grok_api_key or settings.xai_api_key or settings.openai_api_key
     
-    if not grok_key:
-        logger.warning("GROK_API_KEY not configured, falling back to rule-based recommendations")
+    if not api_key:
+        logger.warning("No LLM API key configured, falling back to rule-based recommendations")
         return []
+    
+    # Determine which API to use
+    if settings.groq_api_key:
+        api_base = settings.groq_api_base
+        model = settings.groq_model
+        logger.info("Using Groq API for recommendations")
+    elif settings.grok_api_key or settings.xai_api_key:
+        api_base = settings.xai_api_base
+        model = settings.grok_model
+        api_key = settings.grok_api_key or settings.xai_api_key
+        logger.info("Using xAI Grok API for recommendations")
+    elif settings.openai_api_key:
+        api_base = settings.openai_api_base
+        model = settings.openai_model
+        api_key = settings.openai_api_key
+        logger.info("Using OpenAI API for recommendations")
+    else:
+        api_base = settings.groq_api_base
+        model = settings.groq_model
     
     # Build context for Grok
     prompt = _build_grok_prompt(context_data)
@@ -52,13 +71,13 @@ async def generate_grok_recommendations(
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
-                f"{settings.xai_api_base}/chat/completions",
+                f"{api_base}/chat/completions",
                 headers={
-                    "Authorization": f"Bearer {grok_key}",
+                    "Authorization": f"Bearer {api_key}",
                     "Content-Type": "application/json",
                 },
                 json={
-                    "model": settings.grok_model,
+                    "model": model,
                     "messages": [
                         {
                             "role": "system",

@@ -19,9 +19,31 @@ from app.models import Report, ReportAISummary, ReportAIComparison, Observation
 
 logger = logging.getLogger(__name__)
 
-# Grok API configuration
-GROK_API_URL = "https://api.x.ai/v1/chat/completions"
-GROK_MODEL = settings.grok_model or "grok-beta"
+# LLM API configuration - support Groq, Grok (xAI), and OpenAI
+def get_llm_config():
+    """Determine which LLM API to use based on available keys."""
+    if settings.groq_api_key:
+        return {
+            "api_key": settings.groq_api_key,
+            "api_url": f"{settings.groq_api_base}/chat/completions",
+            "model": settings.groq_model,
+            "service": "Groq"
+        }
+    elif settings.grok_api_key or settings.xai_api_key:
+        return {
+            "api_key": settings.grok_api_key or settings.xai_api_key,
+            "api_url": f"{settings.xai_api_base}/chat/completions",
+            "model": settings.grok_model,
+            "service": "Grok"
+        }
+    elif settings.openai_api_key:
+        return {
+            "api_key": settings.openai_api_key,
+            "api_url": f"{settings.openai_api_base}/chat/completions",
+            "model": settings.openai_model,
+            "service": "OpenAI"
+        }
+    return None
 
 # System prompts for AI
 SUMMARY_SYSTEM_PROMPT = """You are a medical report analyst AI assistant. Your task is to analyze medical reports and provide clear, accurate summaries.
@@ -91,9 +113,11 @@ class AISummaryService:
 
     def __init__(self, db: AsyncSession):
         self.db = db
-        self.api_key = settings.grok_api_key
-        if not self.api_key:
-            logger.warning("GROK_API_KEY not configured - AI summaries will fail")
+        self.llm_config = get_llm_config()
+        if not self.llm_config:
+            logger.warning("No LLM API key configured (GROQ_API_KEY, GROK_API_KEY, or OPENAI_API_KEY) - AI summaries will fail")
+        else:
+            logger.info(f"Using {self.llm_config['service']} API for AI summaries")
 
     async def get_report_text(self, report_id: UUID, user_id: UUID) -> Optional[Report]:
         """Fetch report with validation that it belongs to user."""
@@ -124,17 +148,17 @@ class AISummaryService:
         user_prompt: str,
         json_schema: str
     ) -> Dict[str, Any]:
-        """Call Grok API with the given prompts."""
-        if not self.api_key:
-            raise ValueError("GROK_API_KEY not configured")
+        """Call LLM API (Groq/Grok/OpenAI) with the given prompts."""
+        if not self.llm_config:
+            raise ValueError("No LLM API key configured. Please set GROQ_API_KEY, GROK_API_KEY, or OPENAI_API_KEY in your environment.")
 
         headers = {
-            "Authorization": f"Bearer {self.api_key}",
+            "Authorization": f"Bearer {self.llm_config['api_key']}",
             "Content-Type": "application/json"
         }
 
         payload = {
-            "model": GROK_MODEL,
+            "model": self.llm_config['model'],
             "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": f"{user_prompt}\n\nReturn your response as JSON matching this exact schema:\n{json_schema}"}
@@ -146,7 +170,7 @@ class AISummaryService:
         try:
             async with httpx.AsyncClient(timeout=60.0) as client:
                 response = await client.post(
-                    GROK_API_URL,
+                    self.llm_config['api_url'],
                     headers=headers,
                     json=payload
                 )
@@ -236,7 +260,11 @@ OCR Text:
 
 Generate a comprehensive summary focusing on key health insights."""
 
-        # Call Grok API
+        # Call LLM API
+        llm_config = get_llm_config()
+        if not llm_config:
+            raise ValueError("No LLM API configured. Please set GROQ_API_KEY, GROK_API_KEY, or OPENAI_API_KEY")
+        
         summary_json = await self.call_grok_api(
             SUMMARY_SYSTEM_PROMPT,
             user_prompt,
@@ -248,7 +276,7 @@ Generate a comprehensive summary focusing on key health insights."""
             user_id=user_id,
             report_id=report_id,
             summary_json=summary_json,
-            model_name=GROK_MODEL,
+            model_name=llm_config["model"],
             source_hash=source_hash
         )
         self.db.add(new_summary)
@@ -259,7 +287,7 @@ Generate a comprehensive summary focusing on key health insights."""
             "summary_json": summary_json,
             "cached": False,
             "generated_at": new_summary.created_at,
-            "model_name": GROK_MODEL
+            "model_name": llm_config["model"]
         }
 
     async def generate_comparison(
@@ -359,7 +387,11 @@ Text:
 
 Identify trends, improvements, areas of concern, and recommended next steps. Focus on meaningful changes between reports."""
 
-        # Call Grok API
+        # Call LLM API
+        llm_config = get_llm_config()
+        if not llm_config:
+            raise ValueError("No LLM API configured. Please set GROQ_API_KEY, GROK_API_KEY, or OPENAI_API_KEY")
+        
         comparison_json = await self.call_grok_api(
             COMPARE_SYSTEM_PROMPT,
             user_prompt,
@@ -371,7 +403,7 @@ Identify trends, improvements, areas of concern, and recommended next steps. Foc
             user_id=user_id,
             report_ids_json=[str(r.id) for r in reports_sorted],
             comparison_json=comparison_json,
-            model_name=GROK_MODEL,
+            model_name=llm_config["model"],
             source_hash=source_hash
         )
         self.db.add(new_comparison)
@@ -382,7 +414,7 @@ Identify trends, improvements, areas of concern, and recommended next steps. Foc
             "comparison_json": comparison_json,
             "cached": False,
             "generated_at": new_comparison.created_at,
-            "model_name": GROK_MODEL
+            "model_name": llm_config["model"]
         }
 
     @staticmethod

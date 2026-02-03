@@ -48,6 +48,11 @@ services:
       - RAG_TOP_K=5
       # Hugging Face cache configuration (local MedGemma)
       - HF_HOME=/root/.cache/huggingface
+      # LLM API Keys
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - GROK_API_KEY=${GROK_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - TRANSFORMERS_CACHE=/root/.cache/huggingface
       # Hugging Face auth (required for gated models like MedGemma)
       - HF_TOKEN=${HF_TOKEN:-}
