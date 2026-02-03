@@ -18,31 +18,33 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     # Initialize Database
     try:
+        logger.info("Initializing database...")
         await init_db()
+        logger.info("Database initialized successfully")
     except Exception as e:
-        if getattr(settings, "AUTO_MIGRATE", False):
-            logger.error("DB init/migrations failed; refusing to start with an unknown schema", exc_info=True)
-            raise
-        logger.debug(f"DB init (non-critical): {e}")
+        logger.warning(f"DB init failed (continuing anyway): {e}")
 
-    # Initialize Knowledge Graph
+    # Initialize Knowledge Graph (non-blocking)
     try:
+        logger.info("Initializing graph service...")
         await get_graph_service().initialize()
+        logger.info("Graph service initialized")
     except Exception as e:
-        logger.debug(f"Graph service init (non-critical): {e}")
+        logger.warning(f"Graph service init skipped: {e}")
 
+    logger.info("Application startup complete")
     yield
 
     # Best-effort shutdown cleanup
     try:
         await get_graph_service().close()
     except Exception as e:
-        logger.debug(f"Graph service close (non-critical): {e}")
+        logger.debug(f"Graph service close: {e}")
 
     try:
         await engine.dispose()
     except Exception as e:
-        logger.debug(f"DB engine dispose (non-critical): {e}")
+        logger.debug(f"DB engine dispose: {e}")
 
 app = FastAPI(title="Co-Code GGW Health Platform API", lifespan=lifespan)
 

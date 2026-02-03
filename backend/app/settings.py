@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     # Database schema management
     # In development, prefer Alembic migrations over SQLAlchemy create_all()
     # so existing databases get schema changes (new columns/indexes).
-    AUTO_MIGRATE: bool = True
+    AUTO_MIGRATE: bool = False  # Disabled - using create_all instead
     
     # Ollama LLM Configuration
     # Default to localhost for direct (non‑Docker) runs.

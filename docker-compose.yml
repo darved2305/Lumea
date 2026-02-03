@@ -26,8 +26,6 @@ services:
       # Use BuildKit for faster builds with caching
       args:
         BUILDKIT_INLINE_CACHE: 1
-    # Network mode for better connectivity during build
-    network_mode: bridge
     container_name: ggw-backend
     restart: unless-stopped
     ports:
