@@ -14,7 +14,10 @@ class Settings(BaseSettings):
     AUTO_MIGRATE: bool = True
     
     # Ollama LLM Configuration
-    OLLAMA_BASE_URL: str = "http://host.docker.internal:11434"  # Host machine via Docker
+    # Default to localhost for direct (non‑Docker) runs.
+    # When running via Docker, docker-compose.yml overrides this to use
+    # http://host.docker.internal:11434 so the container can reach the host.
+    OLLAMA_BASE_URL: str = "http://localhost:11434"
     OLLAMA_MODEL: str = "hf.co/unsloth/medgemma-4b-it-GGUF:Q6_K_XL"
     OLLAMA_TIMEOUT: int = 120  # seconds
     

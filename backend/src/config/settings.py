@@ -23,7 +23,10 @@ class Settings(BaseSettings):
     HUGGINGFACE_HUB_TOKEN: Optional[str] = None
 
     # Ollama configuration (local)
-    OLLAMA_BASE_URL: str = "http://host.docker.internal:11434"
+    # Default to localhost for direct (non‑Docker) runs.
+    # When running via Docker, docker-compose.yml normally overrides this to use
+    # http://host.docker.internal:11434 so the container can reach the host.
+    OLLAMA_BASE_URL: str = "http://localhost:11434"
     OLLAMA_MODEL: str = "hf.co/unsloth/medgemma-4b-it-GGUF:Q6_K_XL"
     OLLAMA_PULL_ON_START: bool = True
     OLLAMA_PULL_LOG_STEP_PCT: int = 5
