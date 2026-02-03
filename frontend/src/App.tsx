@@ -8,6 +8,7 @@ import ReportSummary from './pages/ReportSummary'
 import HealthProfile from './pages/HealthProfile'
 import Settings from './pages/Settings'
 import Recommendations from './pages/Recommendations'
+import Medicines from './pages/Medicines'
 import ProtectedRoute from './components/ProtectedRoute'
 import './App.css'
 
@@ -47,6 +48,14 @@ function App() {
           element={
             <ProtectedRoute>
               <Recommendations />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/medicines" 
+          element={
+            <ProtectedRoute>
+              <Medicines />
             </ProtectedRoute>
           } 
         />

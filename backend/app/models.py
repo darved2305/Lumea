@@ -604,3 +604,84 @@ class ReportAIComparison(Base):
     
     # Relationships
     user = relationship("User", backref="ai_comparisons")
+
+
+# ============================================================================
+# MEDICINES FEATURE MODELS
+# ============================================================================
+
+class GenericCatalog(Base):
+    """Generic medicines catalog - seeded from Jan Aushadhi/PMBI data"""
+    __tablename__ = "generic_catalog"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    product_name = Column(String(500), nullable=False)
+    salt = Column(String(500), nullable=False, index=True)
+    strength = Column(String(100), nullable=False)
+    form = Column(String(100), nullable=False)  # tablet/capsule/syrup/injection
+    release_type = Column(String(50), nullable=True)  # SR/ER/CR/Normal/null
+    mrp = Column(Numeric(10, 2), nullable=True)
+    manufacturer = Column(String(300), nullable=True)
+    source = Column(String(50), nullable=False, default='jan_aushadhi')
+    is_jan_aushadhi = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class UserSavedMedicine(Base):
+    """User's saved medicines for quick access"""
+    __tablename__ = "user_saved_medicines"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    original_name = Column(String(500), nullable=True)
+    salt = Column(String(500), nullable=False)
+    strength = Column(String(100), nullable=False)
+    form = Column(String(100), nullable=False)
+    release_type = Column(String(50), nullable=True)
+    schedule_json = Column(JSONB, nullable=True)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    
+    user = relationship("User", backref="saved_medicines")
+
+
+class SubstituteQuery(Base):
+    """Tracks substitute search queries for analytics"""
+    __tablename__ = "substitute_queries"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    query_raw = Column(Text, nullable=False)
+    normalized_json = Column(JSONB, nullable=True)
+    results_json = Column(JSONB, nullable=True)
+    results_count = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    
+    user = relationship("User", backref="substitute_queries")
+
+
+class PharmacyClick(Base):
+    """Tracks pharmacy detail views for analytics"""
+    __tablename__ = "pharmacy_clicks"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    place_id = Column(String(300), nullable=False)
+    place_name = Column(String(500), nullable=True)
+    mode = Column(String(50), nullable=False)  # pharmacy/janaushadhi
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    
+    user = relationship("User", backref="pharmacy_clicks")
+
+
+class UserLocationConsent(Base):
+    """Stores user consent for location services"""
+    __tablename__ = "user_location_consent"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True)
+    consent = Column(Boolean, default=False, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    
+    user = relationship("User", backref="location_consent", uselist=False)
+

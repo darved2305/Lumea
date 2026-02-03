@@ -23,6 +23,11 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      # Use BuildKit for faster builds with caching
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+    # Network mode for better connectivity during build
+    network_mode: bridge
     container_name: ggw-backend
     restart: unless-stopped
     ports:
@@ -59,6 +64,7 @@ services:
       - GROK_API_KEY=${GROK_API_KEY:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GOOGLE_PLACES_API_KEY=${GOOGLE_PLACES_API_KEY:-}
       - TRANSFORMERS_CACHE=/root/.cache/huggingface
       # Hugging Face auth (required for gated models like MedGemma)
       - HF_TOKEN=${HF_TOKEN:-}

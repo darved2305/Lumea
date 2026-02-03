@@ -46,6 +46,9 @@ class Settings(BaseSettings):
     openai_api_key: Optional[str] = None
     openai_api_base: str = "https://api.openai.com/v1"
     openai_model: str = "gpt-4o-mini"
+    
+    # Google Places API for pharmacy locator
+    google_places_api_key: Optional[str] = None
 
     # Neo4j (for Mem0 graph memory and Graphiti)
     NEO4J_URI: str = "bolt://neo4j:7687"

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Settings, LogOut, Home, LayoutDashboard, Bell, FileText, Activity, Sparkles } from 'lucide-react';
+import { Settings, LogOut, Home, LayoutDashboard, Bell, FileText, Activity, Sparkles, Pill } from 'lucide-react';
 import { logout } from '../../utils/auth';
 import './DashboardNavbar.css';
 
@@ -14,7 +14,6 @@ function DashboardNavbar({ userName = 'User', userStatus = '87% Healthy' }: Dash
   const location = useLocation();
   const navigate = useNavigate();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
 
   const navItems = [
     { label: 'Home', path: '/', icon: Home },
@@ -22,6 +21,7 @@ function DashboardNavbar({ userName = 'User', userStatus = '87% Healthy' }: Dash
     { label: 'Reports', path: '/reports', icon: FileText },
     { label: 'AI Summary', path: '/report-summary', icon: Sparkles },
     { label: 'Recommendations', path: '/recommendations', icon: Activity },
+    { label: 'Medicines', path: '/medicines', icon: Pill },
   ];
 
   const isActive = (path: string) => location.pathname === path;
@@ -75,18 +75,6 @@ function DashboardNavbar({ userName = 'User', userStatus = '87% Healthy' }: Dash
 
         {/* Actions */}
         <div className="dashboard-actions">
-          {/* Search Bar */}
-          <div className="dashboard-search">
-            <Search className="dashboard-search-icon" size={16} />
-            <input
-              type="text"
-              className="dashboard-search-input dash-focus-ring"
-              placeholder="Search health data..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-
           {/* Notifications */}
           <motion.button
             className="dash-btn dash-btn-icon dash-focus-ring"
