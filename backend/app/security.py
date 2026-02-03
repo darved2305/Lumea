@@ -3,6 +3,7 @@ import logging
 from jose import jwt, JWTError
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Optional
+from uuid import UUID
 from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -33,7 +34,7 @@ def create_access_token(data: dict) -> str:
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
-def decode_access_token(token: str) -> dict:
+def decode_access_token(token: str) -> Optional[dict]:
     try:
         payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
         return payload
@@ -90,13 +91,19 @@ async def get_current_user(
     if not user_id:
         logger.warning("Auth: Token missing 'sub' claim")
         raise HTTPException(status_code=401, detail="Invalid token payload")
+
+    try:
+        user_uuid = UUID(str(user_id))
+    except Exception:
+        logger.warning("Auth: Token 'sub' is not a valid UUID")
+        raise HTTPException(status_code=401, detail="Invalid token payload")
     
     # Get database session and fetch user - use context manager to ensure cleanup
     from app.db import async_session_maker
     
     async with async_session_maker() as db:
         try:
-            result = await db.execute(select(User).where(User.id == user_id))
+            result = await db.execute(select(User).where(User.id == user_uuid))
             user = result.scalar_one_or_none()
             
             if not user:

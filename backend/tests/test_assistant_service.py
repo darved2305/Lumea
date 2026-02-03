@@ -18,10 +18,23 @@ def mock_db_session():
     session = AsyncMock()
 
     # Mock execute/scalars/one_or_none pattern
-    result_mock = MagicMock()
-    result_mock.scalar_one_or_none.return_value = None  # Default: no session found
-    result_mock.scalars.return_value.all.return_value = [] # Default: empty history
-    session.execute.return_value = result_mock
+    # AssistantService.get_session_history now enforces session ownership by first
+    # fetching the ChatSession, then fetching the ChatMessage list. Make the mock
+    # return a truthy session object for the first query and an empty history for
+    # the second.
+    session_result_mock = MagicMock()
+    session_result_mock.scalar_one_or_none.return_value = MagicMock()  # session exists
+
+    history_result_mock = MagicMock()
+    history_result_mock.scalars.return_value.all.return_value = []  # empty history by default
+
+    call_index = {"n": 0}
+
+    async def execute_side_effect(*args, **kwargs):
+        call_index["n"] += 1
+        return session_result_mock if call_index["n"] == 1 else history_result_mock
+
+    session.execute = AsyncMock(side_effect=execute_side_effect)
 
     # AsyncSession.add is synchronous
     session.add = MagicMock()

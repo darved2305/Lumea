@@ -2,6 +2,7 @@ import bcrypt
 from jose import jwt, JWTError
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
+from uuid import UUID
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -65,8 +66,13 @@ async def get_current_user(
         user_id = payload.get("sub")
         if not user_id:
             raise HTTPException(status_code=401, detail="Invalid token payload")
+
+        try:
+            user_uuid = UUID(str(user_id))
+        except Exception:
+            raise HTTPException(status_code=401, detail="Invalid token payload")
         
-        result = await db.execute(select(User).where(User.id == user_id))
+        result = await db.execute(select(User).where(User.id == user_uuid))
         user = result.scalar_one_or_none()
         
         if not user:

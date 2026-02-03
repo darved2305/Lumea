@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import logging
 from app.settings import settings
-from app.db import init_db
+from app.db import init_db, engine
 from app.services.graph_service import get_graph_service
 from app.routes import auth, health, dashboard, reports, assistant, recommendations
 from app.routes.profile import router as profile_router
@@ -28,6 +28,17 @@ async def lifespan(app: FastAPI):
         logger.debug(f"Graph service init (non-critical): {e}")
 
     yield
+
+    # Best-effort shutdown cleanup
+    try:
+        await get_graph_service().close()
+    except Exception as e:
+        logger.debug(f"Graph service close (non-critical): {e}")
+
+    try:
+        await engine.dispose()
+    except Exception as e:
+        logger.debug(f"DB engine dispose (non-critical): {e}")
 
 app = FastAPI(title="Co-Code GGW Health Platform API", lifespan=lifespan)
 

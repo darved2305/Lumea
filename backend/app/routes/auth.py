@@ -1,15 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import datetime
 from app.db import get_db
 from app.models import User, LoginEvent
 from app.schemas import UserCreate, UserLogin, TokenResponse, UserResponse
-from app.security import hash_password, verify_password, create_access_token, decode_access_token
+from app.security import hash_password, verify_password, create_access_token, get_current_user
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
-security = HTTPBearer()
 
 @router.post("/signup", response_model=TokenResponse)
 @router.post("/register", response_model=TokenResponse)
@@ -88,28 +86,6 @@ async def login(
         access_token=access_token,
         user=UserResponse.model_validate(user)
     )
-
-async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: AsyncSession = Depends(get_db)
-) -> User:
-    token = credentials.credentials
-    payload = decode_access_token(token)
-    
-    if not payload:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
-    
-    user_id = payload.get("sub")
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Invalid token payload")
-    
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
-    
-    if not user:
-        raise HTTPException(status_code=401, detail="User not found")
-    
-    return user
 
 @router.post("/logout")
 async def logout(response: Response):

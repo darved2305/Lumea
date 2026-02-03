@@ -9,6 +9,7 @@ from typing import Dict, Set
 from datetime import datetime
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
+from uuid import UUID
 
 from app.db import get_db
 from app.security import decode_access_token
@@ -45,11 +46,13 @@ class ConnectionManager:
     
     async def send_to_user(self, user_id: str, message: dict):
         """Send message to all connections for a user"""
-        if user_id not in self.active_connections:
+        async with self._lock:
+            connections = list(self.active_connections.get(user_id, set()))
+        if not connections:
             return
-        
+
         dead_connections = []
-        for connection in self.active_connections[user_id]:
+        for connection in connections:
             try:
                 await connection.send_json(message)
             except Exception:
@@ -82,8 +85,13 @@ async def get_user_from_token(token: str, db: AsyncSession) -> User | None:
     user_id = payload.get("sub")
     if not user_id:
         return None
-    
-    result = await db.execute(select(User).where(User.id == user_id))
+
+    try:
+        user_uuid = UUID(str(user_id))
+    except Exception:
+        return None
+
+    result = await db.execute(select(User).where(User.id == user_uuid))
     return result.scalar_one_or_none()
 
 
@@ -104,10 +112,20 @@ async def handle_chat_request(
     """
     import uuid as uuid_module
     from app.services.rag_service import get_rag_service
+    from app.services.memory_service import get_memory_service
+    from app.services.graph_service import get_graph_service
     from app.services.llm_service import get_llm_service
     from app.db import async_session
     
     try:
+        if not message_content or not str(message_content).strip():
+            await websocket.send_json({
+                "type": "chat_error",
+                "data": {"error": "Message cannot be empty"},
+                "timestamp": datetime.utcnow().isoformat()
+            })
+            return
+
         # Send start event
         await websocket.send_json({
             "type": "chat_start",
@@ -117,6 +135,8 @@ async def handle_chat_request(
         
         # Get services
         rag_service = get_rag_service()
+        memory_service = get_memory_service()
+        graph_service = get_graph_service()
         llm_service = get_llm_service()
         
         # Get user context from RAG
@@ -126,12 +146,48 @@ async def handle_chat_request(
                 query=message_content,
                 db=db
             )
+
+        # Retrieve long-term memory and graph facts (best-effort)
+        memories = await memory_service.search(message_content, user_id=user_id, limit=5)
+        graph_facts = await graph_service.search(message_content, limit=5)
+
+        # Assemble context for LLM in a consistent, structured format
+        parts = []
+        if memories:
+            parts.append("--- RELEVANT MEMORIES (User Facts & Preferences) ---")
+            for m in memories:
+                if isinstance(m, str):
+                    text = m
+                elif isinstance(m, dict):
+                    text = (
+                        m.get("memory")
+                        or m.get("text")
+                        or m.get("content")
+                        or m.get("value")
+                        or ""
+                    )
+                else:
+                    text = str(m)
+                text = (text or "").strip()
+                if text:
+                    parts.append(f"- {text}")
+
+        if graph_facts:
+            parts.append("\n--- MEDICAL KNOWLEDGE GRAPH (Relationships & Facts) ---")
+            for f in graph_facts:
+                parts.append(f"- {f}")
+
+        if context:
+            parts.append("\n--- MEDICAL DATA & REPORTS ---")
+            parts.append(context)
+
+        full_context = "\n".join(parts)
         
         # Stream response from LLM
         full_response = ""
         async for token in llm_service.stream_generate(
             user_message=message_content,
-            context=context
+            context=full_context
         ):
             full_response += token
             await websocket.send_json({
@@ -150,6 +206,19 @@ async def handle_chat_request(
             },
             "timestamp": datetime.utcnow().isoformat()
         })
+
+        # Update memory and graph in background; don't block client completion.
+        interaction = f"User: {message_content}\nAssistant: {full_response}"
+        asyncio.create_task(
+            memory_service.add(interaction, user_id=user_id, metadata={"source": "websocket_chat"})
+        )
+        asyncio.create_task(
+            graph_service.add_episode(
+                f"User asked: {message_content}\nAssistant answered: {full_response}",
+                source="user_chat_websocket",
+                timestamp=datetime.utcnow().isoformat(),
+            )
+        )
         
     except Exception as e:
         import traceback

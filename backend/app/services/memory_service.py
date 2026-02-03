@@ -1,11 +1,27 @@
 import logging
 import asyncio
+import threading
 from typing import List, Dict, Any, Optional
-from mem0 import Memory
 from app.settings import settings
 
 # Configure logger
 logger = logging.getLogger(__name__)
+
+def _import_mem0_memory():
+    """
+    Mem0 is distributed as `mem0ai` on PyPI, but the importable module may be
+    `mem0` depending on the version. Support both and allow graceful disable.
+    """
+    try:
+        from mem0 import Memory  # type: ignore
+        return Memory
+    except Exception:
+        try:
+            from mem0ai import Memory  # type: ignore
+            return Memory
+        except Exception:
+            return None
+
 
 class MemoryService:
     """
@@ -52,20 +68,33 @@ class MemoryService:
         }
 
         # Lazy initialization of the Memory client
+        self._memory_cls = _import_mem0_memory()
         self.memory_client = None
+        self._client_lock = threading.Lock()
         self._initialized = True
         logger.info("MemoryService initialized (lazy loading client)")
 
-    def _get_client(self) -> Memory:
+    @property
+    def is_available(self) -> bool:
+        return self._memory_cls is not None
+
+    def _get_client(self):
         """Get or initialize the Mem0 client"""
+        if not self.is_available:
+            raise RuntimeError(
+                "Mem0 is not installed/available. "
+                "Install `mem0ai` (and ensure it provides importable `mem0`/`mem0ai`)."
+            )
         if self.memory_client is None:
-            try:
-                logger.info("Initializing Mem0 client connection...")
-                self.memory_client = Memory.from_config(self.config)
-                logger.info("Mem0 client initialized successfully")
-            except Exception as e:
-                logger.error(f"Failed to initialize Mem0 client: {e}")
-                raise
+            with self._client_lock:
+                if self.memory_client is None:
+                    try:
+                        logger.info("Initializing Mem0 client connection...")
+                        self.memory_client = self._memory_cls.from_config(self.config)
+                        logger.info("Mem0 client initialized successfully")
+                    except Exception as e:
+                        logger.error(f"Failed to initialize Mem0 client: {e}")
+                        raise
         return self.memory_client
 
     async def add(self, content: str, user_id: str, metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:

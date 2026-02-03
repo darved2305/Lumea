@@ -9,6 +9,7 @@ from typing import Dict, Set
 from datetime import datetime
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
+from uuid import UUID
 
 from src.config import get_db
 from src.middleware import decode_access_token
@@ -45,11 +46,13 @@ class ConnectionManager:
     
     async def send_to_user(self, user_id: str, message: dict):
         """Send message to all connections for a user"""
-        if user_id not in self.active_connections:
+        async with self._lock:
+            connections = list(self.active_connections.get(user_id, set()))
+        if not connections:
             return
-        
+
         dead_connections = []
-        for connection in self.active_connections[user_id]:
+        for connection in connections:
             try:
                 await connection.send_json(message)
             except Exception:
@@ -82,8 +85,13 @@ async def get_user_from_token(token: str, db: AsyncSession) -> User | None:
     user_id = payload.get("sub")
     if not user_id:
         return None
-    
-    result = await db.execute(select(User).where(User.id == user_id))
+
+    try:
+        user_uuid = UUID(str(user_id))
+    except Exception:
+        return None
+
+    result = await db.execute(select(User).where(User.id == user_uuid))
     return result.scalar_one_or_none()
 
 

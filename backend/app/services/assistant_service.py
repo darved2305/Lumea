@@ -153,7 +153,22 @@ class AssistantService:
         if memory_context:
             parts.append("--- RELEVANT MEMORIES (User Facts & Preferences) ---")
             for m in memory_context:
-                parts.append(f"- {m.get('memory', '')}")
+                if isinstance(m, str):
+                    text = m
+                elif isinstance(m, dict):
+                    text = (
+                        m.get("memory")
+                        or m.get("text")
+                        or m.get("content")
+                        or m.get("value")
+                        or ""
+                    )
+                else:
+                    text = str(m)
+
+                text = (text or "").strip()
+                if text:
+                    parts.append(f"- {text}")
 
         # 2. Knowledge Graph (Medical connections)
         if graph_context:
@@ -211,7 +226,18 @@ class AssistantService:
     async def get_session_history(
         self, session_id: uuid.UUID, user_id: uuid.UUID
     ) -> List[ChatMessage]:
-        """Get chat history for a session"""
+        """Get chat history for a session (scoped to the user)."""
+        # Enforce session ownership to prevent leaking chat history across users.
+        session_result = await self.db.execute(
+            select(ChatSession).where(
+                ChatSession.id == session_id,
+                ChatSession.user_id == user_id,
+            )
+        )
+        session = session_result.scalar_one_or_none()
+        if not session:
+            raise ValueError("Session not found")
+
         result = await self.db.execute(
             select(ChatMessage)
             .where(ChatMessage.session_id == session_id)

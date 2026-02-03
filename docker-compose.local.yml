@@ -8,15 +8,15 @@ services:
     container_name: ggw-db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ggw
-      POSTGRES_PASSWORD: ggwpassword
-      POSTGRES_DB: ggwdb
+      POSTGRES_USER: ${POSTGRES_USER:-ggw}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ggwpassword}
+      POSTGRES_DB: ${POSTGRES_DB:-ggwdb}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5433:5432"
+      - "${POSTGRES_PORT_LOCAL:-5433}:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ggw -d ggwdb"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ggw} -d ${POSTGRES_DB:-ggwdb}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -27,7 +27,7 @@ services:
     container_name: ggw-neo4j
     restart: unless-stopped
     environment:
-      NEO4J_AUTH: neo4j/changeme
+      NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-changeme}
       NEO4J_PLUGINS: '["apoc"]'
       NEO4J_dbms_security_procedures_unrestricted: apoc.*
     ports:
@@ -37,7 +37,7 @@ services:
       - neo4j_data:/data
       - neo4j_logs:/logs
     healthcheck:
-      test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "changeme", "RETURN 1"]
+      test: ["CMD", "cypher-shell", "-u", "${NEO4J_USER:-neo4j}", "-p", "${NEO4J_PASSWORD:-changeme}", "RETURN 1"]
       interval: 10s
       timeout: 5s
       retries: 5
