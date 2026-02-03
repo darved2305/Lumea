@@ -136,7 +136,13 @@ function ArtOfNaturalRemedies() {
               viewport={{ once: true }}
               transition={{ delay: 0.5, duration: 0.6 }}
             >
-              <img src="https://images.unsplash.com/photo-1505751104628-0448e3c8c7b0?w=400&h=300&fit=crop" alt="Digital health records" />
+              <img 
+                src="https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=400&h=300&fit=crop" 
+                alt="Digital health records" 
+                onError={(e) => {
+                  e.currentTarget.src = 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=400&h=300&fit=crop'
+                }}
+              />
             </motion.div>
           </div>
         </div>

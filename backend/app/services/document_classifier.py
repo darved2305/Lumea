@@ -6,7 +6,7 @@ Uses pattern matching with priority-ordered rules to classify documents into:
 - Categories: Lab, Dental, MRI, X-ray, Prescription, Sleep
 - Document Types: Blood Panel, Lipid Panel, Checkup, Brain Scan, Chest, etc.
 
-Author: Co-Code GGW Health Platform
+Author: Lumea Health Platform
 """
 import re
 import logging

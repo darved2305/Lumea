@@ -582,6 +582,31 @@
   max-height: calc(100vh - 200px);
   position: sticky;
   top: 100px;
+  display: flex;
+  flex-direction: column;
+}
+
+.ai-results-panel {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 200px);
+}
+
+.ai-results-panel .ai-tabs {
+  flex-shrink: 0;
+}
+
+.ai-results-panel .ai-content {
+  flex: 1;
+  overflow-y: auto;
+  max-height: calc(100vh - 350px);
+}
+
+.ai-results-panel .ai-action-footer {
+  flex-shrink: 0;
+  padding: 16px 20px;
+  border-top: 1px solid #f0f0f0;
+  background: white;
 }
 
 /* AI Empty State */

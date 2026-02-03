@@ -1,0 +1,29 @@
+.logo-component {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.logo-image {
+  height: auto;
+  object-fit: contain;
+}
+
+.logo-component.header .logo-image {
+  height: 50px;
+}
+
+.logo-component.footer .logo-image {
+  height: 45px;
+}
+
+.logo-component.dashboard .logo-image {
+  height: 40px;
+}
+
+@media (max-width: 768px) {
+  .logo-image {
+    height: 35px;
+  }
+}
+}

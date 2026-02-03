@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
+import Logo from './ui/Logo'
 import './Footer.css'
 
 function Footer() {
@@ -16,7 +17,7 @@ function Footer() {
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
           >
-            <h3 className="footer-heading">Co-Code GGW</h3>
+            <h3 className="footer-heading">Lumea</h3>
             <p className="footer-text">
               {t('footer.description')}
             </p>
@@ -45,8 +46,7 @@ function Footer() {
             transition={{ delay: 0.2, duration: 0.6 }}
           >
             <div className="footer-logo">
-              <span className="footer-logo-main">Co-Code</span>
-              <span className="footer-logo-sub">GGW</span>
+              <Logo variant="footer" />
             </div>
             <h3 className="footer-cta-text">
               {t('footer.cta.title')}

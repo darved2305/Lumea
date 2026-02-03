@@ -1,5 +1,5 @@
 """
-Services module for the Co-Code GGW Health Platform.
+Services module for the Lumea Health Platform.
 """
 from .recommendation_service import RecommendationService, get_user_recommendations
 from .report_service import ReportService

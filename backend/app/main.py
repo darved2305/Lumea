@@ -46,7 +46,7 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.debug(f"DB engine dispose: {e}")
 
-app = FastAPI(title="Co-Code GGW Health Platform API", lifespan=lifespan)
+app = FastAPI(title="Lumea Health Platform API", lifespan=lifespan)
 
 # CORS configuration - allow both localhost ports and Docker
 origins = [
@@ -87,7 +87,7 @@ app.include_router(medicines_router)
 @app.get("/")
 async def root():
     return {
-        "message": "Co-Code GGW Health Platform API",
+        "message": "Lumea Health Platform API",
         "version": "2.0",
         "endpoints": {
             "auth": "/api/auth",

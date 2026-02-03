@@ -1,5 +1,5 @@
 """
-Co-Code GGW Health Platform API
+Lumea Health Platform API
 
 Main application entry point following monolithic REST API structure.
 """
@@ -20,7 +20,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Co-Code GGW Health Platform API", lifespan=lifespan)
+app = FastAPI(title="Lumea Health Platform API", lifespan=lifespan)
 
 # CORS configuration - allow both localhost ports and Docker
 origins = [
@@ -58,7 +58,7 @@ app.include_router(websocket_router)
 @app.get("/")
 async def root():
     return {
-        "message": "Co-Code GGW Health Platform API",
+        "message": "Lumea Health Platform API",
         "version": "2.0",
         "endpoints": {
             "auth": "/api/auth",

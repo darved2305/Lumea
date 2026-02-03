@@ -12,12 +12,15 @@ import {
   Clock,
   AlertCircle,
   FolderOpen,
+  X,
 } from 'lucide-react';
 import DashboardNavbar from '../components/dashboard/DashboardNavbar';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { HealthProfileCard } from '../components/profile';
+import { Tooltip, PdfPreview } from '../components/ui';
 import { API_BASE_URL } from '../config/api';
 import './Reports.css';
+import './ReportsExtras.css';
 
 // Types
 interface Report {
@@ -74,6 +77,7 @@ function Reports() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const itemsPerPage = 5;
+  const [pdfPreview, setPdfPreview] = useState<{ reportId: string; fileName: string; url: string } | null>(null);
 
   // WebSocket for real-time updates
   useWebSocket({
@@ -326,15 +330,15 @@ function Reports() {
     if (!token) return;
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/reports/${report.id}/debug`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const downloadUrl = `${API_BASE_URL}/api/reports/${report.id}/download?token=${token}`;
+      setPdfPreview({
+        reportId: report.id,
+        fileName: report.name,
+        url: downloadUrl,
       });
-      if (response.ok) {
-        const data = await response.json();
-        alert(`Report: ${report.name}\nStatus: ${data.status}\nExtraction Method: ${data.extraction_method || 'N/A'}\nMetrics Found: ${data.extracted_metrics_count}\nText Length: ${data.text_length} chars\n\nPreview:\n${data.text_preview?.substring(0, 500) || 'No text'}`);
-      }
     } catch (error) {
       console.error('Error viewing report:', error);
+      alert('Failed to load PDF preview');
     }
   };
 
@@ -584,35 +588,43 @@ function Reports() {
                       </span>
                     </td>
                     <td className="actions-cell operations-col">
-                      <button
-                        className="action-btn"
-                        onClick={() => handleView(report)}
-                        title="View"
-                      >
-                        <Eye size={16} />
-                      </button>
-                      <button
-                        className="action-btn"
-                        onClick={() => handleReprocess(report)}
-                        title="Reprocess OCR"
-                        disabled={report.status === 'processing'}
-                      >
-                        <RefreshCw size={16} className={report.status === 'processing' ? 'spinning' : ''} />
-                      </button>
-                      <button
-                        className="action-btn"
-                        onClick={() => handleDelete(report)}
-                        title="Delete"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                      <button
-                        className="action-btn"
-                        onClick={() => handleDownload(report)}
-                        title="Download"
-                      >
-                        <Download size={16} />
-                      </button>
+                      <Tooltip content="View Document">
+                        <button
+                          className="action-btn"
+                          onClick={() => handleView(report)}
+                          aria-label="View"
+                        >
+                          <Eye size={16} />
+                        </button>
+                      </Tooltip>
+                      <Tooltip content="Reload/Reprocess">
+                        <button
+                          className="action-btn"
+                          onClick={() => handleReprocess(report)}
+                          aria-label="Reprocess OCR"
+                          disabled={report.status === 'processing'}
+                        >
+                          <RefreshCw size={16} className={report.status === 'processing' ? 'spinning' : ''} />
+                        </button>
+                      </Tooltip>
+                      <Tooltip content="Delete">
+                        <button
+                          className="action-btn"
+                          onClick={() => handleDelete(report)}
+                          aria-label="Delete"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </Tooltip>
+                      <Tooltip content="Download">
+                        <button
+                          className="action-btn"
+                          onClick={() => handleDownload(report)}
+                          aria-label="Download"
+                        >
+                          <Download size={16} />
+                        </button>
+                      </Tooltip>
                     </td>
                   </motion.tr>
                 ))}
@@ -654,6 +666,44 @@ function Reports() {
           </div>
         </div>
       </div>
+
+      {/* PDF Preview Modal */}
+      <AnimatePresence>
+        {pdfPreview && (
+          <motion.div
+            className="pdf-modal-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setPdfPreview(null)}
+          >
+            <motion.div
+              className="pdf-modal-content"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="pdf-modal-header">
+                <h3>{pdfPreview.fileName}</h3>
+                <button
+                  className="pdf-modal-close"
+                  onClick={() => setPdfPreview(null)}
+                  aria-label="Close"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+              <div className="pdf-modal-body">
+                <PdfPreview
+                  fileUrl={pdfPreview.url}
+                  fileName={pdfPreview.fileName}
+                />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

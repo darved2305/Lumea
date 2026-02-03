@@ -1,5 +1,5 @@
 @echo off
-echo Starting Co-Code GGW Backend...
+echo Starting Lumea Backend...
 echo.
 
 if not exist venv (

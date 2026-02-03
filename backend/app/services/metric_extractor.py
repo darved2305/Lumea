@@ -9,7 +9,7 @@ Handles:
 - Unit normalization
 - Missing parameter detection
 
-Author: Co-Code GGW Health Platform
+Author: Lumea Health Platform
 """
 import re
 import logging

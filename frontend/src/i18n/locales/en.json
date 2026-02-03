@@ -14,7 +14,7 @@
     "tagline": "First priority is",
     "taglineHighlight": "your health",
     "subtitle": "Track it. Understand it. Prevent it.",
-    "description": "Upload your lab reports, get them interpreted, and receive smart reminders for checkups + medicines. Co-Code GGW helps you stay preventive—without becoming your doctor.",
+    "description": "Upload your lab reports, get them interpreted, and receive smart reminders for checkups + medicines. Lumea helps you stay preventive—without becoming your doctor.",
     "disclaimer": "Not medical advice. Always consult a licensed clinician for diagnosis/treatment.",
     "cta": {
       "upload": "Upload Reports",
@@ -50,7 +50,7 @@
     }
   },
   "howItWorks": {
-    "title": "How Co-Code GGW Works",
+    "title": "How Lumea Works",
     "subtitle": "Upload reports, get insights, and stay on top of preventive care—all in one secure platform.",
     "features": {
       "ocr": {
@@ -69,7 +69,7 @@
     "cta": "View All Features"
   },
   "belief": {
-    "message": "Most health issues don't start as emergencies. They start quietly. Co-Code GGW keeps your health history organized and nudges you at the right time—so prevention becomes automatic.",
+    "message": "Most health issues don't start as emergencies. They start quietly. Lumea keeps your health history organized and nudges you at the right time—so prevention becomes automatic.",
     "tagline": "Built as a suggestion system, not a doctor."
   },
   "news": {
@@ -96,11 +96,11 @@
   "faq": {
     "title": "The Art Of",
     "titleHighlight": "Prevention",
-    "subtitle": "Co-Code GGW makes preventive care simple. Upload reports, track trends, and get nudges at the right time—so staying healthy doesn't feel like work.",
+    "subtitle": "Lumea makes preventive care simple. Upload reports, track trends, and get nudges at the right time—so staying healthy doesn't feel like work.",
     "items": {
       "isDoctor": {
-        "question": "Is Co-Code GGW a doctor?",
-        "answer": "No. Co-Code GGW is not a doctor and does not provide medical advice, diagnosis, or treatment. It is a suggestion system that helps you organize lab reports, track health trends, and receive smart reminders—always consult a licensed clinician for medical decisions."
+        "question": "Is Lumea a doctor?",
+        "answer": "No. Lumea is not a doctor and does not provide medical advice, diagnosis, or treatment. It is a suggestion system that helps you organize lab reports, track health trends, and receive smart reminders—always consult a licensed clinician for medical decisions."
       },
       "reports": {
         "question": "What reports can I upload?",
@@ -112,7 +112,7 @@
       },
       "reminders": {
         "question": "How are reminders personalized?",
-        "answer": "Based on your report history, age, and past checkup dates, Co-Code GGW suggests when to schedule follow-ups, refill medicines, or repeat tests. Reminders adapt dynamically as you upload new reports."
+        "answer": "Based on your report history, age, and past checkup dates, Lumea suggests when to schedule follow-ups, refill medicines, or repeat tests. Reminders adapt dynamically as you upload new reports."
       },
       "security": {
         "question": "How do you keep my data secure?",

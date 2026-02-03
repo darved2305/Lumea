@@ -1,3 +1,3 @@
 """
-Test suite for the Co-Code GGW Health Platform backend.
+Test suite for the Lumea Health Platform backend.
 """

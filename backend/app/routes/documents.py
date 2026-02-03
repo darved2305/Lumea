@@ -7,7 +7,7 @@ Provides endpoints for:
 - Missing data task management
 - Reprocessing
 
-Author: Co-Code GGW Health Platform
+Author: Lumea Health Platform
 """
 import logging
 from datetime import datetime

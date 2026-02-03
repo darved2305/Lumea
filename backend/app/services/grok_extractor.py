@@ -13,7 +13,7 @@ HARD RULES:
 - Prefer null for missing values + create MissingDataTask
 - Always validate JSON against schema before accepting
 
-Author: Co-Code GGW Health Platform
+Author: Lumea Health Platform
 """
 import json
 import logging

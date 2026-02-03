@@ -18,6 +18,7 @@ import {
   Grid,
 } from 'lucide-react';
 import DashboardNavbar from '../components/dashboard/DashboardNavbar';
+import { PdfPreview } from '../components/ui';
 import './ReportSummary.css';
 
 import { API_BASE_URL } from '../config/api';
@@ -406,6 +407,11 @@ function ReportSummary() {
 
     if (selectedReports.length === 1) {
       const report = selectedReports[0];
+      const token = localStorage.getItem('access_token');
+      const fileUrl = report.preview_url
+        ? `${API_BASE}${report.preview_url}${token ? `?token=${token}` : ''}`
+        : '';
+      
       return (
         <div className="preview-single">
           <div className="preview-header">
@@ -413,25 +419,17 @@ function ReportSummary() {
             <span className="preview-date">{formatDate(report.report_date || report.uploaded_at)}</span>
           </div>
           <div className="preview-frame">
-            {report.file_type === '.pdf' ? (
-              <iframe
-                src={`${API_BASE}${report.preview_url}`}
-                title={report.filename}
-                className="preview-iframe"
-              />
-            ) : (
-              <img
-                src={`${API_BASE}${report.preview_url}`}
-                alt={report.filename}
-                className="preview-image"
-              />
-            )}
+            <PdfPreview
+              fileUrl={fileUrl}
+              fileName={report.filename}
+            />
           </div>
         </div>
       );
     }
 
     // Multiple reports - grid view
+    const token = localStorage.getItem('access_token');
     return (
       <div className="preview-multi">
         <div className="preview-multi-header">
@@ -439,42 +437,39 @@ function ReportSummary() {
           <span>{selectedReports.length} Reports Selected</span>
         </div>
         <div className={`preview-grid grid-${Math.min(selectedReports.length, 3)}`}>
-          {selectedReports.map(report => (
-            <div
-              key={report.id}
-              className={`preview-grid-item ${focusedPreviewId === report.id ? 'focused' : ''}`}
-              onClick={() => setFocusedPreviewId(focusedPreviewId === report.id ? null : report.id)}
-            >
-              <div className="preview-grid-item-header">
-                <span className="preview-grid-filename">{report.filename}</span>
-                <span className="preview-grid-date">{formatDate(report.report_date || report.uploaded_at)}</span>
-              </div>
-              <div className="preview-grid-content">
-                {report.file_type === '.pdf' ? (
-                  <iframe
-                    src={`${API_BASE}${report.preview_url}#toolbar=0&navpanes=0`}
-                    title={report.filename}
-                    className="preview-grid-iframe"
-                  />
-                ) : (
-                  <img
-                    src={`${API_BASE}${report.preview_url}`}
-                    alt={report.filename}
-                    className="preview-grid-image"
-                  />
-                )}
-              </div>
-              <button
-                className="preview-grid-expand"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  window.open(`${API_BASE}${report.preview_url}`, '_blank');
-                }}
+          {selectedReports.map(report => {
+            const fileUrl = report.preview_url
+              ? `${API_BASE}${report.preview_url}${token ? `?token=${token}` : ''}`
+              : '';
+            
+            return (
+              <div
+                key={report.id}
+                className={`preview-grid-item ${focusedPreviewId === report.id ? 'focused' : ''}`}
+                onClick={() => setFocusedPreviewId(focusedPreviewId === report.id ? null : report.id)}
               >
-                <Maximize2 size={14} />
-              </button>
-            </div>
-          ))}
+                <div className="preview-grid-item-header">
+                  <span className="preview-grid-filename">{report.filename}</span>
+                  <span className="preview-grid-date">{formatDate(report.report_date || report.uploaded_at)}</span>
+                </div>
+                <div className="preview-grid-content">
+                  <PdfPreview
+                    fileUrl={fileUrl}
+                    fileName={report.filename}
+                  />
+                </div>
+                <button
+                  className="preview-grid-expand"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    window.open(fileUrl, '_blank');
+                  }}
+                >
+                  <Maximize2 size={14} />
+                </button>
+              </div>
+            );
+          })}
         </div>
       </div>
     );
@@ -495,34 +490,35 @@ function ReportSummary() {
     }
 
     return (
-      <div className="ai-panel">
-        {/* Tabs */}
-        <div className="ai-tabs">
-          <button
-            className={`ai-tab ${activeTab === 'summary' ? 'active' : ''}`}
-            onClick={() => setActiveTab('summary')}
-            disabled={selectedIds.size !== 1}
-          >
-            Summary
-          </button>
-          <button
-            className={`ai-tab ${activeTab === 'comparison' ? 'active' : ''}`}
-            onClick={() => setActiveTab('comparison')}
-            disabled={selectedIds.size < 2}
-          >
-            Comparison
-          </button>
-          <button
-            className={`ai-tab ${activeTab === 'metrics' ? 'active' : ''}`}
-            onClick={() => setActiveTab('metrics')}
-            disabled={selectedIds.size === 0}
-          >
-            Metrics
-          </button>
-        </div>
+      <>
+        <div className="ai-panel">
+          {/* Tabs */}
+          <div className="ai-tabs">
+            <button
+              className={`ai-tab ${activeTab === 'summary' ? 'active' : ''}`}
+              onClick={() => setActiveTab('summary')}
+              disabled={selectedIds.size !== 1}
+            >
+              Summary
+            </button>
+            <button
+              className={`ai-tab ${activeTab === 'comparison' ? 'active' : ''}`}
+              onClick={() => setActiveTab('comparison')}
+              disabled={selectedIds.size < 2}
+            >
+              Comparison
+            </button>
+            <button
+              className={`ai-tab ${activeTab === 'metrics' ? 'active' : ''}`}
+              onClick={() => setActiveTab('metrics')}
+              disabled={selectedIds.size === 0}
+            >
+              Metrics
+            </button>
+          </div>
 
-        {/* Tab Content */}
-        <div className="ai-content">
+          {/* Tab Content */}
+          <div className="ai-content">
           {/* Summary Tab */}
           {activeTab === 'summary' && (
             <>
@@ -749,7 +745,41 @@ function ReportSummary() {
             </div>
           )}
         </div>
+        
+        {/* Action Footer - Generate Summary / Compare Button */}
+        <div className="ai-action-footer">
+          {selectedIds.size === 1 ? (
+            <button
+              className="action-btn primary"
+              onClick={() => generateSummary()}
+              disabled={summaryResult.loading}
+              style={{ width: '100%' }}
+            >
+              {summaryResult.loading ? (
+                <Loader2 size={18} className="spinner" />
+              ) : (
+                <Sparkles size={18} />
+              )}
+              Generate Summary
+            </button>
+          ) : (
+            <button
+              className="action-btn primary"
+              onClick={() => generateComparison()}
+              disabled={comparisonResult.loading || !validateSelection().valid}
+              style={{ width: '100%' }}
+            >
+              {comparisonResult.loading ? (
+                <Loader2 size={18} className="spinner" />
+              ) : (
+                <Sparkles size={18} />
+              )}
+              Compare Selected ({selectedIds.size})
+            </button>
+          )}
+        </div>
       </div>
+      </>
     );
   };
 
@@ -919,46 +949,6 @@ function ReportSummary() {
             </div>
           </div>
         </div>
-
-        {/* Floating Action Button */}
-        <AnimatePresence>
-          {selectedIds.size > 0 && (
-            <motion.div
-              className="floating-action"
-              initial={{ opacity: 0, y: 50 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 50 }}
-            >
-              {selectedIds.size === 1 ? (
-                <button
-                  className="action-btn primary"
-                  onClick={() => generateSummary()}
-                  disabled={summaryResult.loading}
-                >
-                  {summaryResult.loading ? (
-                    <Loader2 size={18} className="spinner" />
-                  ) : (
-                    <Sparkles size={18} />
-                  )}
-                  Generate Summary
-                </button>
-              ) : (
-                <button
-                  className="action-btn primary"
-                  onClick={() => generateComparison()}
-                  disabled={comparisonResult.loading || !validateSelection().valid}
-                >
-                  {comparisonResult.loading ? (
-                    <Loader2 size={18} className="spinner" />
-                  ) : (
-                    <Sparkles size={18} />
-                  )}
-                  Compare Selected ({selectedIds.size})
-                </button>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
     </div>
   );

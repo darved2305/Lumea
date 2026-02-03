@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Upload } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import DashboardNavbar from '../components/dashboard/DashboardNavbar';
 import HealthIndexCard from '../components/dashboard/HealthIndexCard';
 import HealthSummaryCard from '../components/dashboard/HealthSummaryCard';
@@ -13,6 +13,7 @@ import { API_BASE_URL } from '../config/api';
 import '../styles/dashboardTokens.css';
 import '../styles/dashboardBase.css';
 import './Dashboard.css';
+import './DashboardExtras.css';
 
 interface UserSummary {
   id: string;
@@ -230,12 +231,18 @@ function Dashboard() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.3 }}
           >
-            <RecommendationsPanel
-              authToken={authToken || undefined}
-              apiBaseUrl={API_BASE_URL}
-              maxInitialDisplay={3}
-              refreshTrigger={recommendationsRefreshTrigger}
-            />
+            <div className="recommendations-dashboard-wrapper">
+              <RecommendationsPanel
+                authToken={authToken || undefined}
+                apiBaseUrl={API_BASE_URL}
+                maxInitialDisplay={3}
+                refreshTrigger={recommendationsRefreshTrigger}
+                variant="dashboard"
+              />
+              <Link to="/recommendations" className="view-detailed-recommendations-btn">
+                View Detailed Recommendations
+              </Link>
+            </div>
           </motion.div>
 
           {/* Bottom Row: Trends Chart */}

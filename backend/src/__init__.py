@@ -1,5 +1,5 @@
 """
-Co-Code GGW Health Platform Backend
+Lumea Health Platform Backend
 
 Structured following the monolithic REST API pattern:
 - config/     Application config, environment variables, database setup

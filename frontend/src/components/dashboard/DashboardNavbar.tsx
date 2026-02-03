@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Settings, LogOut, Home, LayoutDashboard, Bell, FileText, Activity, Sparkles, Pill } from 'lucide-react';
 import { logout } from '../../utils/auth';
+import Logo from '../ui/Logo';
 import './DashboardNavbar.css';
 
 interface DashboardNavbarProps {
@@ -42,17 +43,7 @@ function DashboardNavbar({ userName = 'User', userStatus = '87% Healthy' }: Dash
       <div className="dashboard-navbar-container">
         {/* Logo */}
         <Link to="/" className="dashboard-logo">
-          <motion.div
-            className="dashboard-logo-icon"
-            whileHover={{ rotate: 5, scale: 1.05 }}
-            transition={{ type: 'spring', stiffness: 400 }}
-          >
-            CC
-          </motion.div>
-          <div className="dashboard-logo-text">
-            <span className="dashboard-logo-main">Co-Code</span>
-            <span className="dashboard-logo-sub">GGW Health</span>
-          </div>
+          <Logo variant="dashboard" />
         </Link>
 
         {/* Navigation Links */}

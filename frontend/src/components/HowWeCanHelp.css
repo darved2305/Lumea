@@ -47,7 +47,7 @@
 .btn-view-all {
   display: inline-block;
   background-color: #4a7c59;
-  color: white;
+  color: #f5f1e8;
   font-family: 'DM Sans', sans-serif;
   font-size: 18px;
   font-weight: 500;
@@ -107,13 +107,13 @@
   font-family: 'DM Sans', sans-serif;
   font-size: 17px;
   font-weight: 500;
-  color: #2d2d2d;
+  color: #f5f1e8;
   transition: all 0.3s ease;
 }
 
 .service-view-link:hover {
   gap: 14px;
-  color: #4a7c59;
+  color: #ffffff;
 }
 
 .view-icon {

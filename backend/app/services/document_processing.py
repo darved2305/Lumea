@@ -10,7 +10,7 @@ Orchestrates the full document processing flow:
 6. Database persistence
 7. Recompute trigger
 
-Author: Co-Code GGW Health Platform
+Author: Lumea Health Platform
 """
 import logging
 import uuid
