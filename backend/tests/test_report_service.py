@@ -65,4 +65,6 @@ async def test_upload_report_writes_file_and_creates_report(tmp_path, monkeypatc
     assert report.filename == "lab.pdf"
     # Ensure file exists on disk
     assert report.file_path
-    assert tmp_path.as_posix() in report.file_path
+    # Normalize paths for Windows/Linux compatibility
+    from pathlib import Path
+    assert Path(tmp_path).resolve() in Path(report.file_path).resolve().parents
