@@ -96,13 +96,16 @@ class SMSSender:
     ) -> Dict[str, Any]:
         """Send SMS via Twilio."""
         try:
+            logger.info(f"Attempting to send SMS via Twilio to {masked_phone}")
+            logger.debug(f"From: {settings.TWILIO_FROM_NUMBER}, To: {to_number}")
+            
             result = self.twilio_client.messages.create(
                 body=message,
                 from_=settings.TWILIO_FROM_NUMBER,
                 to=to_number
             )
             
-            logger.info(f"SMS sent via Twilio to {masked_phone} (user_id={user_id}, sid={result.sid})")
+            logger.info(f"✅ SMS sent via Twilio to {masked_phone} (user_id={user_id}, sid={result.sid})")
             
             return {
                 "success": True,
@@ -117,7 +120,7 @@ class SMSSender:
             }
             
         except Exception as e:
-            logger.error(f"Twilio SMS failed to {masked_phone} (user_id={user_id}): {str(e)}")
+            logger.error(f"❌ Twilio SMS failed to {masked_phone} (user_id={user_id}): {type(e).__name__}: {str(e)}")
             return {
                 "success": False,
                 "status": "failed",

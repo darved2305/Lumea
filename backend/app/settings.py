@@ -87,3 +87,13 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
+# Debug logging to verify SMS configuration
+import logging
+logger = logging.getLogger(__name__)
+logger.info(f"SMS Configuration loaded:")
+logger.info(f"  SMS_MODE: {settings.SMS_MODE}")
+logger.info(f"  SMS_TEST_TO_NUMBER: {settings.SMS_TEST_TO_NUMBER}")
+logger.info(f"  TWILIO_ACCOUNT_SID configured: {bool(settings.TWILIO_ACCOUNT_SID)}")
+logger.info(f"  TWILIO_AUTH_TOKEN configured: {bool(settings.TWILIO_AUTH_TOKEN)}")
+logger.info(f"  TWILIO_FROM_NUMBER: {settings.TWILIO_FROM_NUMBER}")
+
