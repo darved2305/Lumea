@@ -516,6 +516,9 @@ class UserProfileUpdate(BaseModel):
     wizard_current_step: Optional[int] = Field(None, ge=1, le=10)
     wizard_completed: Optional[bool] = None
     
+    # Contact for SMS
+    phone_number: Optional[str] = Field(None, max_length=20)
+    
     class Config:
         extra = "ignore"  # Ignore extra fields not in schema
 
@@ -581,6 +584,13 @@ class UserProfileResponse(BaseModel):
     wizard_current_step: int
     wizard_completed: bool
     wizard_last_saved_at: Optional[datetime]
+    
+    # Completion tracking (used by Reports page)
+    is_completed: bool = False
+    completed_at: Optional[datetime] = None
+    
+    # Contact
+    phone_number: Optional[str] = None
     
     # Timestamps
     created_at: datetime
@@ -701,4 +711,109 @@ class ReportForSummary(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# ============================================================================
+# REMINDER & SMS SCHEMAS
+# ============================================================================
+
+class ReminderScheduleConfig(BaseModel):
+    """Schedule configuration for reminders"""
+    # For fixed_times
+    times: Optional[List[str]] = None  # ["08:00", "14:00", "20:00"]
+    
+    # For interval
+    interval_minutes: Optional[int] = None
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+    
+    # For cron
+    cron: Optional[str] = None
+
+
+class ReminderCreate(BaseModel):
+    """Create a new reminder"""
+    type: str = Field(..., description="medicine|hydration|sleep|checkup|exercise|custom")
+    title: str = Field(..., max_length=255)
+    message: Optional[str] = None
+    schedule_type: str = Field(..., description="fixed_times|interval|cron")
+    schedule_json: ReminderScheduleConfig
+    timezone: str = "Asia/Kolkata"
+    channel: str = "sms"
+    medicine_id: Optional[UUID] = None
+    medicine_name: Optional[str] = None
+    is_enabled: bool = True
+
+
+class ReminderUpdate(BaseModel):
+    """Update an existing reminder"""
+    title: Optional[str] = Field(None, max_length=255)
+    message: Optional[str] = None
+    schedule_type: Optional[str] = None
+    schedule_json: Optional[ReminderScheduleConfig] = None
+    timezone: Optional[str] = None
+    channel: Optional[str] = None
+    is_enabled: Optional[bool] = None
+    
+    class Config:
+        extra = "ignore"
+
+
+class ReminderResponse(BaseModel):
+    """Response for a reminder"""
+    id: UUID
+    user_id: UUID
+    type: str
+    title: str
+    message: Optional[str]
+    schedule_type: str
+    schedule_json: Dict[str, Any]
+    timezone: str
+    next_run_at: Optional[datetime]
+    last_run_at: Optional[datetime]
+    is_enabled: bool
+    channel: str
+    medicine_id: Optional[UUID]
+    medicine_name: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ReminderEventResponse(BaseModel):
+    """Response for a reminder event (delivery log)"""
+    id: UUID
+    reminder_id: UUID
+    user_id: UUID
+    sent_at: datetime
+    status: str
+    provider: str
+    provider_response: Optional[Dict[str, Any]]
+    message_sent: Optional[str]
+    error_message: Optional[str]
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SMSTestRequest(BaseModel):
+    """Request to send a test SMS"""
+    message: str = Field(default="Test message from Lumea Health")
+
+
+class SMSTestResponse(BaseModel):
+    """Response from test SMS endpoint"""
+    success: bool
+    status: str  # sent|mocked|failed
+    provider: str  # twilio|mock
+    message: str
+    provider_response: Optional[Dict[str, Any]] = None
+
+
+class ProfileMeResponse(BaseModel):
+    """Response for GET /api/profile/me endpoint - simplified profile status"""
+    exists: bool
+    is_completed: bool
+    profile: Optional[UserProfileResponse] = None
+    completion: Optional[ProfileCompletionResponse] = None
 

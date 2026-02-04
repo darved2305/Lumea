@@ -39,6 +39,7 @@ import {
 import {
   fetchFullProfile,
   updateProfile,
+  upsertProfileMe,
   upsertAnswers,
   setConditions,
   setSymptoms,
@@ -537,7 +538,31 @@ export default function HealthProfile() {
           wizardContent.scrollTop = 0;
         }
       } else {
-        // Complete wizard - mark as complete and show success screen
+        // Complete wizard - use PUT /api/profile/me to mark as completed
+        // This sets is_completed=true in the database
+        const profileFields = [
+          'full_name', 'date_of_birth', 'age_years', 'sex_at_birth', 'gender', 'city',
+          'height_cm', 'weight_kg', 'waist_cm', 'activity_level',
+          'smoking', 'alcohol', 'sleep_hours_avg', 'sleep_quality',
+          'exercise_minutes_per_week', 'diet_pattern'
+        ];
+
+        const profileUpdate: Record<string, any> = {
+          wizard_completed: true,
+          wizard_current_step: PROFILE_FORM_SCHEMA.length
+        };
+        
+        for (const field of profileFields) {
+          if (formValues[field]) {
+            const answer = formValues[field];
+            if (!answer.unknown && !answer.skipped && answer.value !== null && answer.value !== undefined) {
+              profileUpdate[field] = answer.value;
+            }
+          }
+        }
+
+        // Use upsertProfileMe which will set is_completed=true when required fields are present
+        await upsertProfileMe(profileUpdate);
         await updateWizardState(PROFILE_FORM_SCHEMA.length, true);
         setShowSuccess(true);
       }

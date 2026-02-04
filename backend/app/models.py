@@ -286,12 +286,20 @@ class UserProfile(Base):
     wizard_completed = Column(Boolean, default=False)
     wizard_last_saved_at = Column(DateTime, nullable=True)
     
+    # Completion tracking (separate from wizard state for API simplicity)
+    is_completed = Column(Boolean, default=False, nullable=False)
+    completed_at = Column(DateTime, nullable=True)
+    
+    # Contact for SMS reminders
+    phone_number = Column(String(20), nullable=True)
+    
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     
     # Relationships
     user = relationship("User", back_populates="user_profile")
+    reminders = relationship("Reminder", back_populates="user_profile", cascade="all, delete-orphan")
 
 
 class ProfileAnswer(Base):
@@ -684,4 +692,111 @@ class UserLocationConsent(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     
     user = relationship("User", backref="location_consent", uselist=False)
+
+
+# ============================================================================
+# REMINDERS & SMS MODELS
+# ============================================================================
+
+class ReminderType(str, enum.Enum):
+    MEDICINE = "medicine"
+    HYDRATION = "hydration"
+    SLEEP = "sleep"
+    CHECKUP = "checkup"
+    EXERCISE = "exercise"
+    CUSTOM = "custom"
+
+
+class ReminderScheduleType(str, enum.Enum):
+    FIXED_TIMES = "fixed_times"
+    INTERVAL = "interval"
+    CRON = "cron"
+
+
+class ReminderChannel(str, enum.Enum):
+    SMS = "sms"
+    IN_APP = "in_app"
+    PUSH = "push"
+    EMAIL = "email"
+
+
+class ReminderEventStatus(str, enum.Enum):
+    SENT = "sent"
+    FAILED = "failed"
+    MOCKED = "mocked"
+    SKIPPED = "skipped"
+
+
+class Reminder(Base):
+    """User reminders for medicine, hydration, sleep, etc."""
+    __tablename__ = "reminders"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    profile_id = Column(UUID(as_uuid=True), ForeignKey("user_profiles.id", ondelete="CASCADE"), nullable=True)
+    
+    # Reminder details
+    type = Column(String(50), nullable=False)  # medicine|hydration|sleep|checkup|custom
+    title = Column(String(255), nullable=False)
+    message = Column(Text, nullable=True)
+    
+    # Schedule configuration
+    schedule_type = Column(String(30), nullable=False)  # fixed_times|interval|cron
+    schedule_json = Column(JSONB, nullable=False)
+    # schedule_json examples:
+    # fixed_times: {"times": ["08:00", "14:00", "20:00"]}
+    # interval: {"interval_minutes": 120, "start_time": "08:00", "end_time": "22:00"}
+    # cron: {"cron": "0 9 * * *"}
+    
+    # Timezone
+    timezone = Column(String(50), default="Asia/Kolkata", nullable=False)
+    
+    # Execution tracking
+    next_run_at = Column(DateTime, nullable=True, index=True)
+    last_run_at = Column(DateTime, nullable=True)
+    
+    # Status
+    is_enabled = Column(Boolean, default=True, nullable=False)
+    
+    # Delivery channel
+    channel = Column(String(20), default="sms", nullable=False)
+    
+    # Medicine-specific fields (optional)
+    medicine_id = Column(UUID(as_uuid=True), nullable=True)
+    medicine_name = Column(String(200), nullable=True)
+    
+    # Timestamps
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    
+    # Relationships
+    user = relationship("User", backref="reminders")
+    user_profile = relationship("UserProfile", back_populates="reminders")
+    events = relationship("ReminderEvent", back_populates="reminder", cascade="all, delete-orphan")
+
+
+class ReminderEvent(Base):
+    """Delivery log for reminders (SMS/push/in-app notifications)"""
+    __tablename__ = "reminder_events"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    reminder_id = Column(UUID(as_uuid=True), ForeignKey("reminders.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    
+    # Delivery details
+    sent_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    status = Column(String(20), nullable=False)  # sent|failed|mocked|skipped
+    provider = Column(String(30), nullable=False)  # twilio|mock|in_app
+    provider_response = Column(JSONB, nullable=True)
+    
+    # Message content (for audit)
+    message_sent = Column(Text, nullable=True)
+    phone_number = Column(String(20), nullable=True)  # Masked for privacy
+    
+    # Error tracking
+    error_message = Column(Text, nullable=True)
+    
+    # Relationships
+    reminder = relationship("Reminder", back_populates="events")
+    user = relationship("User", backref="reminder_events")
 

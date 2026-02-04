@@ -1,13 +1,12 @@
 /**
  * Health Profile Card Component
  * 
- * Shows profile status:
- * - First-time user: "Complete your health profile" CTA
- * - Existing user: Profile summary with edit button
+ * Shows profile status using the /api/profile/me endpoint:
+ * - First-time user (exists=false or is_completed=false): "Complete your health profile" CTA
  * - In-progress: Resume wizard prompt
- * - Completed: Success state with View/Edit button
+ * - Completed (is_completed=true): Success state with "Edit Profile" button -> Settings
  * 
- * Navigates to /health-profile route.
+ * Once profile is completed, user is NEVER asked to fill again.
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -22,7 +21,7 @@ import {
   Loader2,
   Settings
 } from 'lucide-react';
-import { fetchFullProfile, FullProfile } from '../../services/profileApi';
+import { fetchProfileMe, ProfileMeResponse, fetchFullProfile, FullProfile } from '../../services/profileApi';
 import './HealthProfileCard.css';
 
 interface HealthProfileCardProps {
@@ -32,13 +31,21 @@ interface HealthProfileCardProps {
 export default function HealthProfileCard({ onProfileUpdated: _onProfileUpdated }: HealthProfileCardProps) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [profile, setProfile] = useState<FullProfile | null>(null);
+  const [profileStatus, setProfileStatus] = useState<ProfileMeResponse | null>(null);
+  const [fullProfile, setFullProfile] = useState<FullProfile | null>(null);
   
   const loadProfile = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await fetchFullProfile();
-      setProfile(data);
+      // Use the simpler /me endpoint for status check
+      const status = await fetchProfileMe();
+      setProfileStatus(status);
+      
+      // If profile exists and is complete, also fetch full profile for display
+      if (status.exists && status.is_completed) {
+        const full = await fetchFullProfile();
+        setFullProfile(full);
+      }
     } catch (error) {
       console.error('Error loading profile:', error);
     } finally {
@@ -50,15 +57,23 @@ export default function HealthProfileCard({ onProfileUpdated: _onProfileUpdated 
     loadProfile();
   }, [loadProfile]);
   
-  const handleOpenWizard = () => {
+  const handleGetStarted = () => {
     navigate('/health-profile');
   };
   
-  // Determine profile state
-  const hasProfile = !!profile?.profile;
-  const isComplete = profile?.profile?.wizard_completed || false;
-  const inProgress = hasProfile && !isComplete && (profile?.profile?.wizard_current_step || 1) > 1;
-  const completionScore = profile?.completion?.score || 0;
+  const handleEditProfile = () => {
+    // Navigate to Settings page for editing completed profile
+    navigate('/settings');
+  };
+  
+  // Determine profile state from /me response
+  const exists = profileStatus?.exists || false;
+  const isCompleted = profileStatus?.is_completed || false;
+  const completionScore = profileStatus?.completion?.score || 0;
+  
+  // Check if in progress (has profile but not completed, and has made some progress)
+  const wizardStep = profileStatus?.profile?.wizard_current_step || 1;
+  const inProgress = exists && !isCompleted && wizardStep > 1;
   
   // Loading state
   if (loading) {
@@ -70,53 +85,79 @@ export default function HealthProfileCard({ onProfileUpdated: _onProfileUpdated 
     );
   }
   
-  // First-time user - show CTA
-  if (!hasProfile || (!isComplete && !inProgress)) {
+  // COMPLETED - Show success state with Edit button (routes to Settings)
+  if (isCompleted) {
+    const profile = fullProfile?.profile || profileStatus?.profile;
+    
     return (
       <motion.div 
-        className="profile-card profile-card-new"
+        className="profile-card profile-card-complete"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
       >
         <div className="profile-card-header">
-          <div className="profile-card-icon">
-            <Heart size={28} />
+          <div className="profile-card-icon profile-card-icon-success">
+            <CheckCircle2 size={24} />
           </div>
           <div>
-            <h3>Complete your health profile</h3>
-            <p>Get personalized health insights and recommendations</p>
+            <h3>Health Profile Complete ✅</h3>
+            <p className="profile-complete-status">
+              <span className="status-badge status-badge-success">
+                <CheckCircle2 size={12} />
+                Profile saved
+              </span>
+            </p>
           </div>
         </div>
         
-        <ul className="profile-card-benefits">
-          <li>
-            <CheckCircle2 size={16} />
-            <span>Personalized health recommendations</span>
-          </li>
-          <li>
-            <CheckCircle2 size={16} />
-            <span>Better analysis of your reports</span>
-          </li>
-          <li>
-            <CheckCircle2 size={16} />
-            <span>Track health trends over time</span>
-          </li>
-        </ul>
+        <div className="profile-summary">
+          {profile?.full_name && (
+            <div className="profile-summary-item">
+              <span className="summary-label">Name</span>
+              <span className="summary-value">{profile.full_name}</span>
+            </div>
+          )}
+          {profile?.sex_at_birth && (
+            <div className="profile-summary-item">
+              <span className="summary-label">Sex</span>
+              <span className="summary-value">{profile.sex_at_birth}</span>
+            </div>
+          )}
+          {(profile?.date_of_birth || profile?.age_years) && (
+            <div className="profile-summary-item">
+              <span className="summary-label">Age</span>
+              <span className="summary-value">
+                {profile?.date_of_birth 
+                  ? calculateAge(profile.date_of_birth as string)
+                  : profile?.age_years
+                }
+              </span>
+            </div>
+          )}
+          {profile?.height_cm && profile?.weight_kg && (
+            <div className="profile-summary-item">
+              <span className="summary-label">BMI</span>
+              <span className="summary-value">
+                {(profile.weight_kg / Math.pow(profile.height_cm / 100, 2)).toFixed(1)}
+              </span>
+            </div>
+          )}
+        </div>
         
-        <div className="profile-card-actions">
+        <div className="profile-card-footer">
           <button 
-            className="profile-card-btn profile-card-btn-primary"
-            onClick={handleOpenWizard}
+            className="profile-card-btn profile-card-btn-secondary"
+            onClick={handleEditProfile}
           >
-            Get Started
-            <ChevronRight size={18} />
+            <Settings size={16} />
+            Edit Profile
           </button>
         </div>
       </motion.div>
     );
   }
   
-  // In-progress - show resume prompt
+  // IN-PROGRESS - Show resume prompt
   if (inProgress) {
     return (
       <motion.div 
@@ -144,7 +185,7 @@ export default function HealthProfileCard({ onProfileUpdated: _onProfileUpdated 
         <div className="profile-card-actions">
           <button 
             className="profile-card-btn profile-card-btn-primary"
-            onClick={handleOpenWizard}
+            onClick={handleGetStarted}
           >
             Resume
             <ChevronRight size={18} />
@@ -154,76 +195,45 @@ export default function HealthProfileCard({ onProfileUpdated: _onProfileUpdated 
     );
   }
   
-  // Complete - show success state with summary
+  // NOT STARTED - Show CTA
   return (
     <motion.div 
-      className="profile-card profile-card-complete"
+      className="profile-card profile-card-new"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
     >
       <div className="profile-card-header">
-        <div className="profile-card-icon profile-card-icon-success">
-          <CheckCircle2 size={24} />
+        <div className="profile-card-icon">
+          <Heart size={28} />
         </div>
         <div>
-          <h3>Health Profile Complete</h3>
-          <p className="profile-complete-status">
-            <span className="status-badge status-badge-success">
-              <CheckCircle2 size={12} />
-              {completionScore.toFixed(0)}% complete
-            </span>
-          </p>
+          <h3>Complete your health profile</h3>
+          <p>Get personalized health insights and recommendations</p>
         </div>
-        <button 
-          className="profile-edit-btn"
-          onClick={handleOpenWizard}
-          title="View & Edit profile"
-        >
-          <Settings size={16} />
-        </button>
       </div>
       
-      <div className="profile-summary">
-        {profile?.profile?.sex_at_birth && (
-          <div className="profile-summary-item">
-            <span className="summary-label">Sex</span>
-            <span className="summary-value">{profile.profile.sex_at_birth}</span>
-          </div>
-        )}
-        {(profile?.profile?.date_of_birth || profile?.profile?.age_years) && (
-          <div className="profile-summary-item">
-            <span className="summary-label">Age</span>
-            <span className="summary-value">
-              {profile.profile?.date_of_birth 
-                ? calculateAge(profile.profile.date_of_birth)
-                : profile.profile?.age_years
-              }
-            </span>
-          </div>
-        )}
-        {profile?.derived_features?.find(f => f.feature_name === 'bmi') && (
-          <div className="profile-summary-item">
-            <span className="summary-label">BMI</span>
-            <span className="summary-value">
-              {profile.derived_features.find(f => f.feature_name === 'bmi')?.feature_value?.value?.toFixed(1)}
-            </span>
-          </div>
-        )}
-        {profile?.conditions && profile.conditions.length > 0 && (
-          <div className="profile-summary-item">
-            <span className="summary-label">Conditions</span>
-            <span className="summary-value">{profile.conditions.length}</span>
-          </div>
-        )}
-      </div>
+      <ul className="profile-card-benefits">
+        <li>
+          <CheckCircle2 size={16} />
+          <span>Personalized health recommendations</span>
+        </li>
+        <li>
+          <CheckCircle2 size={16} />
+          <span>Better analysis of your reports</span>
+        </li>
+        <li>
+          <CheckCircle2 size={16} />
+          <span>Track health trends over time</span>
+        </li>
+      </ul>
       
-      <div className="profile-card-footer">
+      <div className="profile-card-actions">
         <button 
-          className="profile-card-btn profile-card-btn-secondary"
-          onClick={handleOpenWizard}
+          className="profile-card-btn profile-card-btn-primary"
+          onClick={handleGetStarted}
         >
-          <Edit2 size={16} />
-          View & Edit Profile
+          Get Started
+          <ChevronRight size={18} />
         </button>
       </div>
     </motion.div>

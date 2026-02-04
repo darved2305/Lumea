@@ -168,11 +168,15 @@ sequenceDiagram
 - Automatic text extraction (text-first, OCR fallback)
 - Document classification: Lab, Dental, MRI, X-ray, Prescription, Sleep
 
-### Health Profile
+### Health Profile & Reminders
 - Multi-step wizard with 6 steps (basics, measurements, conditions, medications, lifestyle, etc.)
 - Tracks conditions, symptoms, medications, supplements, allergies
 - Family medical history and genetic test results
-- Completion score with missing field tracking
+- **Once completed, users are never re-asked** – profile status persists in DB
+- "Profile Complete ✅" indicator with quick-edit access via Settings page
+- **Real-time SMS reminders** via Twilio (or mock mode for testing)
+- Background scheduler processes due reminders every 60 seconds
+- Default reminders auto-generated: medication, appointment, checkup, hydration
 
 ### Health Index & Trends
 - Computed health index (0-100) based on lab values
@@ -505,12 +509,25 @@ Create a `.env` file in the `backend/` directory:
 | `OLLAMA_BASE_URL` | Ollama server URL (optional) | `http://localhost:11434` | No |
 | `OLLAMA_MODEL` | Ollama model name | `medgemma:4b` | No |
 | `USE_GEMINI_FALLBACK` | Enable Gemini fallback when Grok unavailable | `true` | No (default: false) |
+| `SMS_MODE` | SMS sending mode: `twilio` (real) or `mock` (test/log only) | `mock` | No (default: mock) |
+| `SMS_TEST_TO_NUMBER` | Default phone for test SMS (mock mode) | `+15551234567` | No |
+| `TWILIO_ACCOUNT_SID` | Twilio Account SID (required for `twilio` mode) | `ACxxxxxxxx` | No* |
+| `TWILIO_AUTH_TOKEN` | Twilio Auth Token (required for `twilio` mode) | `xxxxxxxxx` | No* |
+| `TWILIO_FROM_NUMBER` | Twilio phone number (required for `twilio` mode) | `+15559876543` | No* |
+| `REMINDER_SCHEDULER_ENABLED` | Enable/disable background reminder scheduler | `true` | No (default: true) |
+| `REMINDER_CHECK_INTERVAL_SECONDS` | How often scheduler checks for due reminders | `60` | No (default: 60) |
 
 **Medicines Feature Notes:**
 
 - **GROK_API_KEY**: Required for free-text medicine parsing (e.g., "Aspirin 500mg tablets" → structured data)
 - **GOOGLE_PLACES_API_KEY**: Optional for pharmacy search. If not set, returns mock pharmacy data for testing
 - **XAI_API_BASE** & **GROK_MODEL**: Typically use defaults; modify only for different xAI endpoints or model versions
+
+**SMS Reminders Feature Notes:**
+
+- **SMS_MODE**: Set to `mock` for development/testing (logs to console), `twilio` for production
+- **TWILIO_***: Required only when `SMS_MODE=twilio`. Get credentials from [Twilio Console](https://console.twilio.com/)
+- **REMINDER_SCHEDULER_ENABLED**: Scheduler runs in-process with APScheduler; disable during tests if needed
 
 See [backend/.env.example](backend/.env.example) for a complete template.
 
@@ -544,12 +561,14 @@ alembic current
 | `reports` | Uploaded documents (file path, OCR text, classification) |
 | `observations` | Extracted health metrics (value, unit, reference range, flag) |
 | `health_metrics` | Computed scores (health_index, contributions) |
-| `user_profiles` | Health profile data (basics, measurements, lifestyle) |
+| `user_profiles` | Health profile data (basics, measurements, lifestyle, is_completed, phone_number) |
 | `profile_conditions` | User medical conditions |
 | `profile_medications` | Current medications |
 | `profile_allergies` | Allergies and reactions |
 | `profile_family_history` | Family medical history |
 | `profile_recommendations` | Generated recommendations |
+| `reminders` | User health reminders (medication, appointment, checkup, hydration) |
+| `reminder_events` | SMS send audit log (status, error messages, timestamps) |
 | `chat_sessions` | Assistant chat sessions |
 | `chat_messages` | Chat message history |
 | `report_ai_summaries` | Cached AI report summaries |
@@ -578,6 +597,9 @@ erDiagram
     users ||--o{ substitute_queries : searches
     users ||--o{ pharmacy_clicks : clicks
     users ||--o| user_location_consent : grants
+    
+    user_profiles ||--o{ reminders : has
+    reminders ||--o{ reminder_events : logs
     
     reports ||--o{ observations : extracts
     reports ||--o{ report_ai_summaries : summarized_by
@@ -694,6 +716,30 @@ erDiagram
 | POST | `/api/profile/medications` | Add medications | Yes |
 | POST | `/api/profile/allergies` | Add allergies | Yes |
 | POST | `/api/profile/recompute` | Trigger recomputation | Yes |
+
+### Profile/Me (Simplified)
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/api/profile/me` | Get current user's profile with completion status | Yes |
+| PUT | `/api/profile/me` | Create or update profile (upsert) | Yes |
+| PATCH | `/api/profile/me` | Partial profile update | Yes |
+
+### Reminders
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/api/reminders` | List all reminders for user | Yes |
+| POST | `/api/reminders` | Create new reminder | Yes |
+| PATCH | `/api/reminders/{id}` | Update reminder | Yes |
+| DELETE | `/api/reminders/{id}` | Delete reminder | Yes |
+| POST | `/api/reminders/generate-default` | Generate default reminders | Yes |
+
+### SMS (Testing)
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| POST | `/api/sms/test` | Send test SMS (mock or real based on SMS_MODE) | Yes |
 
 ### Recommendations
 

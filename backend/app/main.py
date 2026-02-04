@@ -5,8 +5,10 @@ import logging
 from app.settings import settings
 from app.db import init_db, engine
 from app.services.graph_service import get_graph_service
+from app.services.reminder_scheduler import start_reminder_scheduler, stop_reminder_scheduler
 from app.routes import auth, health, dashboard, reports, assistant, recommendations
 from app.routes.profile import router as profile_router
+from app.routes.profile_me import router as profile_me_router
 from app.routes.websocket import router as websocket_router
 from app.routes.documents import router as documents_router
 from app.routes.ai_summary import router as ai_summary_router
@@ -32,10 +34,23 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"Graph service init skipped: {e}")
 
+    # Start Reminder Scheduler
+    try:
+        logger.info("Starting reminder scheduler...")
+        start_reminder_scheduler()
+        logger.info("Reminder scheduler started")
+    except Exception as e:
+        logger.warning(f"Reminder scheduler start failed: {e}")
+
     logger.info("Application startup complete")
     yield
 
     # Best-effort shutdown cleanup
+    try:
+        stop_reminder_scheduler()
+    except Exception as e:
+        logger.debug(f"Reminder scheduler stop: {e}")
+
     try:
         await get_graph_service().close()
     except Exception as e:
@@ -79,6 +94,7 @@ app.include_router(reports.router)
 app.include_router(assistant.router)
 app.include_router(recommendations.router)
 app.include_router(profile_router)
+app.include_router(profile_me_router)  # Profile /me and reminders endpoints
 app.include_router(websocket_router)
 app.include_router(documents_router)
 app.include_router(ai_summary_router)
@@ -98,6 +114,9 @@ async def root():
             "recommendations": "/api/recommendations",
             "medicines": "/api/medicines",
             "profile": "/api/profile",
+            "profile_me": "/api/profile/me",
+            "reminders": "/api/reminders",
+            "sms": "/api/sms",
             "ai_summary": "/api/ai",
             "websocket": "ws://localhost:8000/ws?token=<jwt>"
         }

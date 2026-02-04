@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  backend:
+    environment:
+      # Replace with your actual Neon connection string
+      - DATABASE_URL=postgresql+asyncpg://your_user:your_password@ep-xxx-xxx.region.aws.neon.tech/your_db?sslmode=require
+      # Copy other env vars from docker-compose.yml
+      - JWT_SECRET=${JWT_SECRET}
+      - GROK_API_KEY=${GROK_API_KEY}
+      - FRONTEND_ORIGIN=http://localhost:5173
+      - SMS_MODE=mock  # Use 'twilio' for real SMS
+      - REMINDER_SCHEDULER_ENABLED=true
+
+  # Remove db service since using Neon
+  # Remove neo4j if not needed

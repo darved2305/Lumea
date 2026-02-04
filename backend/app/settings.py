@@ -62,8 +62,28 @@ class Settings(BaseSettings):
     # Note: Neo4j Community Edition only supports "neo4j" database name
     GRAPHITI_DATABASE: str = "neo4j"
 
+    # =====================
+    # SMS CONFIGURATION
+    # =====================
+    # SMS_MODE: "twilio" for real SMS, "mock" for logging only
+    SMS_MODE: str = "mock"
+    
+    # Test phone number (from env, NEVER hardcode!)
+    # Used only for testing via /api/sms/test endpoint
+    SMS_TEST_TO_NUMBER: Optional[str] = None
+    
+    # Twilio credentials (required if SMS_MODE=twilio)
+    TWILIO_ACCOUNT_SID: Optional[str] = None
+    TWILIO_AUTH_TOKEN: Optional[str] = None
+    TWILIO_FROM_NUMBER: Optional[str] = None
+    
+    # Reminder scheduler settings
+    REMINDER_SCHEDULER_ENABLED: bool = True
+    REMINDER_CHECK_INTERVAL_SECONDS: int = 60  # How often to check for due reminders
+
     class Config:
         env_file = ".env"
         extra = "ignore"
 
 settings = Settings()
+

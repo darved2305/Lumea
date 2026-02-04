@@ -424,3 +424,246 @@ export async function triggerRecompute(): Promise<void> {
     console.error('Error triggering recompute:', error);
   }
 }
+
+
+// ============================================================================
+// PROFILE /ME ENDPOINTS (Simplified for Reports page)
+// ============================================================================
+
+export interface ProfileMeResponse {
+  exists: boolean;
+  is_completed: boolean;
+  profile: UserProfile | null;
+  completion: ProfileCompletion | null;
+}
+
+/**
+ * Get profile status - used by Reports page to determine if profile is complete.
+ * Returns exists=false for new users, is_completed=true when all required fields filled.
+ */
+export async function fetchProfileMe(): Promise<ProfileMeResponse> {
+  const token = localStorage.getItem('access_token');
+  if (!token) {
+    console.warn('fetchProfileMe: No auth token');
+    return { exists: false, is_completed: false, profile: null, completion: null };
+  }
+  
+  try {
+    const response = await fetch(`${API_BASE}/api/profile/me`, {
+      headers: getAuthHeaders(),
+      credentials: 'include',
+    });
+    
+    if (response.status === 401) {
+      console.warn('fetchProfileMe: Unauthorized');
+      return { exists: false, is_completed: false, profile: null, completion: null };
+    }
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || `Failed to fetch profile: ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching profile/me:', error);
+    throw error;
+  }
+}
+
+/**
+ * Create or update profile (UPSERT) - used by Health Profile form.
+ * Sets is_completed=true when all required fields are present.
+ */
+export async function upsertProfileMe(data: Partial<UserProfile>): Promise<UserProfile> {
+  const token = localStorage.getItem('access_token');
+  if (!token) {
+    throw new Error('Not authenticated - no token');
+  }
+  
+  // Clean data
+  const cleanData: Record<string, any> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (value !== undefined) {
+      cleanData[key] = value;
+    }
+  }
+  
+  console.log('upsertProfileMe: Sending PUT with data:', cleanData);
+  
+  const response = await fetch(`${API_BASE}/api/profile/me`, {
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    credentials: 'include',
+    body: JSON.stringify(cleanData),
+  });
+  
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ detail: `HTTP ${response.status}` }));
+    console.error('upsertProfileMe: Error response:', errorData);
+    let errorMessage = `Failed to save profile: ${response.status}`;
+    if (errorData.detail) {
+      if (Array.isArray(errorData.detail)) {
+        errorMessage = errorData.detail.map((e: any) => e.msg || e.message || JSON.stringify(e)).join(', ');
+      } else if (typeof errorData.detail === 'string') {
+        errorMessage = errorData.detail;
+      }
+    }
+    throw new Error(errorMessage);
+  }
+  
+  const result = await response.json();
+  console.log('upsertProfileMe: Success, is_completed:', result.is_completed);
+  return result;
+}
+
+/**
+ * Partial update for profile - used by Settings page for edits.
+ */
+export async function patchProfileMe(data: Partial<UserProfile>): Promise<UserProfile> {
+  const token = localStorage.getItem('access_token');
+  if (!token) {
+    throw new Error('Not authenticated - no token');
+  }
+  
+  const cleanData: Record<string, any> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (value !== undefined) {
+      cleanData[key] = value;
+    }
+  }
+  
+  const response = await fetch(`${API_BASE}/api/profile/me`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    credentials: 'include',
+    body: JSON.stringify(cleanData),
+  });
+  
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || `Failed to update profile: ${response.status}`);
+  }
+  
+  return await response.json();
+}
+
+
+// ============================================================================
+// REMINDER API
+// ============================================================================
+
+export interface Reminder {
+  id: string;
+  user_id: string;
+  type: string;
+  title: string;
+  message?: string;
+  schedule_type: string;
+  schedule_json: Record<string, any>;
+  timezone: string;
+  next_run_at?: string;
+  last_run_at?: string;
+  is_enabled: boolean;
+  channel: string;
+  medicine_id?: string;
+  medicine_name?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ReminderCreate {
+  type: string;
+  title: string;
+  message?: string;
+  schedule_type: string;
+  schedule_json: {
+    times?: string[];
+    interval_minutes?: number;
+    start_time?: string;
+    end_time?: string;
+    cron?: string;
+  };
+  timezone?: string;
+  channel?: string;
+  medicine_id?: string;
+  medicine_name?: string;
+  is_enabled?: boolean;
+}
+
+export async function fetchReminders(): Promise<Reminder[]> {
+  const token = localStorage.getItem('access_token');
+  if (!token) return [];
+  
+  const response = await fetch(`${API_BASE}/api/reminders/me`, {
+    headers: getAuthHeaders(),
+    credentials: 'include',
+  });
+  
+  if (!response.ok) {
+    console.error('Failed to fetch reminders:', response.status);
+    return [];
+  }
+  
+  return await response.json();
+}
+
+export async function createReminder(data: ReminderCreate): Promise<Reminder> {
+  const response = await fetch(`${API_BASE}/api/reminders`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    credentials: 'include',
+    body: JSON.stringify(data),
+  });
+  
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || `Failed to create reminder: ${response.status}`);
+  }
+  
+  return await response.json();
+}
+
+export async function updateReminder(id: string, data: Partial<ReminderCreate>): Promise<Reminder> {
+  const response = await fetch(`${API_BASE}/api/reminders/${id}`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    credentials: 'include',
+    body: JSON.stringify(data),
+  });
+  
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || `Failed to update reminder: ${response.status}`);
+  }
+  
+  return await response.json();
+}
+
+export async function deleteReminder(id: string): Promise<void> {
+  const response = await fetch(`${API_BASE}/api/reminders/${id}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+    credentials: 'include',
+  });
+  
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || `Failed to delete reminder: ${response.status}`);
+  }
+}
+
+export async function generateDefaultReminders(): Promise<Reminder[]> {
+  const response = await fetch(`${API_BASE}/api/reminders/generate-default`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    credentials: 'include',
+  });
+  
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || `Failed to generate reminders: ${response.status}`);
+  }
+  
+  return await response.json();
+}

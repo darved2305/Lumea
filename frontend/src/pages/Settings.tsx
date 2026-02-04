@@ -23,7 +23,7 @@ import {
   Edit2,
   Shield
 } from 'lucide-react';
-import { fetchFullProfile, FullProfile } from '../services/profileApi';
+import { fetchProfileMe, ProfileMeResponse, fetchFullProfile, FullProfile } from '../services/profileApi';
 import { logout } from '../utils/auth';
 import './Settings.css';
 
@@ -32,19 +32,27 @@ const DEV_DEBUG_MODE = process.env.NODE_ENV === 'development';
 
 export default function Settings() {
   const navigate = useNavigate();
-  const [profile, setProfile] = useState<FullProfile | null>(null);
+  const [profileStatus, setProfileStatus] = useState<ProfileMeResponse | null>(null);
+  const [fullProfile, setFullProfile] = useState<FullProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [userEmail, setUserEmail] = useState<string>('');
   const [showDebug, setShowDebug] = useState(false);
 
   const loadProfile = useCallback(async () => {
     try {
-      const data = await fetchFullProfile();
-      setProfile(data);
+      // Use the /me endpoint for status
+      const status = await fetchProfileMe();
+      setProfileStatus(status);
+      
+      // Also load full profile for debug display
+      if (status.exists) {
+        const full = await fetchFullProfile();
+        setFullProfile(full);
+      }
       
       // Debug logging
       if (DEV_DEBUG_MODE) {
-        console.log('[Settings] Fetched profile data:', data);
+        console.log('[Settings] Fetched profile status:', status);
       }
       
       // Get email from JWT token if available
@@ -77,10 +85,18 @@ export default function Settings() {
     navigate(-1);
   };
 
-  const isProfileComplete = profile?.profile?.wizard_completed || false;
-  const completionScore = profile?.completion?.score || 0;
-  const lastUpdated = profile?.profile?.updated_at 
-    ? new Date(profile.profile.updated_at).toLocaleDateString('en-US', {
+  // Use is_completed from /me response (reflects DB truth)
+  const isProfileComplete = profileStatus?.is_completed || false;
+  const completionScore = profileStatus?.completion?.score || 0;
+  const lastUpdated = profileStatus?.profile?.updated_at 
+    ? new Date(profileStatus.profile.updated_at).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      })
+    : null;
+  const completedAt = profileStatus?.profile?.completed_at
+    ? new Date(profileStatus.profile.completed_at).toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'short',
         day: 'numeric'
@@ -154,13 +170,19 @@ export default function Settings() {
                   <>
                     <div className="settings-profile-badge settings-profile-badge-complete">
                       <CheckCircle2 size={20} />
-                      <span>Profile Complete</span>
+                      <span>Profile Complete ✅</span>
                     </div>
                     <div className="settings-profile-details">
                       <div className="settings-profile-stat">
                         <span className="stat-value">{completionScore.toFixed(0)}%</span>
                         <span className="stat-label">Completed</span>
                       </div>
+                      {completedAt && (
+                        <div className="settings-profile-stat">
+                          <span className="stat-value">{completedAt}</span>
+                          <span className="stat-label">Completed On</span>
+                        </div>
+                      )}
                       {lastUpdated && (
                         <div className="settings-profile-stat">
                           <span className="stat-value">{lastUpdated}</span>
@@ -187,7 +209,7 @@ export default function Settings() {
                 onClick={() => navigate('/health-profile')}
               >
                 <Edit2 size={16} />
-                {isProfileComplete ? 'View & Edit Profile' : 'Complete Profile'}
+                {isProfileComplete ? 'Edit Profile' : 'Complete Profile'}
                 <ChevronRight size={16} />
               </button>
               
@@ -201,23 +223,36 @@ export default function Settings() {
                     {showDebug ? '▼' : '▶'} Debug Info (Dev Only)
                   </button>
                   
-                  {showDebug && profile && (
+                  {showDebug && profileStatus && (
                     <div className="settings-debug-content">
                       <p className="debug-timestamp">
-                        <strong>Last saved:</strong> {profile.profile?.updated_at || 'Never'}
+                        <strong>exists:</strong> {String(profileStatus.exists)}
                       </p>
                       <p className="debug-timestamp">
-                        <strong>Wizard Step:</strong> {profile.profile?.wizard_current_step || 1}
+                        <strong>is_completed:</strong> {String(profileStatus.is_completed)}
                       </p>
                       <p className="debug-timestamp">
-                        <strong>Answers Count:</strong> {profile.answers?.length || 0}
+                        <strong>Last saved:</strong> {profileStatus.profile?.updated_at || 'Never'}
                       </p>
                       <p className="debug-timestamp">
-                        <strong>Conditions Count:</strong> {profile.conditions?.length || 0}
+                        <strong>Completed at:</strong> {profileStatus.profile?.completed_at || 'Never'}
                       </p>
+                      <p className="debug-timestamp">
+                        <strong>Wizard Step:</strong> {profileStatus.profile?.wizard_current_step || 1}
+                      </p>
+                      {fullProfile && (
+                        <>
+                          <p className="debug-timestamp">
+                            <strong>Answers Count:</strong> {fullProfile.answers?.length || 0}
+                          </p>
+                          <p className="debug-timestamp">
+                            <strong>Conditions Count:</strong> {fullProfile.conditions?.length || 0}
+                          </p>
+                        </>
+                      )}
                       <details>
                         <summary>Raw Profile Data</summary>
-                        <pre>{JSON.stringify(profile.profile, null, 2)}</pre>
+                        <pre>{JSON.stringify(profileStatus.profile, null, 2)}</pre>
                       </details>
                     </div>
                   )}
