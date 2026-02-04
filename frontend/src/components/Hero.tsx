@@ -56,7 +56,7 @@ function Hero() {
           >
             {t('hero.tagline')}
             <br />
-            is <motion.span 
+            <motion.span 
               className="highlight"
               initial={{ scale: 0, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}

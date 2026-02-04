@@ -33,6 +33,7 @@ class RAGService:
         self._client = None
         self._collection = None
         self._embedding_model = None
+        self._embedding_available = True  # Disable gracefully on failure
     
     def _get_client(self):
         """Lazy initialization of ChromaDB client."""
@@ -61,9 +62,21 @@ class RAGService:
     
     def _get_embedding_model(self):
         """Lazy initialization of embedding model."""
+        if not self._embedding_available:
+            raise RuntimeError("Embedding model is disabled due to previous initialization failure")
+
         if self._embedding_model is None:
-            from sentence_transformers import SentenceTransformer
-            self._embedding_model = SentenceTransformer(settings.EMBEDDING_MODEL)
+            try:
+                from sentence_transformers import SentenceTransformer
+                logger.info(f"Initializing embedding model: {settings.EMBEDDING_MODEL}")
+                self._embedding_model = SentenceTransformer(settings.EMBEDDING_MODEL)
+            except Exception as e:
+                # If the model can't be loaded (no internet, HF issue, etc.),
+                # disable embeddings so the rest of the app can continue.
+                self._embedding_available = False
+                logger.error(f"Failed to initialize embedding model '{settings.EMBEDDING_MODEL}': {e}")
+                raise RuntimeError("Embedding model initialization failed") from e
+
         return self._embedding_model
     
     def _embed_texts(self, texts: List[str]) -> List[List[float]]:
@@ -82,6 +95,7 @@ class RAGService:
             return [list(e) for e in embeddings]
         except Exception as e:
             logger.error(f"Embedding failed: {e}")
+            # Propagate a clean error so callers can gracefully fall back
             raise ValueError(f"Failed to embed texts: {e}")
     
     async def sync_user_reports(self, user_id: uuid.UUID, db: AsyncSession) -> int:
@@ -269,11 +283,20 @@ class RAGService:
         """
         # First, ensure user data is synced (if db provided)
         if db:
-            await self.sync_user_reports(user_id, db)
-            await self.sync_user_observations(user_id, db)
+            try:
+                await self.sync_user_reports(user_id, db)
+                await self.sync_user_observations(user_id, db)
+            except Exception as e:
+                # If syncing fails (embeddings/model/Chroma issues), log and continue.
+                logger.warning(f"RAG sync failed for user {user_id}: {e}")
         
-        # Query for relevant documents
-        docs = await self.query(user_id, query)
+        try:
+            # Query for relevant documents
+            docs = await self.query(user_id, query)
+        except Exception as e:
+            # If RAG fails (e.g. embeddings unavailable, Chroma issue), fall back
+            logger.warning(f"RAG context unavailable for user {user_id}: {e}")
+            return "No health data available for this user yet."
         
         if not docs:
             return "No health data available for this user yet."

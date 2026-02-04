@@ -9,6 +9,7 @@ from sqlalchemy import select
 from typing import List
 from uuid import UUID
 import logging
+import os
 
 from app.db import get_db
 from app.security import get_current_user
@@ -53,22 +54,35 @@ async def list_reports_for_summary(
     result = await db.execute(query)
     reports = result.scalars().all()
     
-    response = []
+    response: List[ReportForSummary] = []
     for report in reports:
-        # Build preview URL based on file path
-        preview_url = f"/api/reports/{report.id}/file"
+        # Skip reports whose underlying file is missing on disk
+        if not report.file_path or not os.path.exists(report.file_path):
+            logger.warning(
+                "AI Summary: skipping report %s (%s) because file is missing at %s",
+                report.id,
+                report.filename,
+                report.file_path,
+            )
+            continue
+
+        # Build preview URL based on AI summary file endpoint
+        # Note: this route is defined on the /api/ai router (see get_report_file below)
+        preview_url = f"/api/ai/reports/{report.id}/file"
         
-        response.append(ReportForSummary(
-            id=report.id,
-            filename=report.filename,
-            category=report.category,
-            doc_type=report.doc_type,
-            report_date=report.report_date,
-            uploaded_at=report.uploaded_at,
-            file_path=report.file_path,
-            file_type=report.file_type,
-            preview_url=preview_url
-        ))
+        response.append(
+            ReportForSummary(
+                id=report.id,
+                filename=report.filename,
+                category=report.category,
+                doc_type=report.doc_type,
+                report_date=report.report_date,
+                uploaded_at=report.uploaded_at,
+                file_path=report.file_path,
+                file_type=report.file_type,
+                preview_url=preview_url,
+            )
+        )
     
     return response
 
@@ -99,20 +113,25 @@ async def get_report_file(
     if not os.path.exists(report.file_path):
         raise HTTPException(status_code=404, detail="File not found on disk")
     
-    # Determine media type
+    # Determine media type. Note: in the new pipeline `file_type` is stored
+    # without the leading dot (e.g. "pdf"), while older records may still
+    # include the dot (".pdf"), so we normalize.
     media_types = {
-        '.pdf': 'application/pdf',
-        '.png': 'image/png',
-        '.jpg': 'image/jpeg',
-        '.jpeg': 'image/jpeg',
-        '.tiff': 'image/tiff'
+        'pdf': 'application/pdf',
+        'png': 'image/png',
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'tiff': 'image/tiff',
     }
-    media_type = media_types.get(report.file_type, 'application/octet-stream')
+    normalized_type = (report.file_type or '').lstrip('.').lower()
+    media_type = media_types.get(normalized_type, 'application/octet-stream')
     
+    # Return inline so the browser renders in an <iframe> instead of forcing download
     return FileResponse(
         report.file_path,
         media_type=media_type,
-        filename=report.filename
+        filename=report.filename,
+        content_disposition_type="inline",
     )
 
 

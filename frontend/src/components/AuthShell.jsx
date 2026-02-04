@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
+import Logo from './ui/Logo'
 import './AuthShell.css'
 
 function AuthShell({ children, title, subtitle, footerText, footerLink, footerLinkText }) {
@@ -13,8 +14,7 @@ function AuthShell({ children, title, subtitle, footerText, footerLink, footerLi
           transition={{ duration: 0.6 }}
         >
           <Link to="/" className="auth-logo">
-            <span className="logo-main">Co-Code</span>
-            <span className="logo-sub">GGW</span>
+            <Logo variant="header" />
           </Link>
         </motion.div>
 
