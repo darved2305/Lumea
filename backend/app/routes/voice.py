@@ -27,7 +27,10 @@ class VoiceAnswerRequest(BaseModel):
 
 class VoiceAnswerResponse(BaseModel):
     answer_text: str
-    flags: list[str] = []
+    language: str = "en"  # Detected/used language: en, hi, mr, gu, mixed
+    safety_level: str = "normal"  # normal, caution, urgent
+    followup_questions: list[str] = []  # Optional follow-up questions
+    flags: list[str] = []  # emergency, dosage_inquiry, error
     used_context: dict = {}
 
 
