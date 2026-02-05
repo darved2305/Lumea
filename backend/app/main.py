@@ -13,6 +13,7 @@ from app.routes.websocket import router as websocket_router
 from app.routes.documents import router as documents_router
 from app.routes.ai_summary import router as ai_summary_router
 from app.routes.medicines import router as medicines_router
+from app.routes.voice import router as voice_router
 
 logger = logging.getLogger(__name__)
 
@@ -99,6 +100,7 @@ app.include_router(websocket_router)
 app.include_router(documents_router)
 app.include_router(ai_summary_router)
 app.include_router(medicines_router)
+app.include_router(voice_router)
 
 @app.get("/")
 async def root():

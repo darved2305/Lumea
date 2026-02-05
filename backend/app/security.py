@@ -101,19 +101,25 @@ async def get_current_user(
     # Get database session and fetch user - use context manager to ensure cleanup
     from app.db import async_session_maker
     
-    async with async_session_maker() as db:
-        try:
-            result = await db.execute(select(User).where(User.id == user_uuid))
-            user = result.scalar_one_or_none()
-            
-            if not user:
-                logger.warning(f"Auth: User {user_id} not found in database")
-                raise HTTPException(status_code=401, detail="User not found")
-            
-            logger.debug(f"Auth: Authenticated user {user.email}")
-            return user
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.error(f"Auth: Database error - {e}")
-            raise HTTPException(status_code=500, detail="Database error during authentication")
+    try:
+        async with async_session_maker() as db:
+            try:
+                result = await db.execute(select(User).where(User.id == user_uuid))
+                user = result.scalar_one_or_none()
+                
+                if not user:
+                    logger.warning(f"Auth: User {user_id} not found in database")
+                    raise HTTPException(status_code=401, detail="User not found")
+                
+                logger.debug(f"Auth: Authenticated user {user.email}")
+                return user
+            except HTTPException:
+                raise
+            except Exception as e:
+                logger.error(f"Auth: Database query error - {type(e).__name__}: {e}")
+                raise HTTPException(status_code=500, detail="Database error during authentication")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Auth: Database connection error - {type(e).__name__}: {e}")
+        raise HTTPException(status_code=500, detail="Database connection error")

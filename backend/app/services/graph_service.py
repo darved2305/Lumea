@@ -1,22 +1,16 @@
 import logging
 import asyncio
 from typing import List, Dict, Any, Optional
-from neo4j import GraphDatabase
 
 try:
     from graphiti_core import Graphiti
     from graphiti_core.llm_client import OpenAIClient, LLMConfig
-    try:
-        from graphiti_core.driver import Neo4jDriver
-    except ImportError:
-        from graphiti_core.driver.neo4j_driver import Neo4jDriver
     GRAPHITI_AVAILABLE = True
 except ImportError:
     GRAPHITI_AVAILABLE = False
     Graphiti = None
     OpenAIClient = None
     LLMConfig = None
-    Neo4jDriver = None
 
 from app.settings import settings
 
@@ -58,47 +52,40 @@ class GraphService:
         if self.client is not None:
             return
 
-        def _sync_init():
-            try:
-                logger.info("Initializing Graphiti with Neo4j and Ollama...")
+        try:
+            logger.info("Initializing Graphiti with Neo4j and Ollama...")
 
-                # 1. Initialize Neo4j Driver for Graphiti
-                # Graphiti has its own driver wrapper
-                neo4j_driver = Neo4jDriver(
-                    uri=settings.NEO4J_URI,
-                    auth=(settings.NEO4J_USER, settings.NEO4J_PASSWORD)
-                )
+            # 1. Initialize LLM Client (Ollama via OpenAI compatible endpoint)
+            llm_config = LLMConfig(
+                api_key="ollama",  # Dummy key for Ollama
+                base_url=f"{settings.OLLAMA_BASE_URL}/v1",
+                model=settings.OLLAMA_MODEL,
+                temperature=0.1,
+                max_tokens=4096
+            )
 
-                # 2. Initialize LLM Client (Ollama via OpenAI compatible endpoint)
-                llm_config = LLMConfig(
-                    api_key="ollama",  # Dummy key for Ollama
-                    base_url=f"{settings.OLLAMA_BASE_URL}/v1",
-                    model=settings.OLLAMA_MODEL,
-                    temperature=0.1,
-                    max_tokens=4096
-                )
+            llm_client = OpenAIClient(
+                config=llm_config
+            )
 
-                llm_client = OpenAIClient(
-                    config=llm_config
-                )
+            # 2. Initialize Graphiti Client with Neo4j connection
+            # Pass uri, user, password directly - Graphiti creates the driver internally
+            self.client = Graphiti(
+                uri=settings.NEO4J_URI,
+                user=settings.NEO4J_USER,
+                password=settings.NEO4J_PASSWORD,
+                llm_client=llm_client
+            )
 
-                # 3. Initialize Graphiti Client
-                self.client = Graphiti(
-                    llm_client=llm_client,
-                    graph_driver=neo4j_driver
-                )
+            # Build indices (this is an async operation)
+            await self.client.build_indices_and_constraints()
 
-                # Build indices
-                self.client.build_indices_and_constraints()
+            logger.info("Graphiti initialized successfully")
 
-                logger.info("Graphiti initialized successfully")
-
-            except Exception as e:
-                logger.error(f"Failed to initialize GraphService: {e}")
-                # Service will be degraded (graph features won't work)
-                self.client = None
-
-        await asyncio.to_thread(_sync_init)
+        except Exception as e:
+            logger.error(f"Failed to initialize GraphService: {e}")
+            # Service will be degraded (graph features won't work)
+            self.client = None
 
     async def add_episode(self, content: str, source: str = "user_input", timestamp: Optional[str] = None):
         """

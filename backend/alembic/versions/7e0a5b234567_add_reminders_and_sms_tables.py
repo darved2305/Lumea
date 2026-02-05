@@ -15,7 +15,6 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
-
 # revision identifiers, used by Alembic.
 revision: str = '7e0a5b234567'
 down_revision: Union[str, Sequence[str], None] = '6d9e4f012345'
@@ -48,6 +47,7 @@ def upgrade() -> None:
             'reminders',
             sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text('gen_random_uuid()')),
             sa.Column('user_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True),
+            sa.Column('profile_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('user_profiles.id', ondelete='CASCADE'), nullable=True),
             
             # Reminder details
             sa.Column('type', sa.String(50), nullable=False),  # medicine|hydration|sleep|checkup|custom

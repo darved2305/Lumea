@@ -50,6 +50,10 @@ class Settings(BaseSettings):
     # Google Places API for pharmacy locator
     google_places_api_key: Optional[str] = None
 
+    # ElevenLabs TTS for Voice Agent
+    ELEVENLABS_API_KEY: Optional[str] = None
+    ELEVENLABS_VOICE_ID: Optional[str] = "21m00Tcm4TlvDq8ikWAM"  # Default: Rachel voice
+
     # Neo4j (for Mem0 graph memory and Graphiti)
     NEO4J_URI: str = "bolt://neo4j:7687"
     NEO4J_USER: str = "neo4j"

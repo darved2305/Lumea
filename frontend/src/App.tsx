@@ -9,6 +9,7 @@ import HealthProfile from './pages/HealthProfile'
 import Settings from './pages/Settings'
 import Recommendations from './pages/Recommendations'
 import Medicines from './pages/Medicines'
+import VoiceAgent from './pages/VoiceAgent'
 import ProtectedRoute from './components/ProtectedRoute'
 import './App.css'
 
@@ -56,6 +57,14 @@ function App() {
           element={
             <ProtectedRoute>
               <Medicines />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/voice-agent" 
+          element={
+            <ProtectedRoute>
+              <VoiceAgent />
             </ProtectedRoute>
           } 
         />

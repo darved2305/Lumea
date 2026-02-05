@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Settings, LogOut, Home, LayoutDashboard, Bell, FileText, Activity, Sparkles, Pill } from 'lucide-react';
+import { Settings, LogOut, Home, LayoutDashboard, Bell, FileText, Activity, Sparkles, Pill, PhoneCall } from 'lucide-react';
 import { logout } from '../../utils/auth';
 import Logo from '../ui/Logo';
 import './DashboardNavbar.css';
@@ -20,6 +20,7 @@ function DashboardNavbar({ userName = 'User', userStatus = '87% Healthy' }: Dash
     { label: 'Home', path: '/', icon: Home },
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { label: 'Reports', path: '/reports', icon: FileText },
+    { label: 'Voice Agent', path: '/voice-agent', icon: PhoneCall },
     { label: 'AI Summary', path: '/report-summary', icon: Sparkles },
     { label: 'Recommendations', path: '/recommendations', icon: Activity },
     { label: 'Medicines', path: '/medicines', icon: Pill },

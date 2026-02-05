@@ -13,6 +13,7 @@ A full-stack health companion platform for preventive health management. Upload 
 - [Architecture](#architecture)
 - [Features](#features)
 - [Medicines: Find Cheap Alternatives](#medicines-find-cheap-alternatives)
+- [Voice Agent: AI Health Assistant](#voice-agent-ai-health-assistant)
 - [Getting Started](#getting-started)
 - [Environment Variables](#environment-variables)
 - [Database](#database)
@@ -35,6 +36,7 @@ Lumea is a unified medical companion platform that enables users to:
 - **Receive AI recommendations** based on extracted lab values and health patterns
 - **Compare reports over time** with AI-powered summaries and trend analysis
 - **Chat with an AI assistant** grounded in your personal health data
+- **🎙️ Voice Agent**: Speak naturally to an AI health assistant for hands-free access to personalized health insights
 
 ---
 
@@ -46,7 +48,8 @@ Lumea is a unified medical companion platform that enables users to:
 | **Backend** | FastAPI (Python 3.10+), SQLAlchemy 2.0, Pydantic |
 | **Database** | PostgreSQL (Neon or local), Alembic migrations |
 | **OCR/Extraction** | PaddleOCR, pdfplumber, PyMuPDF |
-| **AI/LLM** | Grok API (xAI), Ollama (MedGemma), Gemini fallback, ChromaDB (RAG) |
+| **AI/LLM** | Google Gemini API, Grok API (xAI), Ollama (MedGemma), ChromaDB (RAG) |
+| **Voice Agent** | Web Speech API (STT), ElevenLabs TTS, Google Gemini |
 | **Realtime** | WebSocket (FastAPI native) |
 | **Auth** | JWT (python-jose), bcrypt |
 
@@ -200,6 +203,16 @@ sequenceDiagram
 - RAG-powered chat grounded in user's health data
 - Citations from reports and observations
 - WebSocket streaming for real-time responses
+
+### 🎙️ Voice Agent (AI Health Assistant)
+- **Natural voice conversations** with your health data
+- **Speech-to-Text**: Browser Web Speech API for hands-free input
+- **AI Processing**: Google Gemini with personalized health context
+- **Text-to-Speech**: ElevenLabs studio-quality voice (with browser fallback)
+- **Safety features**: Emergency detection, dosage inquiry protection
+- **Real-time feedback**: Visual orb animations for listening/thinking/speaking
+- **Comprehensive context**: Uses profile, conditions, medications, allergies, reports, RAG data
+- **Accessibility-first**: Ideal for hands-free use, visual impairments, or quick queries
 
 ---
 
@@ -412,6 +425,435 @@ Response:
   "total_results": 2
 }
 ```
+
+---
+
+## Voice Agent: AI Health Assistant
+
+Lumea includes a fully integrated **Voice Agent** that provides an ElevenLabs-style conversational health assistant experience. Users can speak naturally to the AI agent, which responds with personalized health guidance based on their profile, conditions, medications, allergies, and recent lab reports.
+
+> ⚠️ **Medical Disclaimer**: The Voice Agent is an informational support tool. It does NOT provide medical diagnosis, dosage recommendations, or emergency care. Always consult licensed healthcare professionals for medical decisions.
+
+### Overview
+
+The Voice Agent transforms how users interact with their health data through natural voice conversations powered by cutting-edge AI technologies.
+
+**Key Capabilities**:
+
+- **🎙️ Voice Interaction**: Speak naturally using browser-based speech recognition (Web Speech API)
+- **🧠 Personalized AI Responses**: Powered by Google Gemini with access to your complete health profile
+- **🔊 Natural Speech Output**: Human-like voice responses via ElevenLabs TTS (with browser fallback)
+- **🛡️ Medical Safety Filters**: Detects emergency keywords, dosage inquiries, and provides appropriate safety responses
+- **⚡ Real-time Feedback**: Visual orb animations reflect listening/thinking/speaking states
+- **📝 Transcript View**: Optional chat-mode panel displays conversation history
+- **🎯 Context-Aware**: Accesses your health conditions, medications, allergies, recent reports, and RAG-indexed data
+
+### How It Works
+
+The Voice Agent uses a sophisticated three-stage pipeline to deliver personalized health conversations:
+
+```mermaid
+graph LR
+    A[👤 User Speaks] --> B[🎤 Browser STT<br/>Web Speech API]
+    B --> C[🧠 LLM Processing<br/>Google Gemini]
+    C --> D[📊 Health Context<br/>Profile + Reports + RAG]
+    D --> C
+    C --> E[🔊 Text-to-Speech<br/>ElevenLabs API]
+    E --> F[🔉 Browser Fallback<br/>Web Speech API]
+    E --> G[👤 User Hears Response]
+    F --> G
+```
+
+#### Stage 1: Speech-to-Text (STT)
+- **Technology**: Web Speech API (browser native)
+- **Process**: Real-time audio capture and transcription
+- **Benefits**: No external API costs, works offline for transcription
+- **Language Support**: Multi-language support via browser capabilities
+
+#### Stage 2: AI Processing & Context Retrieval
+- **LLM Provider**: Google Gemini API (`gemini-flash-latest`)
+- **Health Context Integration**:
+  - User demographics (age, gender, BMI)
+  - Active medical conditions
+  - Current medications (name, dose, frequency)
+  - Known allergies and their severity
+  - Recent lab reports and observations
+  - Lifestyle factors (sleep, exercise, smoking, alcohol)
+- **RAG Enhancement**: Queries ChromaDB vector store for relevant historical health data
+- **Safety Layer**: HIPAA-compliant system prompt with strict medical guidelines:
+  - Never diagnose conditions
+  - Never recommend medication dosages
+  - Always suggest professional consultation
+  - Detect emergency situations and direct to 911
+
+#### Stage 3: Text-to-Speech (TTS)
+- **Primary**: ElevenLabs TTS API
+  - Model: `eleven_turbo_v2_5` (optimized for speed, free tier compatible)
+  - Voice: Rachel (`21m00Tcm4TlvDq8ikWAM`)
+  - Quality: Studio-grade natural voice synthesis
+- **Fallback**: Browser Text-to-Speech API
+  - Activates automatically if ElevenLabs unavailable (503 errors)
+  - Uses system voices
+  - Zero latency, no API costs
+
+### Real-World Benefits
+
+**For Everyday Users**:
+- 🏃 **Hands-Free Access**: Check health info while cooking, exercising, or commuting
+- 💬 **Natural Conversations**: Ask questions in plain language, no medical jargon required
+- 📱 **Accessibility**: Ideal for users with visual impairments or reading difficulties
+- ⚡ **Quick Insights**: Faster than navigating multiple screens and charts
+
+**For Health-Conscious Individuals**:
+- 🔍 **Report Interpretation**: "What do my cholesterol levels mean?"
+- 💊 **Medication Context**: "Why am I taking this medication?"
+- 📊 **Trend Analysis**: "How has my blood pressure changed over time?"
+- 🎯 **Personalized Guidance**: Responses tailored to YOUR specific health profile
+
+**Safety & Reliability**:
+- 🚨 **Emergency Detection**: Recognizes crisis keywords (chest pain, can't breathe, etc.)
+- 💊 **Dosage Protection**: Refuses to recommend medication changes
+- 🔒 **HIPAA Guidelines**: All responses include disclaimers and professional consultation advice
+- 🌐 **Fallback Mechanisms**: Graceful degradation if AI/TTS services unavailable
+
+### API Endpoints
+
+| Method | Endpoint | Description | Auth | Response |
+|--------|----------|-------------|------|----------|
+| GET | `/api/voice/context` | Get user health context summary with profile completeness status | ✅ Yes | `{profile_complete: bool, summary: {...}, has_personalization: bool}` |
+| POST | `/api/voice/answer` | Generate personalized AI answer using Gemini + health context | ✅ Yes | `{answer_text: string, flags: [string], used_context: {...}}` |
+| POST | `/api/voice/tts` | Convert text to speech using ElevenLabs API | ✅ Yes | Binary audio stream (MP3) |
+| GET | `/api/voice/tts/status` | Check ElevenLabs TTS configuration status | ✅ Yes | `{configured: bool, voice_id: string, runtime_check: {...}}` |
+
+**Context Response Details**:
+```json
+{
+  "profile_complete": true,
+  "has_personalization": true,
+  "summary": {
+    "name": "Darshan Ved",
+    "age": 49,
+    "gender": "Male",
+    "bmi": 21.5,
+    "conditions": ["Hypertension"],
+    "medications": ["Lisinopril 10mg"],
+    "allergies": ["Penicillin"],
+    "reports_count": 5,
+    "sleep_hours": 7,
+    "exercise_frequency": "3-4 times/week"
+  }
+}
+```
+
+**Safety Flags**:
+- `emergency`: Detected emergency keywords → directs to 911
+- `dosage_inquiry`: Detected medication dosage question → refuses specific advice
+- `error`: Processing error → fallback message
+
+### Configuration & Setup
+
+#### Required Environment Variables
+
+Add to **root `.env`** (for Docker) and **`backend/.env`** (for local development):
+
+```env
+# ===== AI/LLM Configuration =====
+# Google Gemini API (Primary LLM for Voice Agent)
+USE_GEMINI_FALLBACK=true
+GEMINI_API_KEY=AIzaSy...  # Get from https://aistudio.google.com/apikey
+
+# ===== Text-to-Speech Configuration =====
+# ElevenLabs TTS for Voice Agent (Optional - has browser fallback)
+ELEVENLABS_API_KEY=sk_...  # Get from https://elevenlabs.io/
+ELEVENLABS_VOICE_ID=21m00Tcm4TlvDq8ikWAM  # Rachel voice (recommended)
+```
+
+#### Docker Configuration
+
+Ensure `docker-compose.yml` includes these environment variables in the backend service:
+
+```yaml
+services:
+  backend:
+    environment:
+      # ... other env vars ...
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - USE_GEMINI_FALLBACK=${USE_GEMINI_FALLBACK:-true}
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY:-}
+      - ELEVENLABS_VOICE_ID=${ELEVENLABS_VOICE_ID:-21m00Tcm4TlvDq8ikWAM}
+```
+
+#### Getting API Keys
+
+**Google Gemini API** (Free Tier Available):
+1. Visit [Google AI Studio](https://aistudio.google.com/apikey)
+2. Sign in with your Google account
+3. Click "Get API Key" → "Create API key"
+4. Copy the key (starts with `AIzaSy...`)
+5. Free tier includes: 15 requests/minute, 1 million tokens/day
+6. Supported model: `gemini-flash-latest` (auto-maps to best available)
+
+**ElevenLabs API** (Optional - Free Tier Available):
+1. Sign up at [ElevenLabs](https://elevenlabs.io/)
+2. Navigate to Settings → API Keys
+3. Create new API key (starts with `sk_...`)
+4. Free tier includes: 10,000 characters/month
+5. Recommended voice IDs:
+   - `21m00Tcm4TlvDq8ikWAM` - Rachel (conversational, female)
+   - `ErXwobaYiN019PkySvjV` - Antoni (clear, male)
+   - `EXAVITQu4vr4xnSDxMaL` - Bella (warm, female)
+
+**Free Tier Model Compatibility**:
+- ✅ Works: `gemini-flash-latest`, `gemini-1.5-flash-8b`
+- ❌ Quota exceeded: `gemini-2.0-flash`, `gemini-2.5-flash` (requires paid tier)
+
+### Technology Stack
+
+| Component | Technology | Purpose |
+|-----------|------------|---------|
+| **Frontend STT** | Web Speech API (`webkitSpeechRecognition`) | Real-time voice transcription |
+| **LLM Provider** | Google Gemini API (`gemini-flash-latest`) | Natural language understanding & generation |
+| **Vector Database** | ChromaDB | RAG-based retrieval of historical health data |
+| **Primary TTS** | ElevenLabs API (`eleven_turbo_v2_5`) | Studio-quality voice synthesis |
+| **Fallback TTS** | Web Speech API (`SpeechSynthesis`) | Browser-native text-to-speech |
+| **Backend Framework** | FastAPI | REST API endpoints |
+| **Authentication** | JWT | Secure user-specific health context |
+
+### Frontend Implementation
+
+**Location**: `frontend/src/pages/VoiceAgent.tsx`
+
+**Key Features**:
+- **Orb Animation**: Uses Framer Motion for fluid listening/thinking/speaking states
+- **State Management**: React hooks for recording, processing, speaking states
+- **Error Handling**: Automatic fallback to browser TTS on ElevenLabs 503 errors
+- **Accessibility**: Keyboard shortcuts, ARIA labels, screen reader support
+- **Responsive Design**: Matches Lumea's light theme with purple accent colors
+
+**User Flow**:
+1. Click microphone button or press spacebar
+2. Speak question (e.g., "What do my cholesterol levels mean?")
+3. Watch orb animate while processing
+4. Hear personalized response with health context
+5. View transcript in chat panel (optional)
+
+### Testing Voice Agent
+
+#### 1. Check TTS Configuration Status
+
+```bash
+curl -X GET http://localhost:8000/api/voice/tts/status \
+  -H "Authorization: Bearer <your_jwt_token>"
+```
+
+**Expected Response**:
+```json
+{
+  "configured": true,
+  "voice_id": "21m00Tcm4TlvDq8ikWAM",
+  "runtime_check": {
+    "api_key_loaded": true,
+    "api_key_prefix": "sk_d78...",
+    "voice_id": "21m00Tcm4TlvDq8ikWAM"
+  }
+}
+```
+
+#### 2. Test Health Context Retrieval
+
+```bash
+curl -X GET http://localhost:8000/api/voice/context \
+  -H "Authorization: Bearer <your_jwt_token>"
+```
+
+**Expected Response**:
+```json
+{
+  "profile_complete": true,
+  "has_personalization": true,
+  "summary": {
+    "name": "Darshan Ved",
+    "age": 49,
+    "gender": "Male",
+    "bmi": 21.5,
+    "conditions": ["Hypertension"],
+    "medications": ["Lisinopril"],
+    "allergies": ["Penicillin"],
+    "reports_count": 5
+  }
+}
+```
+
+#### 3. Test AI Answer Generation
+
+```bash
+curl -X POST http://localhost:8000/api/voice/answer \
+  -H "Authorization: Bearer <your_jwt_token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "What do my cholesterol levels mean?"
+  }'
+```
+
+**Expected Response**:
+```json
+{
+  "answer_text": "Based on your recent lab reports, your total cholesterol is 195 mg/dL, which falls within the desirable range (below 200 mg/dL). Your LDL cholesterol is 110 mg/dL, also in the optimal range. However, I recommend discussing these results with your healthcare provider for personalized guidance based on your hypertension condition.",
+  "flags": [],
+  "used_context": {
+    "has_profile": true,
+    "conditions_count": 1,
+    "medications_count": 1,
+    "has_rag_context": true
+  }
+}
+```
+
+#### 4. Test Text-to-Speech Conversion
+
+```bash
+curl -X POST http://localhost:8000/api/voice/tts \
+  -H "Authorization: Bearer <your_jwt_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Hello! Your health data shows positive trends."}' \
+  --output test_voice.mp3
+
+# Play the audio file
+# Windows: start test_voice.mp3
+# Mac: open test_voice.mp3
+# Linux: mpg123 test_voice.mp3
+```
+
+#### 5. Test Safety Features
+
+**Emergency Detection Test**:
+```bash
+curl -X POST http://localhost:8000/api/voice/answer \
+  -H "Authorization: Bearer <your_jwt_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"text": "I am having severe chest pain"}'
+```
+
+**Expected Response**:
+```json
+{
+  "answer_text": "I'm detecting words that suggest this might be an emergency situation. Please call emergency services immediately (911) or go to the nearest emergency room...",
+  "flags": ["emergency"],
+  "used_context": {}
+}
+```
+
+**Dosage Inquiry Test**:
+```bash
+curl -X POST http://localhost:8000/api/voice/answer \
+  -H "Authorization: Bearer <your_jwt_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Can I double my medication dosage?"}'
+```
+
+**Expected Response**:
+```json
+{
+  "answer_text": "I cannot provide specific dosage recommendations. Please consult your doctor or pharmacist before making any changes to your medications...",
+  "flags": ["dosage_inquiry"],
+  "used_context": {...}
+}
+```
+
+### Troubleshooting
+
+#### Issue: "TTS service not configured" (503 Error)
+
+**Symptoms**: Voice Agent uses browser TTS instead of ElevenLabs
+
+**Solutions**:
+1. **Check API Key Loading**:
+   ```bash
+   docker exec ggw-backend python -c "from app.settings import settings; print(f'API Key: {settings.ELEVENLABS_API_KEY[:20] if settings.ELEVENLABS_API_KEY else None}...')"
+   ```
+
+2. **Verify Environment Variables**:
+   - Ensure `ELEVENLABS_API_KEY` is in root `.env` file
+   - Ensure `docker-compose.yml` includes the env var mapping
+   - Restart Docker containers: `docker compose restart backend`
+
+3. **Check API Key Validity**:
+   ```bash
+   curl https://api.elevenlabs.io/v1/voices \
+     -H "xi-api-key: sk_your_key_here"
+   ```
+
+#### Issue: Gemini API 404 or 429 Errors
+
+**Symptoms**: "Model not found" or "Quota exceeded"
+
+**Solutions**:
+1. **Verify Model Compatibility**:
+   ```bash
+   docker exec ggw-backend python -c "import google.generativeai as genai; import os; genai.configure(api_key=os.environ['GEMINI_API_KEY']); models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]; print('\n'.join(models))"
+   ```
+
+2. **Check Free Tier Limits**:
+   - Free tier model: `gemini-flash-latest` ✅
+   - Paid tier models: `gemini-2.0-flash`, `gemini-2.5-flash` ❌
+   - Rate limits: 15 requests/minute, 1M tokens/day
+
+3. **Update Model Name** (if needed):
+   - Edit `backend/app/services/llm_service.py`
+   - Change model to `gemini-flash-latest`
+   - Restart backend
+
+#### Issue: "ProfileMedication object has no attribute 'medication_name'"
+
+**Symptoms**: Context loading errors in logs
+
+**Solution**: Already fixed in codebase - medication attribute is `name`, not `medication_name`
+
+#### Issue: Browser STT Not Working
+
+**Symptoms**: Microphone icon doesn't activate
+
+**Solutions**:
+1. **Check Browser Compatibility**: Use Chrome, Edge, or Safari (Firefox has limited support)
+2. **Enable Microphone Permissions**: Allow microphone access in browser settings
+3. **Use HTTPS or localhost**: Web Speech API requires secure context
+4. **Check Console Errors**: Open DevTools → Console for detailed error messages
+
+### Example Conversations
+
+**General Health Query**:
+- 👤 User: "What does my health profile show?"
+- 🤖 Assistant: "You're a 49-year-old male with a healthy BMI of 21.5. Your profile shows hypertension, and you're currently taking Lisinopril. You have 5 health reports on file. Is there specific information you'd like me to explain?"
+
+**Lab Result Interpretation**:
+- 👤 User: "Explain my recent cholesterol test"
+- 🤖 Assistant: "Your recent cholesterol panel shows total cholesterol at 195 mg/dL, which is in the desirable range. Your LDL is 110 mg/dL and HDL is 55 mg/dL. Given your hypertension, maintaining these levels is important. Discuss with your doctor about your diet and medication effectiveness."
+
+**Medication Context**:
+- 👤 User: "Why am I taking Lisinopril?"
+- 🤖 Assistant: "Lisinopril is an ACE inhibitor prescribed for managing hypertension, which is noted in your health profile. It helps lower blood pressure by relaxing blood vessels. Always take it as prescribed and discuss any side effects with your healthcare provider."
+
+### Performance Metrics
+
+**Response Times** (typical):
+- STT Transcription: ~1-2 seconds (browser native)
+- AI Processing (Gemini): ~2-4 seconds
+- TTS Generation (ElevenLabs): ~1-2 seconds
+- **Total End-to-End**: ~4-8 seconds
+
+**Cost Analysis** (per 1000 interactions):
+- Gemini API (free tier): $0 (up to rate limits)
+- ElevenLabs (free tier): 10,000 chars/month included
+- Browser STT/TTS: $0 (native APIs)
+
+### Privacy & Security
+
+- ✅ **HIPAA-Compliant Prompts**: System prompts follow medical ethics guidelines
+- ✅ **JWT Authentication**: All endpoints require valid user tokens
+- ✅ **No Audio Storage**: Voice data not persisted on servers
+- ✅ **Encrypted Transit**: HTTPS for all API communications
+- ✅ **User-Specific Context**: Each response uses only authenticated user's data
+- ✅ **Audit Logging**: All AI interactions logged for compliance
 
 ---
 

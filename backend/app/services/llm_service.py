@@ -113,15 +113,17 @@ class LLMService:
     
     async def _ensure_provider(self) -> str:
         """Determine which provider to use. Returns 'ollama', 'gemini', or 'disabled'."""
+        # If Gemini is configured, use it directly - no need to check Ollama
+        if settings.USE_GEMINI_FALLBACK and settings.GEMINI_API_KEY:
+            logger.info("Using Gemini API (configured)")
+            return "gemini"
+        
+        # Only check Ollama if Gemini is not configured
         if self._ollama_available is None:
             self._ollama_available = await self.check_ollama_health()
         
         if self._ollama_available:
             return "ollama"
-        
-        if settings.USE_GEMINI_FALLBACK and settings.GEMINI_API_KEY:
-            logger.info("Using Gemini API fallback")
-            return "gemini"
         
         # Make LLM optional: return a friendly message rather than hard-failing
         # core app features when neither provider is configured.
@@ -226,7 +228,7 @@ class LLMService:
             
             if not self._gemini_client:
                 genai.configure(api_key=settings.GEMINI_API_KEY)
-                self._gemini_client = genai.GenerativeModel("gemini-3-flash-preview")
+                self._gemini_client = genai.GenerativeModel("gemini-flash-latest")
             
             response = await asyncio.to_thread(
                 lambda: self._gemini_client.generate_content(
