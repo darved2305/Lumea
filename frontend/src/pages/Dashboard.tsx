@@ -98,6 +98,11 @@ function Dashboard() {
 
   useEffect(() => {
     fetchUserSummary();
+    window.scrollTo(0, 0);
+    const scrollTimeout = setTimeout(() => {
+      window.scrollTo(0, 0);
+    }, 100);
+    return () => clearTimeout(scrollTimeout);
   }, [fetchUserSummary]);
 
   const handleFactorSelect = (factor: string) => {
@@ -227,8 +232,8 @@ function Dashboard() {
           {/* Recommendations Section */}
           <motion.div
             className="dashboard-full-width"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.3 }}
           >
             <div className="recommendations-dashboard-wrapper">
