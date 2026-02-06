@@ -10,6 +10,7 @@ import Settings from './pages/Settings'
 import Recommendations from './pages/Recommendations'
 import Medicines from './pages/Medicines'
 import VoiceAgent from './pages/VoiceAgent'
+import PhysicsTwin from './pages/PhysicsTwin'
 import ProtectedRoute from './components/ProtectedRoute'
 import './App.css'
 
@@ -65,6 +66,14 @@ function App() {
           element={
             <ProtectedRoute>
               <VoiceAgent />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/physics-twin" 
+          element={
+            <ProtectedRoute>
+              <PhysicsTwin />
             </ProtectedRoute>
           } 
         />

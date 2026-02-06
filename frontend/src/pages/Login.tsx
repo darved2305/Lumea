@@ -30,8 +30,13 @@ function Login() {
       localStorage.setItem('access_token', data.access_token)
       navigate('/dashboard')
     } catch (err: unknown) {
-      const axiosError = err as { response?: { data?: { detail?: string } } }
-      setError(axiosError.response?.data?.detail || 'Login failed. Please check your credentials.')
+      const axiosError = err as { response?: { data?: { detail?: string | Array<{ msg?: string }> } } }
+      const detail = axiosError.response?.data?.detail
+      if (Array.isArray(detail)) {
+        setError(detail.map(e => e.msg).filter(Boolean).join(', ') || 'Login failed. Please check your credentials.')
+      } else {
+        setError(detail || 'Login failed. Please check your credentials.')
+      }
     } finally {
       setLoading(false)
     }

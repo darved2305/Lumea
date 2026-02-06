@@ -31,8 +31,13 @@ function Signup() {
       localStorage.setItem('access_token', data.access_token)
       navigate('/dashboard')
     } catch (err: unknown) {
-      const axiosError = err as { response?: { data?: { detail?: string } } }
-      setError(axiosError.response?.data?.detail || 'Signup failed. Please try again.')
+      const axiosError = err as { response?: { data?: { detail?: string | Array<{ msg?: string }> } } }
+      const detail = axiosError.response?.data?.detail
+      if (Array.isArray(detail)) {
+        setError(detail.map(e => e.msg).filter(Boolean).join(', ') || 'Signup failed. Please try again.')
+      } else {
+        setError(detail || 'Signup failed. Please try again.')
+      }
     } finally {
       setLoading(false)
     }
@@ -90,11 +95,11 @@ function Signup() {
             name="password"
             type="password"
             required
-            minLength={8}
+            minLength={12}
             value={formData.password}
             onChange={handleChange}
             className="form-input"
-            placeholder="At least 8 characters"
+            placeholder="At least 12 characters"
             disabled={loading}
           />
         </div>

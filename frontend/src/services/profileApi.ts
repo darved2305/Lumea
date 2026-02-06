@@ -142,6 +142,8 @@ export interface UserProfile {
   wizard_current_step: number;
   wizard_completed: boolean;
   wizard_last_saved_at?: string;
+  is_completed?: boolean;
+  completed_at?: string;
   created_at: string;
   updated_at: string;
 }

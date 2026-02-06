@@ -13,7 +13,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
-  Edit2, 
   CheckCircle2, 
   ChevronRight,
   Activity,
