@@ -1,0 +1,345 @@
+/* ============================================================================
+   Health Graph Visualization Styles
+   Uses dashboard design tokens for consistent theming
+   ============================================================================ */
+
+.health-graph {
+    background: var(--dash-surface, #faf8f4);
+    border-radius: var(--dash-radius-xl, 1.5rem);
+    margin-top: var(--dash-spacing-lg, 1.5rem);
+    box-shadow: var(--dash-shadow-sm, 0 2px 8px rgba(107, 145, 117, 0.08));
+    overflow: hidden;
+}
+
+/* Header */
+.health-graph-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--dash-spacing-lg, 1.5rem) var(--dash-spacing-xl, 2rem);
+    cursor: pointer;
+    transition: background var(--dash-transition-base, 250ms);
+    user-select: none;
+}
+
+.health-graph-header:hover {
+    background: var(--dash-surface-hover, #ffffff);
+}
+
+.health-graph-header-left {
+    display: flex;
+    align-items: center;
+    gap: var(--dash-spacing-md, 1rem);
+}
+
+.health-graph-icon {
+    color: var(--dash-accent, #6b9175);
+}
+
+.health-graph-header h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--dash-text, #2d2d2d);
+    margin: 0;
+    font-family: var(--dash-font-serif, 'Playfair Display', Georgia, serif);
+}
+
+.health-graph-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.25rem 0.75rem;
+    background: var(--dash-accent-pale, #e8f3eb);
+    color: var(--dash-accent-dark, #4a7c59);
+    border-radius: var(--dash-radius-full, 9999px);
+    font-size: 0.8125rem;
+    font-weight: 600;
+}
+
+.health-graph-header-right {
+    color: var(--dash-text-muted, #999999);
+}
+
+/* Content */
+.health-graph-content {
+    overflow: hidden;
+    border-top: 1px solid var(--dash-border-light, #f0ebe3);
+}
+
+/* Toolbar */
+.health-graph-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--dash-spacing-md, 1rem) var(--dash-spacing-xl, 2rem);
+    background: var(--dash-surface-hover, #ffffff);
+}
+
+.health-graph-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--dash-spacing-xs, 0.5rem);
+    background: var(--dash-surface, #faf8f4);
+    border: 1px solid var(--dash-border, #e5dfd5);
+    border-radius: var(--dash-radius-md, 0.75rem);
+    padding: 0.25rem;
+}
+
+.health-graph-controls button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: transparent;
+    color: var(--dash-text-secondary, #6b6b6b);
+    border-radius: var(--dash-radius-sm, 0.5rem);
+    cursor: pointer;
+    transition: all var(--dash-transition-fast, 150ms);
+}
+
+.health-graph-controls button:hover {
+    background: var(--dash-accent-pale, #e8f3eb);
+    color: var(--dash-accent-dark, #4a7c59);
+}
+
+.zoom-level {
+    font-size: 0.8125rem;
+    color: var(--dash-text-secondary, #6b6b6b);
+    min-width: 44px;
+    text-align: center;
+    font-weight: 500;
+}
+
+.health-graph-refresh {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: var(--dash-accent-pale, #e8f3eb);
+    color: var(--dash-accent-dark, #4a7c59);
+    border-radius: var(--dash-radius-md, 0.75rem);
+    cursor: pointer;
+    transition: all var(--dash-transition-base, 250ms);
+    border: 1px solid var(--dash-accent-light, #8fb199);
+}
+
+.health-graph-refresh:hover {
+    background: var(--dash-accent-light, #8fb199);
+    color: white;
+}
+
+/* States */
+.health-graph-loading,
+.health-graph-empty,
+.health-graph-unavailable {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--dash-spacing-2xl, 3rem);
+    text-align: center;
+    color: var(--dash-text-secondary, #6b6b6b);
+}
+
+.health-graph-loading svg,
+.health-graph-empty svg,
+.health-graph-unavailable svg {
+    color: var(--dash-accent, #6b9175);
+    opacity: 0.5;
+}
+
+.health-graph-loading p,
+.health-graph-empty p,
+.health-graph-unavailable p {
+    margin: var(--dash-spacing-md, 1rem) 0 var(--dash-spacing-xs, 0.5rem);
+    font-weight: 600;
+    color: var(--dash-text, #2d2d2d);
+    font-size: 1.1rem;
+}
+
+.health-graph-empty span,
+.health-graph-unavailable span {
+    font-size: 0.9rem;
+    max-width: 320px;
+    line-height: 1.5;
+}
+
+.health-graph-error {
+    display: flex;
+    align-items: center;
+    gap: var(--dash-spacing-sm, 0.75rem);
+    padding: var(--dash-spacing-md, 1rem) var(--dash-spacing-xl, 2rem);
+    background: rgba(200, 90, 84, 0.1);
+    color: var(--dash-danger, #c85a54);
+    font-size: 0.875rem;
+}
+
+/* Canvas */
+.health-graph-canvas-wrapper {
+    position: relative;
+    padding: var(--dash-spacing-lg, 1.5rem);
+    background: white;
+    margin: 0 var(--dash-spacing-xl, 2rem) var(--dash-spacing-lg, 1.5rem);
+    border-radius: var(--dash-radius-lg, 1rem);
+    border: 1px solid var(--dash-border, #e5dfd5);
+    overflow: hidden;
+}
+
+.health-graph-canvas {
+    width: 100%;
+    height: 400px;
+    transition: transform var(--dash-transition-fast, 150ms);
+    transform-origin: center center;
+}
+
+/* SVG Styles */
+.relationship-line {
+    stroke: var(--dash-border, #e5dfd5);
+    stroke-width: 2;
+    fill: none;
+}
+
+.relationship-label {
+    font-size: 10px;
+    fill: var(--dash-text-muted, #999999);
+    text-anchor: middle;
+    pointer-events: none;
+    font-family: var(--dash-font-sans, 'DM Sans', sans-serif);
+}
+
+.node {
+    cursor: pointer;
+    transition: transform var(--dash-transition-fast, 150ms);
+}
+
+.node:hover {
+    transform: scale(1.1);
+}
+
+.node-circle {
+    stroke: white;
+    stroke-width: 3;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+    transition: all var(--dash-transition-fast, 150ms);
+}
+
+.node:hover .node-circle {
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
+}
+
+.node-label {
+    font-size: 10px;
+    fill: white;
+    font-weight: 600;
+    pointer-events: none;
+    font-family: var(--dash-font-sans, 'DM Sans', sans-serif);
+}
+
+/* Tooltip */
+.health-graph-tooltip {
+    position: absolute;
+    top: var(--dash-spacing-md, 1rem);
+    right: var(--dash-spacing-md, 1rem);
+    background: var(--dash-text, #2d2d2d);
+    color: white;
+    padding: var(--dash-spacing-md, 1rem) var(--dash-spacing-lg, 1.5rem);
+    border-radius: var(--dash-radius-md, 0.75rem);
+    font-size: 0.875rem;
+    box-shadow: var(--dash-shadow-md, 0 4px 16px rgba(107, 145, 117, 0.12));
+    z-index: 10;
+}
+
+.health-graph-tooltip strong {
+    display: block;
+    margin-bottom: 0.25rem;
+}
+
+.tooltip-type {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--dash-text-muted, #999999);
+    text-transform: capitalize;
+}
+
+/* Legend */
+.health-graph-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--dash-spacing-md, 1rem);
+    padding: var(--dash-spacing-md, 1rem) var(--dash-spacing-xl, 2rem);
+    background: var(--dash-surface-hover, #ffffff);
+    justify-content: center;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: var(--dash-spacing-xs, 0.5rem);
+}
+
+.legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: var(--dash-radius-full, 9999px);
+    flex-shrink: 0;
+    border: 2px solid white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.legend-label {
+    font-size: 0.8125rem;
+    color: var(--dash-text-secondary, #6b6b6b);
+    text-transform: capitalize;
+}
+
+/* Footer */
+.health-graph-footer {
+    display: flex;
+    align-items: center;
+    gap: var(--dash-spacing-sm, 0.75rem);
+    padding: var(--dash-spacing-md, 1rem) var(--dash-spacing-xl, 2rem);
+    background: var(--dash-accent-pale, #e8f3eb);
+    font-size: 0.85rem;
+    color: var(--dash-accent-dark, #4a7c59);
+}
+
+/* Spinner animation */
+.spinning {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .health-graph-header {
+        padding: var(--dash-spacing-md, 1rem);
+    }
+
+    .health-graph-toolbar {
+        padding: var(--dash-spacing-md, 1rem);
+        flex-wrap: wrap;
+        gap: var(--dash-spacing-sm, 0.75rem);
+    }
+
+    .health-graph-canvas-wrapper {
+        margin: 0 var(--dash-spacing-md, 1rem) var(--dash-spacing-md, 1rem);
+    }
+
+    .health-graph-canvas {
+        height: 300px;
+    }
+
+    .health-graph-legend {
+        padding: var(--dash-spacing-sm, 0.75rem) var(--dash-spacing-md, 1rem);
+        gap: var(--dash-spacing-sm, 0.75rem);
+    }
+}

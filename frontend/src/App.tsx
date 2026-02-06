@@ -10,6 +10,7 @@ import Settings from './pages/Settings'
 import Recommendations from './pages/Recommendations'
 import Medicines from './pages/Medicines'
 import VoiceAgent from './pages/VoiceAgent'
+import Features from './pages/Features'
 import ProtectedRoute from './components/ProtectedRoute'
 import './App.css'
 
@@ -20,69 +21,77 @@ function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
-        <Route 
-          path="/dashboard" 
+        <Route
+          path="/dashboard"
           element={
             <ProtectedRoute>
               <Dashboard />
             </ProtectedRoute>
-          } 
+          }
         />
-        <Route 
-          path="/reports" 
+        <Route
+          path="/reports"
           element={
             <ProtectedRoute>
               <Reports />
             </ProtectedRoute>
-          } 
+          }
         />
-        <Route 
-          path="/report-summary" 
+        <Route
+          path="/report-summary"
           element={
             <ProtectedRoute>
               <ReportSummary />
             </ProtectedRoute>
-          } 
+          }
         />
-        <Route 
-          path="/recommendations" 
+        <Route
+          path="/recommendations"
           element={
             <ProtectedRoute>
               <Recommendations />
             </ProtectedRoute>
-          } 
+          }
         />
-        <Route 
-          path="/medicines" 
+        <Route
+          path="/medicines"
           element={
             <ProtectedRoute>
               <Medicines />
             </ProtectedRoute>
-          } 
+          }
         />
-        <Route 
-          path="/voice-agent" 
+        <Route
+          path="/voice-agent"
           element={
             <ProtectedRoute>
               <VoiceAgent />
             </ProtectedRoute>
-          } 
+          }
         />
-        <Route 
-          path="/health-profile" 
+        <Route
+          path="/health-profile"
           element={
             <ProtectedRoute>
               <HealthProfile />
             </ProtectedRoute>
-          } 
+          }
         />
-        <Route 
-          path="/settings" 
+        <Route
+          path="/features"
+          element={
+            <ProtectedRoute>
+              <Features />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/settings"
           element={
             <ProtectedRoute>
               <Settings />
             </ProtectedRoute>
-          } 
+          }
         />
         {/* Catch-all: redirect unknown routes to home */}
         <Route path="*" element={<Navigate to="/" replace />} />

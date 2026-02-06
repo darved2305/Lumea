@@ -8,6 +8,7 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Check, ArrowRight } from 'lucide-react';
+import { API_BASE_URL } from '../config/api';
 import './ProfileSuccessScreen.css';
 
 interface ProfileSuccessScreenProps {
@@ -15,11 +16,35 @@ interface ProfileSuccessScreenProps {
   redirectDelay?: number;
 }
 
-export default function ProfileSuccessScreen({ 
+export default function ProfileSuccessScreen({
   autoRedirect = true,
-  redirectDelay = 2000 
+  redirectDelay = 2000
 }: ProfileSuccessScreenProps) {
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Sync profile data to memory/graph layers for provenance
+    const syncToMemory = async () => {
+      const authToken = localStorage.getItem('authToken');
+      if (!authToken) return;
+
+      try {
+        await fetch(`${API_BASE_URL}/api/profile/sync-to-memory`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        console.log('Profile synced to memory/graph layers');
+      } catch (error) {
+        console.warn('Failed to sync profile to memory:', error);
+        // Non-blocking - don't prevent navigation on failure
+      }
+    };
+
+    syncToMemory();
+  }, []);
 
   useEffect(() => {
     if (autoRedirect) {
@@ -40,17 +65,17 @@ export default function ProfileSuccessScreen({
   };
 
   return (
-    <motion.div 
+    <motion.div
       className="profile-success-overlay"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
     >
-      <motion.div 
+      <motion.div
         className="profile-success-container"
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        transition={{ 
+        transition={{
           type: "spring",
           stiffness: 200,
           damping: 20,
@@ -58,18 +83,18 @@ export default function ProfileSuccessScreen({
         }}
       >
         {/* Animated Checkmark */}
-        <motion.div 
+        <motion.div
           className="success-checkmark-container"
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
-          transition={{ 
+          transition={{
             type: "spring",
             stiffness: 300,
             damping: 15,
             delay: 0.2
           }}
         >
-          <motion.div 
+          <motion.div
             className="success-checkmark-circle"
             initial={{ scale: 0, rotate: -180 }}
             animate={{ scale: 1, rotate: 0 }}
@@ -83,7 +108,7 @@ export default function ProfileSuccessScreen({
               <Check size={48} strokeWidth={3} />
             </motion.div>
           </motion.div>
-          
+
           {/* Ripple effect */}
           <motion.div
             className="success-ripple"
@@ -113,14 +138,14 @@ export default function ProfileSuccessScreen({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.8, duration: 0.4 }}
         >
-          <button 
+          <button
             className="success-btn success-btn-primary"
             onClick={handleDashboard}
           >
             Go to Dashboard
             <ArrowRight size={18} />
           </button>
-          <button 
+          <button
             className="success-btn success-btn-secondary"
             onClick={handleSettings}
           >

@@ -588,3 +588,107 @@ async def update_wizard_state(
         "wizard_completed": profile.wizard_completed,
         "wizard_last_saved_at": profile.wizard_last_saved_at.isoformat() if profile.wizard_last_saved_at else None
     }
+
+
+# ============================================================================
+# MEMORY & GRAPH SYNC
+# ============================================================================
+
+@router.post("/sync-to-memory")
+async def sync_profile_to_memory(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Sync user profile data to Memory (Mem0) and Knowledge Graph (Neo4j).
+    
+    Called after questionnaire completion to ensure all health data
+    is available for the recommendation engine's provenance tracking.
+    """
+    from app.services.memory_service import get_memory_service
+    from app.services.graph_service import get_graph_service
+    
+    service = ProfileService(db, current_user)
+    profile_data = await service.get_full_profile()
+    
+    user_id = str(current_user.id)
+    synced = {"memory": False, "graph": False, "facts_synced": 0}
+    
+    # Build facts from profile data
+    facts_to_sync = []
+    
+    # Basic profile info
+    profile = profile_data.get("profile")
+    if profile:
+        if profile.height_cm:
+            facts_to_sync.append(f"User height is {profile.height_cm}cm")
+        if profile.weight_kg:
+            facts_to_sync.append(f"User weight is {profile.weight_kg}kg")
+        if profile.biological_sex:
+            facts_to_sync.append(f"User's biological sex is {profile.biological_sex}")
+        if profile.activity_level:
+            facts_to_sync.append(f"User's activity level is {profile.activity_level}")
+        if profile.sleep_hours:
+            facts_to_sync.append(f"User sleeps about {profile.sleep_hours} hours per night")
+    
+    # Conditions
+    for condition in profile_data.get("conditions", []):
+        if condition.condition_name:
+            facts_to_sync.append(f"User has condition: {condition.condition_name}")
+    
+    # Medications
+    for med in profile_data.get("medications", []):
+        if med.medication_name:
+            fact = f"User takes medication: {med.medication_name}"
+            if med.dosage:
+                fact += f" ({med.dosage})"
+            facts_to_sync.append(fact)
+    
+    # Allergies
+    for allergy in profile_data.get("allergies", []):
+        if allergy.allergen:
+            facts_to_sync.append(f"User is allergic to: {allergy.allergen}")
+    
+    # Family history
+    for history in profile_data.get("family_history", []):
+        if history.condition_name and history.relation:
+            facts_to_sync.append(f"Family history: {history.relation} has {history.condition_name}")
+    
+    # Sync to Memory (Mem0)
+    memory_service = get_memory_service()
+    if memory_service.is_available and facts_to_sync:
+        try:
+            for fact in facts_to_sync:
+                await memory_service.add(
+                    messages=fact,
+                    user_id=user_id,
+                    metadata={"source": "questionnaire_sync"}
+                )
+            synced["memory"] = True
+            synced["facts_synced"] = len(facts_to_sync)
+            logger.info(f"Synced {len(facts_to_sync)} facts to Mem0 for user {user_id}")
+        except Exception as e:
+            logger.warning(f"Failed to sync to Mem0: {e}")
+    
+    # Sync to Graph (Neo4j/Graphiti)
+    graph_service = get_graph_service()
+    if graph_service.client is not None and facts_to_sync:
+        try:
+            # Graphiti/Neo4j usually expects episodes or structured data
+            # For now, add as text-based facts
+            for fact in facts_to_sync:
+                await graph_service.add_fact(
+                    fact=fact,
+                    source="questionnaire"
+                )
+            synced["graph"] = True
+            logger.info(f"Synced {len(facts_to_sync)} facts to Neo4j for user {user_id}")
+        except Exception as e:
+            logger.warning(f"Failed to sync to Neo4j (may not support add_fact): {e}")
+    
+    return {
+        "success": True,
+        "synced": synced,
+        "message": f"Synced {synced['facts_synced']} profile facts to memory/graph layers"
+    }
+

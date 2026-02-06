@@ -35,6 +35,13 @@ interface Source {
   url?: string;
 }
 
+interface Provenance {
+  memory?: boolean;
+  graph?: boolean;
+  metrics?: boolean;
+  profile?: boolean;
+}
+
 interface Recommendation {
   id: string;
   title: string;
@@ -43,6 +50,7 @@ interface Recommendation {
   actions: Action[];
   followup: Action[];
   sources: Source[];
+  provenance?: Provenance;
 }
 
 interface RecommendationsResponse {
@@ -62,6 +70,7 @@ interface StoredItem {
   priority: string;
   actions?: string[] | { type?: string; text: string }[];
   evidence?: string[];
+  provenance?: Provenance;
 }
 
 interface RecommendationsPanelProps {
@@ -111,8 +120,38 @@ function mapStoredToRecommendation(stored: StoredItem): Recommendation {
     actions,
     followup: [],
     sources: [],
+    provenance: stored.provenance,
   };
 }
+
+// Provenance tooltip component - shows data sources
+const ProvenanceTooltip: React.FC<{ provenance?: Provenance }> = ({ provenance }) => {
+  if (!provenance) return null;
+
+  const sources = [];
+  if (provenance.memory) sources.push({ label: 'Memory', icon: '🧠', desc: 'Your preferences & facts' });
+  if (provenance.graph) sources.push({ label: 'Graph', icon: '🕸️', desc: 'Health relationships' });
+  if (provenance.metrics) sources.push({ label: 'Metrics', icon: '📊', desc: 'Lab values & observations' });
+  if (provenance.profile) sources.push({ label: 'Profile', icon: '👤', desc: 'Your health profile' });
+
+  if (sources.length === 0) return null;
+
+  return (
+    <div className="provenance-badge" title="Powered by">
+      <span className="provenance-trigger">✨ Sources</span>
+      <div className="provenance-tooltip">
+        <span className="provenance-title">Recommendation Sources</span>
+        {sources.map((src, i) => (
+          <div key={i} className="provenance-item">
+            <span className="provenance-icon">{src.icon}</span>
+            <span className="provenance-label">{src.label}</span>
+            <span className="provenance-desc">{src.desc}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 const RecommendationsPanel: React.FC<RecommendationsPanelProps> = ({
   authToken,
@@ -288,7 +327,7 @@ const RecommendationsPanel: React.FC<RecommendationsPanelProps> = ({
               {generating ? (
                 <><RefreshCw size={16} className="spinning" /> Generating...</>
               ) : (
-                <><Sparkles size={16} /> Generate</>               )}
+                <><Sparkles size={16} /> Generate</>)}
             </button>
           )}
         </div>
@@ -307,7 +346,7 @@ const RecommendationsPanel: React.FC<RecommendationsPanelProps> = ({
               {generating ? (
                 <><RefreshCw size={18} className="spinning" /> Generating...</>
               ) : (
-                <><Sparkles size={18} /> Generate Recommendations</>               )}
+                <><Sparkles size={18} /> Generate Recommendations</>)}
             </button>
           )}
         </div>
@@ -336,7 +375,7 @@ const RecommendationsPanel: React.FC<RecommendationsPanelProps> = ({
               {generating ? (
                 <><RefreshCw size={16} className="spinning" /> Generating...</>
               ) : (
-                <><RefreshCw size={16} /> Refresh</>               )}
+                <><RefreshCw size={16} /> Refresh</>)}
             </button>
           )}
         </div>
@@ -375,10 +414,13 @@ const RecommendationsPanel: React.FC<RecommendationsPanelProps> = ({
             >
               <div className="recommendation-header">
                 <h3 className="recommendation-title">{item.title ?? ''}</h3>
-                <span className={`severity-tag ${(item.severity ?? 'info').toLowerCase()}`}>
-                  {severityIcons[item.severity ?? 'INFO']}
-                  {item.severity ?? 'INFO'}
-                </span>
+                <div className="recommendation-header-right">
+                  <ProvenanceTooltip provenance={item.provenance} />
+                  <span className={`severity-tag ${(item.severity ?? 'info').toLowerCase()}`}>
+                    {severityIcons[item.severity ?? 'INFO']}
+                    {item.severity ?? 'INFO'}
+                  </span>
+                </div>
               </div>
 
               <p className="recommendation-why">{item.why}</p>

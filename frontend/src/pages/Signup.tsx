@@ -21,6 +21,25 @@ function Signup() {
     setError('')
   }
 
+  // Parse error response - handles both string and Pydantic v2 validation error format
+  const parseErrorMessage = (err: unknown): string => {
+    const axiosError = err as { response?: { data?: { detail?: string | Array<{ msg?: string; loc?: string[] }> } } }
+    const detail = axiosError.response?.data?.detail
+
+    if (!detail) return 'Signup failed. Please try again.'
+
+    // If detail is a string, return it directly
+    if (typeof detail === 'string') return detail
+
+    // If detail is an array (Pydantic v2 validation errors), extract messages
+    if (Array.isArray(detail)) {
+      const messages = detail.map(err => err.msg || 'Validation error').join('. ')
+      return messages || 'Validation failed. Please check your input.'
+    }
+
+    return 'Signup failed. Please try again.'
+  }
+
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError('')
@@ -31,8 +50,7 @@ function Signup() {
       localStorage.setItem('access_token', data.access_token)
       navigate('/dashboard')
     } catch (err: unknown) {
-      const axiosError = err as { response?: { data?: { detail?: string } } }
-      setError(axiosError.response?.data?.detail || 'Signup failed. Please try again.')
+      setError(parseErrorMessage(err))
     } finally {
       setLoading(false)
     }
@@ -90,13 +108,16 @@ function Signup() {
             name="password"
             type="password"
             required
-            minLength={8}
+            minLength={12}
             value={formData.password}
             onChange={handleChange}
             className="form-input"
-            placeholder="At least 8 characters"
+            placeholder="Min 12 chars, upper, lower, digit, special"
             disabled={loading}
           />
+          <small style={{ color: '#888', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>
+            12+ characters with uppercase, lowercase, digit, and special character
+          </small>
         </div>
 
         {error && <div className="form-error">{error}</div>}
