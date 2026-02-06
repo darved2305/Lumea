@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import logging
+import os
 from app.settings import settings
 from app.db import init_db, engine
 from app.services.graph_service import get_graph_service
@@ -14,6 +15,7 @@ from app.routes.documents import router as documents_router
 from app.routes.ai_summary import router as ai_summary_router
 from app.routes.medicines import router as medicines_router
 from app.routes.voice import router as voice_router
+from app.core.rate_limit import RateLimitMiddleware
 
 logger = logging.getLogger(__name__)
 
@@ -83,9 +85,13 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["Content-Type", "Authorization", "Accept", "Origin"],
-    expose_headers=["Content-Type", "Authorization"],
+    expose_headers=["Content-Type", "Authorization", "X-RateLimit-Limit", "X-RateLimit-Remaining"],
     max_age=3600,
 )
+
+# Rate limiting middleware - protects against brute force and abuse
+# Must be added after CORS middleware
+app.add_middleware(RateLimitMiddleware)
 
 # Include routers
 app.include_router(auth.router)

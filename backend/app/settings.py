@@ -6,7 +6,16 @@ class Settings(BaseSettings):
     jwt_secret: str
     frontend_origin: str = "http://localhost:5173"
     jwt_algorithm: str = "HS256"
-    access_token_expire_minutes: int = 10080
+    access_token_expire_minutes: int = 60  # 1 hour default (was 7 days - too long for PHI)
+    
+    # PHI Encryption Settings (HIPAA compliance)
+    phi_encryption_key: Optional[str] = None
+    phi_encryption_salt: str = "lumea-health-phi-salt"
+    
+    # Cookie Security Settings
+    cookie_secure: bool = True  # Set to False only for local HTTP development
+    cookie_samesite: str = "strict"
+    token_max_age_seconds: int = 3600  # 1 hour
 
     # Database schema management
     # In development, prefer Alembic migrations over SQLAlchemy create_all()
