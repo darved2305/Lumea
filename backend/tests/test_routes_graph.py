@@ -15,7 +15,7 @@ class TestGraphRoutes:
         """Create a mock graph service."""
         mock_service = MagicMock()
         mock_service.client = MagicMock()  # Service is available
-        mock_service.search = AsyncMock(return_value=[
+        mock_service.search_user = AsyncMock(return_value=[
             "High LDL -> leads_to -> Cardiovascular Risk",
             "Diabetes -> requires -> Blood Sugar Monitoring",
             "Exercise -> improves -> Cardiovascular Health",
@@ -51,7 +51,11 @@ class TestGraphRoutes:
             assert result.available is True
             assert result.count == 3
             assert len(result.facts) == 3
-            mock_graph_service.search.assert_called_once()
+            mock_graph_service.search_user.assert_called_once_with(
+                user_id="test-user-123",
+                query="health conditions",
+                limit=20,
+            )
 
     @pytest.mark.asyncio
     async def test_get_user_graph_facts_unavailable(self, mock_graph_service_unavailable, mock_user):
@@ -82,7 +86,8 @@ class TestGraphRoutes:
             
             assert result.available is True
             assert result.count == 3
-            mock_graph_service.search.assert_called_once_with(
+            mock_graph_service.search_user.assert_called_once_with(
+                user_id="test-user-123",
                 query="cardiovascular",
                 limit=10
             )
@@ -128,7 +133,7 @@ class TestGraphRoutes:
         """Test error handling in graph routes."""
         mock_service = MagicMock()
         mock_service.client = MagicMock()  # Service available
-        mock_service.search = AsyncMock(side_effect=Exception("Neo4j connection error"))
+        mock_service.search_user = AsyncMock(side_effect=Exception("Neo4j connection error"))
         
         with patch('app.routes.graph.get_graph_service', return_value=mock_service):
             from app.routes.graph import get_user_graph_facts

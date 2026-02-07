@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
     Brain,
     Network,
@@ -9,9 +9,12 @@ import {
     Database,
     Cpu,
     Zap,
-    Link2
+    Link2,
+    Check,
+    RefreshCw,
+    AlertCircle,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import DashboardNavbar from '../components/dashboard/DashboardNavbar';
 import MemoryDashboard from '../components/MemoryDashboard';
 import HealthGraph from '../components/HealthGraph';
@@ -22,9 +25,85 @@ import './Features.css';
 
 function Features() {
     const navigate = useNavigate();
+    const location = useLocation();
     const [authToken, setAuthToken] = useState<string | null>(null);
     const [userName, setUserName] = useState('User');
     const [loading, setLoading] = useState(true);
+
+    // Sync overlay state – activated when arriving from profile completion
+    const fromProfileSync = !!(location.state as { fromProfileSync?: boolean })?.fromProfileSync;
+    const [syncOverlayVisible, setSyncOverlayVisible] = useState(fromProfileSync);
+    const [syncPhase, setSyncPhase] = useState<'preparing' | 'memory' | 'graph' | 'done' | 'error'>('preparing');
+    const [syncResult, setSyncResult] = useState<{
+        factsSynced: number;
+        memoryOk: boolean;
+        graphOk: boolean;
+        errors: string[];
+    } | null>(null);
+    // Key used to force-remount child components after sync completes
+    const [syncKey, setSyncKey] = useState(0);
+
+    // Clears router state so a page refresh doesn't re-trigger the overlay
+    useEffect(() => {
+        if (fromProfileSync) {
+            window.history.replaceState({}, document.title);
+        }
+    }, [fromProfileSync]);
+
+    // ---- Profile→Memory/Graph sync logic ----
+    const runProfileSync = useCallback(async (token: string) => {
+        setSyncPhase('preparing');
+        // Small visual delay so the user sees the "preparing" step
+        await new Promise(r => setTimeout(r, 800));
+
+        setSyncPhase('memory');
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/profile/sync-to-memory`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            const payload = await response.json().catch(() => null);
+
+            if (!response.ok || payload?.success === false) {
+                throw new Error(payload?.message || `Sync failed (${response.status})`);
+            }
+
+            const synced = payload?.synced ?? {};
+            // Transition through the "graph" visual phase
+            setSyncPhase('graph');
+            await new Promise(r => setTimeout(r, 600));
+
+            setSyncResult({
+                factsSynced: synced.facts_synced ?? 0,
+                memoryOk: !!synced.memory,
+                graphOk: !!synced.graph,
+                errors: payload?.errors ?? [],
+            });
+            setSyncPhase('done');
+
+            // Force child re-mount so they fetch fresh data
+            setSyncKey(prev => prev + 1);
+
+            // Auto-dismiss overlay after a brief pause
+            setTimeout(() => setSyncOverlayVisible(false), 2200);
+        } catch (err) {
+            console.error('Profile sync error:', err);
+            setSyncResult({
+                factsSynced: 0,
+                memoryOk: false,
+                graphOk: false,
+                errors: [err instanceof Error ? err.message : 'Unknown error'],
+            });
+            setSyncPhase('error');
+            // Auto-dismiss error overlay after longer pause
+            setTimeout(() => setSyncOverlayVisible(false), 3500);
+        }
+    }, []);
 
     useEffect(() => {
         const token = localStorage.getItem('access_token');
@@ -44,7 +123,12 @@ function Features() {
             })
             .catch(console.error)
             .finally(() => setLoading(false));
-    }, [navigate]);
+
+        // If arriving from profile completion, trigger the sync
+        if (fromProfileSync) {
+            runProfileSync(token);
+        }
+    }, [navigate, fromProfileSync, runProfileSync]);
 
     if (loading) {
         return (
@@ -68,6 +152,100 @@ function Features() {
             </div>
 
             <DashboardNavbar userName={userName} userStatus="" />
+
+            {/* Profile Sync Overlay */}
+            <AnimatePresence>
+                {syncOverlayVisible && (
+                    <motion.div
+                        className="sync-overlay"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.35 }}
+                    >
+                        <motion.div
+                            className="sync-overlay-card"
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            transition={{ type: 'spring', stiffness: 200, damping: 22 }}
+                        >
+                            {/* Animated header icon */}
+                            <motion.div
+                                className="sync-overlay-icon"
+                                animate={syncPhase === 'done' ? { scale: [1, 1.15, 1] } : { rotate: 360 }}
+                                transition={
+                                    syncPhase === 'done'
+                                        ? { duration: 0.4 }
+                                        : { repeat: Infinity, duration: 1.8, ease: 'linear' }
+                                }
+                            >
+                                {syncPhase === 'done' ? (
+                                    <Check size={32} />
+                                ) : syncPhase === 'error' ? (
+                                    <AlertCircle size={32} />
+                                ) : (
+                                    <RefreshCw size={32} />
+                                )}
+                            </motion.div>
+
+                            <h2 className="sync-overlay-title">
+                                {syncPhase === 'done'
+                                    ? 'All Set!'
+                                    : syncPhase === 'error'
+                                        ? 'Sync Issue'
+                                        : 'Syncing Your Health Data'}
+                            </h2>
+
+                            {/* Step indicators */}
+                            <div className="sync-steps">
+                                <SyncStep
+                                    label="Analysing profile"
+                                    active={syncPhase === 'preparing'}
+                                    done={syncPhase !== 'preparing'}
+                                    icon={<Database size={16} />}
+                                />
+                                <SyncStep
+                                    label="Syncing to Health Memory"
+                                    active={syncPhase === 'memory'}
+                                    done={['graph', 'done'].includes(syncPhase)}
+                                    icon={<Brain size={16} />}
+                                />
+                                <SyncStep
+                                    label="Building Knowledge Graph"
+                                    active={syncPhase === 'graph'}
+                                    done={syncPhase === 'done'}
+                                    icon={<Network size={16} />}
+                                />
+                            </div>
+
+                            {/* Result summary */}
+                            {syncPhase === 'done' && syncResult && (
+                                <motion.p
+                                    className="sync-overlay-summary"
+                                    initial={{ opacity: 0, y: 8 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                >
+                                    {syncResult.factsSynced} facts synced
+                                    {syncResult.memoryOk && ' to Memory'}
+                                    {syncResult.memoryOk && syncResult.graphOk && ' &'}
+                                    {syncResult.graphOk && ' Knowledge Graph'}
+                                </motion.p>
+                            )}
+
+                            {syncPhase === 'error' && syncResult && (
+                                <motion.p
+                                    className="sync-overlay-error"
+                                    initial={{ opacity: 0, y: 8 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                >
+                                    {syncResult.errors[0] || 'Something went wrong. Your data is safe — sync will retry later.'}
+                                </motion.p>
+                            )}
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             <div className="features-content">
                 <div className="features-container">
@@ -197,6 +375,7 @@ function Features() {
 
                         <div className="section-content">
                             <MemoryDashboard
+                                key={`mem-${syncKey}`}
                                 authToken={authToken || undefined}
                                 apiBaseUrl={API_BASE_URL}
                                 defaultCollapsed={false}
@@ -228,6 +407,7 @@ function Features() {
 
                         <div className="section-content section-content-large">
                             <HealthGraph
+                                key={`graph-${syncKey}`}
                                 authToken={authToken || undefined}
                                 apiBaseUrl={API_BASE_URL}
                                 defaultCollapsed={false}
@@ -255,6 +435,37 @@ function Features() {
 
                 </div>
             </div>
+        </div>
+    );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Sync step indicator sub-component                                 */
+/* ------------------------------------------------------------------ */
+
+interface SyncStepProps {
+    label: string;
+    active: boolean;
+    done: boolean;
+    icon: React.ReactNode;
+}
+
+function SyncStep({ label, active, done, icon }: SyncStepProps) {
+    return (
+        <div className={`sync-step ${active ? 'active' : ''} ${done ? 'done' : ''}`}>
+            <span className="sync-step-icon">
+                {done ? <Check size={16} /> : icon}
+            </span>
+            <span className="sync-step-label">{label}</span>
+            {active && (
+                <motion.span
+                    className="sync-step-spinner"
+                    animate={{ rotate: 360 }}
+                    transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
+                >
+                    <RefreshCw size={12} />
+                </motion.span>
+            )}
         </div>
     );
 }

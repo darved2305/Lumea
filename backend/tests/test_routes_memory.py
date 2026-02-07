@@ -107,6 +107,19 @@ class TestMemoryRoutes:
             mock_memory_service.delete.assert_called_once_with("mem-1")
 
     @pytest.mark.asyncio
+    async def test_delete_memory_rejects_other_user_id(self, mock_memory_service, mock_user):
+        """Delete should be rejected if memory ID is not found in current user's list."""
+        with patch('app.routes.memory.get_memory_service', return_value=mock_memory_service):
+            from app.routes.memory import delete_memory
+
+            result = await delete_memory(memory_id="not-owned-id", current_user=mock_user)
+
+            assert result.success is False
+            assert result.deleted_count == 0
+            assert "not found" in (result.message or "").lower()
+            mock_memory_service.delete.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_delete_all_memories_success(self, mock_memory_service, mock_user):
         """Test successful deletion of all memories."""
         with patch('app.routes.memory.get_memory_service', return_value=mock_memory_service):

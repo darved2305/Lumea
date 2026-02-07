@@ -1,10 +1,8 @@
 import pytest
 import uuid
 from unittest.mock import MagicMock, patch, AsyncMock
-from typing import List, Dict, Any
 from app.services.assistant_service import AssistantService
 from app.models import ChatSession, ChatMessage
-from app.schemas import Citation
 
 # Mock the entire database session
 @pytest.fixture
@@ -44,8 +42,8 @@ def assistant_service(mock_db):
         mock_mem.return_value = mem_service
 
         graph_service = MagicMock()
-        graph_service.search = AsyncMock(return_value=["HbA1c -> indicates -> Diabetes"])
-        graph_service.add_episode = AsyncMock(return_value=None)
+        graph_service.search_user = AsyncMock(return_value=["HbA1c -> indicates -> Diabetes"])
+        graph_service.add_user_episode = AsyncMock(return_value=None)
         mock_graph.return_value = graph_service
 
         rag_service = MagicMock()

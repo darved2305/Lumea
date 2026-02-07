@@ -22,7 +22,16 @@ class Settings(BaseSettings):
     # so existing databases get schema changes (new columns/indexes).
     AUTO_MIGRATE: bool = False  # Disabled - using create_all instead
 
-    # Ollama LLM Configuration
+    # =====================
+    # OpenRouter Configuration (PRIMARY LLM)
+    # =====================
+    OPENROUTER_API_KEY: Optional[str] = None
+    OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
+    OPENROUTER_MODEL: str = "openrouter/pony-alpha"
+    OPENROUTER_FALLBACK_MODEL: str = "upstage/solar-pro-3:free"
+    OPENROUTER_TIMEOUT: int = 120  # seconds
+
+    # Ollama LLM Configuration (LAST RESORT fallback)
     # Default to localhost for direct (non‑Docker) runs.
     # When running via Docker, docker-compose.yml overrides this to use
     # http://host.docker.internal:11434 so the container can reach the host.
@@ -44,6 +53,9 @@ class Settings(BaseSettings):
     groq_api_key: Optional[str] = None
     groq_api_base: str = "https://api.groq.com/openai/v1"
     groq_model: str = "llama-3.3-70b-versatile"  # Updated to current model
+    MEM0_GROQ_MODEL: str = "llama-3.1-8b-instant"
+    # Graphiti requires JSON-schema structured outputs; use a Groq model that supports it.
+    GRAPHITI_GROQ_MODEL: str = "moonshotai/kimi-k2-instruct-0905"
 
     # Grok/xAI API (alternative)
     grok_api_key: Optional[str] = None
@@ -70,6 +82,21 @@ class Settings(BaseSettings):
 
     # Memory service (Mem0)
     MEM0_COLLECTION: str = "user_memories"
+    MEM0_EMBED_MODEL: str = "nomic-embed-text"
+    MEM0_CHROMA_DIR: str = "/app/mem0_chroma"  # Separate from RAG to avoid singleton conflict
+    MEM0_PREFER_GROQ: bool = True
+
+    # Groq / Mem0 rate-limit mitigation
+    # Minimum seconds between consecutive Mem0 LLM calls (prevents TPM exhaustion)
+    MEM0_CALL_INTERVAL_SECONDS: float = 3.0
+    # Max retries per individual add() call when Groq returns 429
+    MEM0_MAX_RETRIES: int = 5
+    # Base backoff (seconds) for exponential retry on 429
+    MEM0_RETRY_BASE_SECONDS: float = 2.0
+    # Proactive delay (seconds) between profile sync batches
+    MEM0_BATCH_DELAY_SECONDS: float = 5.0
+    # Number of facts per Mem0 batch (larger = fewer API calls)
+    MEM0_SYNC_BATCH_SIZE: int = 15
 
     # Graph service (Graphiti)
     # Note: Neo4j Community Edition only supports "neo4j" database name
@@ -109,4 +136,3 @@ logger.info(f"  SMS_TEST_TO_NUMBER: {settings.SMS_TEST_TO_NUMBER}")
 logger.info(f"  TWILIO_ACCOUNT_SID configured: {bool(settings.TWILIO_ACCOUNT_SID)}")
 logger.info(f"  TWILIO_AUTH_TOKEN configured: {bool(settings.TWILIO_AUTH_TOKEN)}")
 logger.info(f"  TWILIO_FROM_NUMBER: {settings.TWILIO_FROM_NUMBER}")
-

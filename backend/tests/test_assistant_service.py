@@ -7,7 +7,6 @@ Uses mocks to avoid needing actual Neo4j/Chroma/Ollama instances.
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 import uuid
-from datetime import datetime
 
 from app.services.assistant_service import AssistantService
 from app.models import ChatSession, ChatMessage
@@ -65,7 +64,7 @@ def mock_services():
 
         # Setup Graph Service mocks
         graph_svc = AsyncMock()
-        graph_svc.search.return_value = ["Diabetes relates to High Glucose"]
+        graph_svc.search_user.return_value = ["Diabetes relates to High Glucose"]
         mock_graph.return_value = graph_svc
 
         # Setup RAG Service mocks
@@ -116,7 +115,7 @@ async def test_chat_uses_all_contexts(mock_db_session, mock_services):
     mock_services["memory"].search.assert_called_once_with(message, user_id=str(user_id), limit=5)
 
     # 3. Verify Graph Search called
-    mock_services["graph"].search.assert_called_once_with(message, limit=5)
+    mock_services["graph"].search_user.assert_called_once_with(str(user_id), message, limit=5)
 
     # 4. Verify LLM called with combined context
     call_args = mock_services["llm"].generate.call_args
@@ -145,6 +144,8 @@ async def test_chat_updates_memory_and_graph(mock_db_session, mock_services):
     assert "Assistant: Based on" in content
 
     # Verify Graph Update
-    mock_services["graph"].add_episode.assert_called_once()
-    args, _ = mock_services["graph"].add_episode.call_args
-    assert "User asked: I feel tired" in args[0]
+    mock_services["graph"].add_user_episode.assert_called_once()
+    _, kwargs = mock_services["graph"].add_user_episode.call_args
+    assert kwargs["user_id"] == str(user_id)
+    assert kwargs["source"] == "user_chat"
+    assert "User asked: I feel tired" in kwargs["content"]

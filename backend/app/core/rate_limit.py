@@ -8,6 +8,7 @@ Uses in-memory storage by default. For production, configure Redis backend.
 """
 import time
 import logging
+import os
 from typing import Callable, Optional, Dict, Tuple
 from collections import defaultdict
 from functools import wraps
@@ -106,20 +107,35 @@ class InMemoryRateLimiter:
 rate_limiter = InMemoryRateLimiter()
 
 
+def _env_int(name: str, default: int) -> int:
+    """Read integer env var with safe fallback."""
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        logger.warning("Invalid %s=%r; using default=%s", name, raw, default)
+        return default
+
+
 # Rate limit configurations for different endpoints
 RATE_LIMITS = {
     # Auth endpoints - strict limits to prevent brute force
-    "login": (5, 60),       # 5 attempts per minute
-    "signup": (3, 60),      # 3 signups per minute per IP
-    "password_reset": (3, 300),  # 3 reset requests per 5 minutes
+    "login": (_env_int("RATE_LIMIT_LOGIN", 5), 60),       # 5 attempts per minute
+    "signup": (_env_int("RATE_LIMIT_SIGNUP", 3), 60),     # 3 signups per minute per IP
+    "password_reset": (_env_int("RATE_LIMIT_PASSWORD_RESET", 3), 300),  # 3 reset requests per 5 minutes
     
     # API endpoints - moderate limits
-    "api_default": (100, 60),    # 100 requests per minute
-    "upload": (10, 60),          # 10 uploads per minute
-    "ai_summary": (20, 60),      # 20 AI requests per minute
+    "api_default": (_env_int("RATE_LIMIT_API_DEFAULT", 240), 60),     # 240 requests per minute
+    "upload": (_env_int("RATE_LIMIT_UPLOAD", 10), 60),                # 10 uploads per minute
+    "ai_summary": (_env_int("RATE_LIMIT_AI_SUMMARY", 20), 60),        # 20 AI requests per minute
+    "dashboard_read": (_env_int("RATE_LIMIT_DASHBOARD_READ", 240), 60),  # 240 reads/min for dashboard polling
+    "memory_graph": (_env_int("RATE_LIMIT_MEMORY_GRAPH", 180), 60),      # 180 reads/min for memory/graph UIs
+    "profile_sync": (_env_int("RATE_LIMIT_PROFILE_SYNC", 40), 60),       # 40 sync requests/min
     
     # Sensitive data endpoints - stricter
-    "phi_access": (50, 60),      # 50 PHI accesses per minute
+    "phi_access": (_env_int("RATE_LIMIT_PHI_ACCESS", 50), 60),        # 50 PHI accesses per minute
 }
 
 
@@ -208,9 +224,21 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         "/api/reports/upload": "upload",
         "/api/documents/upload": "upload",
         "/api/ai/": "ai_summary",
+        "/api/profile/sync-to-memory": "profile_sync",
+        "/api/memory/": "memory_graph",
+        "/api/graph/": "memory_graph",
+        "/api/me/bootstrap": "dashboard_read",
+        "/api/dashboard/": "dashboard_read",
+        "/api/recommendations": "dashboard_read",
+        "/api/health-index": "dashboard_read",
+        "/api/reports": "dashboard_read",
     }
     
     async def dispatch(self, request: Request, call_next):
+        # CORS preflight and HEAD requests should not consume API quota.
+        if request.method in {"OPTIONS", "HEAD"}:
+            return await call_next(request)
+
         client_ip = get_client_ip(request)
         path = request.url.path
         

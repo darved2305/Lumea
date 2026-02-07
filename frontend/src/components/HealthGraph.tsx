@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Network,
@@ -11,6 +11,10 @@ import {
     ZoomOut,
     Maximize2,
     Info,
+    TrendingUp,
+    GitBranch,
+    AlertTriangle,
+    Loader2,
 } from 'lucide-react';
 import { API_BASE_URL } from '../config/api';
 import './HealthGraph.css';
@@ -39,6 +43,22 @@ interface GraphDataResponse {
     message: string | null;
 }
 
+interface InsightResponse {
+    insight_type: string;
+    content: string;
+    sources: string[];
+    available: boolean;
+    message: string | null;
+}
+
+type InsightType = 'temporal' | 'relationships' | 'contradictions';
+
+const INSIGHT_BUTTONS: { type: InsightType; icon: typeof TrendingUp; label: string; description: string }[] = [
+    { type: 'temporal', icon: TrendingUp, label: 'Timeline Analysis', description: 'How have my metrics changed?' },
+    { type: 'relationships', icon: GitBranch, label: 'Health Connections', description: 'What\'s connected in my health data?' },
+    { type: 'contradictions', icon: AlertTriangle, label: 'Data Conflicts', description: 'Any inconsistencies in my records?' },
+];
+
 interface HealthGraphProps {
     authToken?: string;
     apiBaseUrl?: string;
@@ -55,6 +75,8 @@ const nodeColors: Record<string, string> = {
     entity: '#999999',        // dash-text-muted (gray)
 };
 
+const normalizeNodeId = (value: string): string => value.trim().toLowerCase().replace(/\s+/g, '_');
+
 const HealthGraph: React.FC<HealthGraphProps> = ({
     authToken,
     apiBaseUrl = API_BASE_URL,
@@ -62,12 +84,21 @@ const HealthGraph: React.FC<HealthGraphProps> = ({
 }) => {
     const [graphData, setGraphData] = useState<GraphDataResponse | null>(null);
     const [loading, setLoading] = useState(false);
+    const [syncing, setSyncing] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [syncNotice, setSyncNotice] = useState<string | null>(null);
     const [collapsed, setCollapsed] = useState(defaultCollapsed);
     const [available, setAvailable] = useState(true);
     const [zoom, setZoom] = useState(1);
     const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null);
     const svgRef = useRef<SVGSVGElement>(null);
+
+    // Insights state
+    const [insightLoading, setInsightLoading] = useState(false);
+    const [insightContent, setInsightContent] = useState<string | null>(null);
+    const [insightSources, setInsightSources] = useState<string[]>([]);
+    const [activeInsightType, setActiveInsightType] = useState<InsightType | null>(null);
+    const [insightError, setInsightError] = useState<string | null>(null);
 
     const fetchGraphData = useCallback(async () => {
         if (!authToken) {
@@ -103,6 +134,98 @@ const HealthGraph: React.FC<HealthGraphProps> = ({
         }
     }, [authToken, apiBaseUrl]);
 
+    // Generate AI insight from graph data
+    const generateInsight = useCallback(async (insightType: InsightType) => {
+        if (!authToken) {
+            setInsightError('Authentication required');
+            return;
+        }
+
+        setInsightLoading(true);
+        setInsightError(null);
+        setInsightContent(null);
+        setActiveInsightType(insightType);
+
+        try {
+            const response = await fetch(`${apiBaseUrl}/api/graph/insights`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${authToken}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ insight_type: insightType, context_limit: 10 }),
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to generate insight: ${response.status}`);
+            }
+
+            const data: InsightResponse = await response.json();
+
+            if (!data.available) {
+                throw new Error(data.message || 'Service not available');
+            }
+
+            if (data.message && !data.content) {
+                throw new Error(data.message);
+            }
+
+            if (!data.content || data.content.trim() === '') {
+                setInsightError('No insight generated. Try adding more health data.');
+                return;
+            }
+
+            setInsightContent(data.content);
+            setInsightSources(data.sources || []);
+        } catch (err) {
+            setInsightError(err instanceof Error ? err.message : 'Failed to generate insight');
+        } finally {
+            setInsightLoading(false);
+        }
+    }, [authToken, apiBaseUrl]);
+
+    const syncProfileToGraph = useCallback(async () => {
+        if (!authToken) {
+            setError('Authentication required');
+            return;
+        }
+
+        setSyncing(true);
+        setError(null);
+        setSyncNotice(null);
+
+        try {
+            const response = await fetch(`${apiBaseUrl}/api/profile/sync-to-memory`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${authToken}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error(`Profile sync failed: ${response.status}`);
+            }
+
+            const payload = await response.json().catch(() => null);
+            if (payload?.success === false) {
+                throw new Error(payload?.message || 'Profile sync failed');
+            }
+            const syncedFacts = payload?.synced?.facts_synced;
+            if (typeof syncedFacts === 'number') {
+                setSyncNotice(`Synced ${syncedFacts} facts from your profile. Refreshing graph...`);
+            } else {
+                setSyncNotice('Profile sync completed. Refreshing graph...');
+            }
+
+            await fetchGraphData();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to sync profile data');
+        } finally {
+            setSyncing(false);
+        }
+    }, [authToken, apiBaseUrl, fetchGraphData]);
+
     useEffect(() => {
         if (!collapsed && authToken) {
             fetchGraphData();
@@ -110,7 +233,7 @@ const HealthGraph: React.FC<HealthGraphProps> = ({
     }, [collapsed, authToken, fetchGraphData]);
 
     // Simple force-directed layout calculation (simplified)
-    const calculateLayout = useCallback((nodes: GraphNode[], relationships: GraphRelationship[]) => {
+    const calculateLayout = useCallback((nodes: GraphNode[]) => {
         const width = 600;
         const height = 400;
         const centerX = width / 2;
@@ -154,9 +277,10 @@ const HealthGraph: React.FC<HealthGraphProps> = ({
         return nodePositions;
     }, []);
 
-    const nodePositions = graphData
-        ? calculateLayout(graphData.nodes, graphData.relationships)
-        : {};
+    const nodePositions = useMemo(
+        () => (graphData ? calculateLayout(graphData.nodes) : {}),
+        [graphData, calculateLayout]
+    );
 
     const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.2, 2));
     const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.2, 0.5));
@@ -210,8 +334,22 @@ const HealthGraph: React.FC<HealthGraphProps> = ({
                         ) : !graphData || graphData.nodes.length === 0 ? (
                             <div className="health-graph-empty">
                                 <Sparkles size={32} />
-                                <p>No health relationships yet</p>
-                                <span>Relationships will be discovered as you chat with the assistant.</span>
+                                <p>No graph data for your account yet</p>
+                                <span>
+                                    This graph is user-scoped. Sync your profile data or upload reports to generate
+                                    relationships.
+                                </span>
+                                {syncNotice && (
+                                    <span className="health-graph-empty-note">{syncNotice}</span>
+                                )}
+                                <button
+                                    className="health-graph-empty-sync"
+                                    onClick={syncProfileToGraph}
+                                    disabled={syncing || loading}
+                                >
+                                    {syncing ? <RefreshCw size={14} className="spinning" /> : <Sparkles size={14} />}
+                                    <span>{syncing ? 'Syncing...' : 'Sync Profile Data'}</span>
+                                </button>
                             </div>
                         ) : (
                             <>
@@ -228,13 +366,102 @@ const HealthGraph: React.FC<HealthGraphProps> = ({
                                             <Maximize2 size={16} />
                                         </button>
                                     </div>
-                                    <button
-                                        className="health-graph-refresh"
-                                        onClick={fetchGraphData}
-                                        title="Refresh"
-                                    >
-                                        <RefreshCw size={16} />
-                                    </button>
+                                    <div className="health-graph-actions">
+                                        <button
+                                            className="health-graph-sync"
+                                            onClick={syncProfileToGraph}
+                                            disabled={syncing || loading}
+                                            title="Sync profile into per-user graph"
+                                        >
+                                            {syncing ? <RefreshCw size={14} className="spinning" /> : <Sparkles size={14} />}
+                                            <span>{syncing ? 'Syncing...' : 'Sync Profile'}</span>
+                                        </button>
+                                        <button
+                                            className="health-graph-refresh"
+                                            onClick={fetchGraphData}
+                                            title="Refresh"
+                                        >
+                                            <RefreshCw size={16} />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {syncNotice && (
+                                    <div className="health-graph-note">
+                                        <Info size={14} />
+                                        <span>{syncNotice}</span>
+                                    </div>
+                                )}
+
+                                {/* AI Insights Panel */}
+                                <div className="health-graph-insights">
+                                    <div className="insights-header">
+                                        <Sparkles size={16} className="insights-icon" />
+                                        <span className="insights-title">AI-Powered Insights</span>
+                                    </div>
+                                    <div className="insights-buttons">
+                                        {INSIGHT_BUTTONS.map(({ type, icon: Icon, label, description }) => (
+                                            <button
+                                                key={type}
+                                                className={`insight-button insight-button-${type} ${activeInsightType === type ? 'active' : ''}`}
+                                                onClick={() => generateInsight(type)}
+                                                disabled={insightLoading}
+                                                title={description}
+                                            >
+                                                {insightLoading && activeInsightType === type ? (
+                                                    <Loader2 size={16} className="spinning" />
+                                                ) : (
+                                                    <Icon size={16} />
+                                                )}
+                                                <span>{label}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    <AnimatePresence>
+                                        {(insightContent || insightLoading || insightError) && (
+                                            <motion.div
+                                                initial={{ height: 0, opacity: 0 }}
+                                                animate={{ height: 'auto', opacity: 1 }}
+                                                exit={{ height: 0, opacity: 0 }}
+                                                transition={{ duration: 0.2 }}
+                                                className="insights-content"
+                                            >
+                                                {insightLoading ? (
+                                                    <div className="insights-loading">
+                                                        <Loader2 size={20} className="spinning" />
+                                                        <span>Analyzing your health data...</span>
+                                                    </div>
+                                                ) : insightError ? (
+                                                    <div className="insights-error">
+                                                        <AlertCircle size={16} />
+                                                        <span>{insightError}</span>
+                                                    </div>
+                                                ) : insightContent && (
+                                                    <>
+                                                        <div className="insights-text">
+                                                            {insightContent.split('\n').filter(line => line.trim()).map((line, i) => (
+                                                                <p key={i}>{line}</p>
+                                                            ))}
+                                                        </div>
+                                                        {insightSources.length > 0 && (
+                                                            <details className="insights-sources">
+                                                                <summary>
+                                                                    <Info size={12} />
+                                                                    <span>{insightSources.length} facts used</span>
+                                                                </summary>
+                                                                <ul>
+                                                                    {insightSources.map((source, i) => (
+                                                                        <li key={i}>{source}</li>
+                                                                    ))}
+                                                                </ul>
+                                                            </details>
+                                                        )}
+                                                    </>
+                                                )}
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
                                 </div>
 
                                 {error && (
@@ -254,8 +481,8 @@ const HealthGraph: React.FC<HealthGraphProps> = ({
                                         {/* Relationship lines */}
                                         <g className="relationships">
                                             {graphData.relationships.map((rel, index) => {
-                                                const sourcePos = nodePositions[rel.source.toLowerCase().replace(/ /g, '_')];
-                                                const targetPos = nodePositions[rel.target.toLowerCase().replace(/ /g, '_')];
+                                                const sourcePos = nodePositions[normalizeNodeId(rel.source)];
+                                                const targetPos = nodePositions[normalizeNodeId(rel.target)];
 
                                                 if (!sourcePos || !targetPos) return null;
 

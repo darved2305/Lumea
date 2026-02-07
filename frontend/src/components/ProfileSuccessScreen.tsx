@@ -8,7 +8,6 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Check, ArrowRight } from 'lucide-react';
-import { API_BASE_URL } from '../config/api';
 import './ProfileSuccessScreen.css';
 
 interface ProfileSuccessScreenProps {
@@ -23,41 +22,19 @@ export default function ProfileSuccessScreen({
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Sync profile data to memory/graph layers for provenance
-    const syncToMemory = async () => {
-      const authToken = localStorage.getItem('authToken');
-      if (!authToken) return;
-
-      try {
-        await fetch(`${API_BASE_URL}/api/profile/sync-to-memory`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${authToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
-        console.log('Profile synced to memory/graph layers');
-      } catch (error) {
-        console.warn('Failed to sync profile to memory:', error);
-        // Non-blocking - don't prevent navigation on failure
-      }
-    };
-
-    syncToMemory();
-  }, []);
-
-  useEffect(() => {
+    // Profile sync is now handled by the Features page which shows a
+    // live sync overlay.  We just redirect there after the success animation.
     if (autoRedirect) {
       const timer = setTimeout(() => {
-        navigate('/dashboard');
+        navigate('/features', { state: { fromProfileSync: true } });
       }, redirectDelay);
 
       return () => clearTimeout(timer);
     }
   }, [autoRedirect, redirectDelay, navigate]);
 
-  const handleDashboard = () => {
-    navigate('/dashboard');
+  const handleFeatures = () => {
+    navigate('/features', { state: { fromProfileSync: true } });
   };
 
   const handleSettings = () => {
@@ -140,9 +117,9 @@ export default function ProfileSuccessScreen({
         >
           <button
             className="success-btn success-btn-primary"
-            onClick={handleDashboard}
+            onClick={handleFeatures}
           >
-            Go to Dashboard
+            View Health Intelligence
             <ArrowRight size={18} />
           </button>
           <button
@@ -161,7 +138,7 @@ export default function ProfileSuccessScreen({
             animate={{ opacity: 1 }}
             transition={{ delay: 1, duration: 0.3 }}
           >
-            Redirecting to dashboard...
+            Redirecting to Health Intelligence...
           </motion.p>
         )}
       </motion.div>

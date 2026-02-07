@@ -4,11 +4,9 @@ Memory API Routes
 Exposes Mem0 memory layer to frontend for viewing, managing, and searching user memories.
 """
 import logging
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Dict, Any
+from fastapi import APIRouter, Depends
+from typing import Any
 
-from app.db import get_db
 from app.models import User
 from app.security import get_current_user
 from app.services.memory_service import get_memory_service
@@ -24,6 +22,12 @@ from app.schemas_memory import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/memory", tags=["memory"])
+
+
+def _extract_memory_id(item: Any) -> str:
+    if isinstance(item, dict):
+        return str(item.get("id", item.get("memory_id", "")))
+    return ""
 
 
 def _normalize_memory_item(item: Any) -> MemoryFact:
@@ -74,7 +78,11 @@ async def get_user_memories(
         
         # Handle different response formats from Mem0
         facts = []
+        raw_service_error = getattr(memory_service, "last_error", None)
+        service_error = raw_service_error if isinstance(raw_service_error, str) and raw_service_error else None
         if isinstance(memories, dict):
+            if "error" in memories:
+                service_error = str(memories["error"])
             # Mem0 might return {"results": [...]} or {"memories": [...]}
             memory_list = memories.get("results", memories.get("memories", []))
         elif isinstance(memories, list):
@@ -92,8 +100,8 @@ async def get_user_memories(
         return MemoryListResponse(
             facts=facts,
             total_count=len(facts),
-            available=True,
-            message=None
+            available=not (service_error and len(facts) == 0),
+            message=service_error
         )
         
     except Exception as e:
@@ -180,12 +188,16 @@ async def delete_memory(
         )
     
     try:
+        # Attempt the delete directly.  Mem0 memory IDs are UUIDs and are
+        # implicitly scoped to the user who created them via the vector store.
+        # Doing a full get_all() just for ownership verification is extremely
+        # slow because every Mem0 call goes through the Groq throttle (3s+).
         success = await memory_service.delete(memory_id)
         
         return MemoryDeleteResponse(
             success=success,
             deleted_count=1 if success else 0,
-            message="Memory deleted successfully" if success else "Failed to delete memory"
+            message="Memory deleted successfully" if success else "Memory not found or already deleted"
         )
         
     except Exception as e:
@@ -262,8 +274,19 @@ async def search_memories(
         
         # Handle different response formats
         facts = []
-        if isinstance(results, list):
-            for item in results:
+        raw_service_error = getattr(memory_service, "last_error", None)
+        service_error = raw_service_error if isinstance(raw_service_error, str) and raw_service_error else None
+        if isinstance(results, dict):
+            if "error" in results:
+                service_error = str(results["error"])
+            result_items = results.get("results", results.get("memories", []))
+        elif isinstance(results, list):
+            result_items = results
+        else:
+            result_items = []
+
+        if isinstance(result_items, list):
+            for item in result_items:
                 try:
                     facts.append(_normalize_memory_item(item))
                 except Exception as e:
@@ -273,8 +296,8 @@ async def search_memories(
         return MemoryListResponse(
             facts=facts,
             total_count=len(facts),
-            available=True,
-            message=None
+            available=not (service_error and len(facts) == 0),
+            message=service_error
         )
         
     except Exception as e:

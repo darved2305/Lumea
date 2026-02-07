@@ -107,3 +107,32 @@ class GraphFactsResponse(BaseModel):
     count: int = Field(0, description="Number of facts")
     available: bool = Field(True, description="Whether graph service is available")
     message: Optional[str] = Field(None, description="Optional status message")
+
+
+# ============================================================================
+# GRAPH INSIGHTS (LLM-powered analysis) SCHEMAS
+# ============================================================================
+
+from enum import Enum
+
+
+class InsightType(str, Enum):
+    """Types of AI-powered graph insights."""
+    TEMPORAL = "temporal"           # Timeline analysis - trends over time
+    RELATIONSHIPS = "relationships"  # Health connections - conditions/meds/factors
+    CONTRADICTIONS = "contradictions"  # Data conflicts - inconsistencies
+
+
+class InsightRequest(BaseModel):
+    """Request for LLM-powered graph insight."""
+    insight_type: InsightType = Field(..., description="Type of insight to generate")
+    context_limit: int = Field(default=10, ge=1, le=20, description="Max graph facts to use as context")
+
+
+class InsightResponse(BaseModel):
+    """Response containing LLM-generated insight."""
+    insight_type: InsightType = Field(..., description="Type of insight generated")
+    content: str = Field(..., description="LLM-generated insight text")
+    sources: List[str] = Field(default_factory=list, description="Graph facts used as context")
+    available: bool = Field(True, description="Whether service is available")
+    message: Optional[str] = Field(None, description="Optional status/error message")

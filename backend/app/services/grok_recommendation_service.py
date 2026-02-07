@@ -517,7 +517,8 @@ async def _gather_user_context(user_id: str, db: AsyncSession) -> Dict[str, Any]
                 return []
             
             # Search for relevant medical knowledge
-            results = await graph_service.search(
+            results = await graph_service.search_user(
+                user_id=user_id,
                 query="health conditions medications recommendations risk factors",
                 limit=10
             )

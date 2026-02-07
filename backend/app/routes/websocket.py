@@ -103,11 +103,15 @@ async def handle_chat_request(
 ):
     """
     Handle streaming chat request via WebSocket.
-    
+
+    Leverages RAG, Mem0 (long-term memory), and Graphiti (knowledge graph)
+    to build rich context, then streams the LLM response and sends
+    structured source references alongside the answer.
+
     Sends:
-    - chat_start: Indicates response generation started
+    - chat_start: Indicates response generation started (includes sources summary)
     - chat_token: Each token as it's generated
-    - chat_complete: Final message with citations
+    - chat_complete: Final message with citations / references
     - chat_error: On any error
     """
     import uuid as uuid_module
@@ -116,7 +120,7 @@ async def handle_chat_request(
     from app.services.graph_service import get_graph_service
     from app.services.llm_service import get_llm_service
     from app.db import async_session
-    
+
     try:
         if not message_content or not str(message_content).strip():
             await websocket.send_json({
@@ -129,32 +133,36 @@ async def handle_chat_request(
         # Send start event
         await websocket.send_json({
             "type": "chat_start",
-            "data": {"message": "Generating response..."},
+            "data": {"message": "Gathering context from your health data, memories, and knowledge graph..."},
             "timestamp": datetime.utcnow().isoformat()
         })
-        
+
         # Get services
         rag_service = get_rag_service()
         memory_service = get_memory_service()
         graph_service = get_graph_service()
         llm_service = get_llm_service()
-        
-        # Get user context from RAG
+
+        # ---- Parallel context retrieval from all 3 sources ----
+        user_uuid = uuid_module.UUID(user_id)
+
         async with async_session() as db:
-            context = await rag_service.get_user_context(
-                user_id=uuid_module.UUID(user_id),
+            rag_structured = await rag_service.get_user_context_structured(
+                user_id=user_uuid,
                 query=message_content,
-                db=db
+                db=db,
             )
 
-        # Retrieve long-term memory and graph facts (best-effort)
         memories = await memory_service.search(message_content, user_id=user_id, limit=5)
-        graph_facts = await graph_service.search(message_content, limit=5)
+        graph_facts = await graph_service.search_user(user_id=user_id, query=message_content, limit=5)
 
-        # Assemble context for LLM in a consistent, structured format
+        # ---- Assemble structured context for the LLM ----
         parts = []
+
+        # Memories (Mem0)
         if memories:
             parts.append("--- RELEVANT MEMORIES (User Facts & Preferences) ---")
+            parts.append("[Source: User Memory / Health Profile]")
             for m in memories:
                 if isinstance(m, str):
                     text = m
@@ -172,18 +180,62 @@ async def handle_chat_request(
                 if text:
                     parts.append(f"- {text}")
 
+        # Knowledge Graph (Graphiti)
         if graph_facts:
             parts.append("\n--- MEDICAL KNOWLEDGE GRAPH (Relationships & Facts) ---")
+            parts.append("[Source: Medical Knowledge Graph / Graphiti]")
             for f in graph_facts:
                 parts.append(f"- {f}")
 
-        if context:
+        # RAG documents (ChromaDB)
+        rag_text = rag_structured.get("text", "") if isinstance(rag_structured, dict) else str(rag_structured)
+        if rag_text:
             parts.append("\n--- MEDICAL DATA & REPORTS ---")
-            parts.append(context)
+            parts.append(rag_text)
 
         full_context = "\n".join(parts)
-        
-        # Stream response from LLM
+
+        # ---- Build structured citations / references ----
+        citations = []
+        rag_sources = rag_structured.get("sources", []) if isinstance(rag_structured, dict) else []
+
+        for src in rag_sources:
+            if src.get("type") == "report":
+                citations.append({
+                    "source_type": "report",
+                    "label": f"Report: {src.get('filename', 'Unknown')}",
+                    "report_id": src.get("report_id"),
+                    "excerpt": src.get("excerpt", ""),
+                })
+            elif src.get("type") == "observations":
+                citations.append({
+                    "source_type": "observations",
+                    "label": f"Lab Data: {src.get('metric_name', 'health metric')}",
+                    "excerpt": src.get("excerpt", ""),
+                })
+
+        if memories:
+            mem_excerpts = []
+            for m in memories:
+                if isinstance(m, str):
+                    mem_excerpts.append(m[:120])
+                elif isinstance(m, dict):
+                    t = m.get("memory") or m.get("text") or m.get("content") or ""
+                    mem_excerpts.append(t[:120])
+            citations.append({
+                "source_type": "memory",
+                "label": f"User Memory ({len(memories)} facts)",
+                "excerpt": "; ".join(mem_excerpts)[:300],
+            })
+
+        if graph_facts:
+            citations.append({
+                "source_type": "knowledge_graph",
+                "label": f"Knowledge Graph ({len(graph_facts)} facts)",
+                "excerpt": "; ".join(str(f)[:80] for f in graph_facts)[:300],
+            })
+
+        # ---- Stream response from LLM ----
         full_response = ""
         async for token in llm_service.stream_generate(
             user_message=message_content,
@@ -195,31 +247,37 @@ async def handle_chat_request(
                 "data": {"token": token},
                 "timestamp": datetime.utcnow().isoformat()
             })
-        
-        # Send completion event
+
+        # ---- Send completion event with references ----
         await websocket.send_json({
             "type": "chat_complete",
             "data": {
                 "full_response": full_response,
-                "citations": [],  # TODO: Extract citations from context
+                "citations": citations,
+                "sources_summary": {
+                    "rag_documents": len(rag_sources),
+                    "memories_used": len(memories),
+                    "graph_facts_used": len(graph_facts),
+                },
                 "session_id": session_id
             },
             "timestamp": datetime.utcnow().isoformat()
         })
 
-        # Update memory and graph in background; don't block client completion.
+        # ---- Update memory and graph in background ----
         interaction = f"User: {message_content}\nAssistant: {full_response}"
         asyncio.create_task(
             memory_service.add(interaction, user_id=user_id, metadata={"source": "websocket_chat"})
         )
         asyncio.create_task(
-            graph_service.add_episode(
-                f"User asked: {message_content}\nAssistant answered: {full_response}",
+            graph_service.add_user_episode(
+                user_id=user_id,
+                content=f"User asked: {message_content}\nAssistant answered: {full_response}",
                 source="user_chat_websocket",
                 timestamp=datetime.utcnow().isoformat(),
             )
         )
-        
+
     except Exception as e:
         import traceback
         traceback.print_exc()

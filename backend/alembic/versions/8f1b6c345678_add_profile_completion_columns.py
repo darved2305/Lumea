@@ -20,11 +20,11 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     # Add is_completed and completed_at columns to user_profiles
-    op.add_column('user_profiles', sa.Column('is_completed', sa.Boolean(), nullable=True, default=False))
+    op.add_column('user_profiles', sa.Column('is_completed', sa.Boolean(), nullable=False, server_default=sa.false()))
     op.add_column('user_profiles', sa.Column('completed_at', sa.DateTime(), nullable=True))
-    
-    # Set default value for existing rows
-    op.execute("UPDATE user_profiles SET is_completed = false WHERE is_completed IS NULL")
+
+    # Keep the table aligned with ORM behavior (application sets value explicitly).
+    op.alter_column('user_profiles', 'is_completed', server_default=None)
 
 
 def downgrade() -> None:

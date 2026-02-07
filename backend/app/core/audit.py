@@ -9,6 +9,7 @@ Logs are structured for easy parsing and compliance reporting.
 import json
 import logging
 import os
+import tempfile
 from datetime import datetime
 from typing import Optional, Dict, Any, Union
 from uuid import UUID
@@ -99,7 +100,7 @@ class AuditLogger:
         # Prevent duplicate handlers
         if not self._audit_logger.handlers:
             # JSON file handler for compliance
-            audit_file = os.path.join(log_dir, "hipaa_audit.jsonl")
+            audit_file = os.path.join(self.log_dir, "hipaa_audit.jsonl")
             file_handler = logging.FileHandler(audit_file)
             file_handler.setFormatter(logging.Formatter("%(message)s"))
             self._audit_logger.addHandler(file_handler)
@@ -113,10 +114,18 @@ class AuditLogger:
     
     def _ensure_log_dir(self):
         """Create log directory if it doesn't exist"""
-        try:
-            os.makedirs(self.log_dir, exist_ok=True)
-        except Exception as e:
-            logging.warning(f"Could not create audit log directory: {e}")
+        candidate_dirs = [
+            self.log_dir,
+            os.path.join(tempfile.gettempdir(), "lumea-audit"),
+        ]
+
+        for directory in candidate_dirs:
+            try:
+                os.makedirs(directory, exist_ok=True)
+                self.log_dir = directory
+                return
+            except Exception as e:
+                logging.warning(f"Could not create audit log directory '{directory}': {e}")
     
     def _serialize_id(self, value: Any) -> Optional[str]:
         """Convert UUID or other ID types to string"""
