@@ -7,7 +7,7 @@ from app.settings import settings
 from app.db import init_db, engine
 from app.services.graph_service import get_graph_service
 from app.services.reminder_scheduler import start_reminder_scheduler, stop_reminder_scheduler
-from app.routes import auth, health, dashboard, reports, assistant, recommendations
+from app.routes import auth, health, dashboard, reports, assistant, recommendations, memory, graph
 from app.routes.profile import router as profile_router
 from app.routes.profile_me import router as profile_me_router
 from app.routes.websocket import router as websocket_router
@@ -109,6 +109,8 @@ app.include_router(documents_router)
 app.include_router(ai_summary_router)
 app.include_router(medicines_router)
 app.include_router(voice_router)
+app.include_router(memory.router)
+app.include_router(graph.router)
 app.include_router(physics_router)
 app.include_router(telemetry_router)
 
@@ -130,6 +132,10 @@ async def root():
             "reminders": "/api/reminders",
             "sms": "/api/sms",
             "ai_summary": "/api/ai",
+            "memory": "/api/memory",
+            "graph": "/api/graph",
+            "physics": "/api/physics",
+            "telemetry": "/api/telemetry",
             "websocket": "ws://localhost:8000/ws?token=<jwt>"
         }
     }

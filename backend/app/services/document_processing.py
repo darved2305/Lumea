@@ -604,10 +604,12 @@ class DocumentProcessingService:
 
                 if report:
                     graph_service = get_graph_service()
+                    memory_service = get_memory_service()
 
                     # Add episode about the upload
-                    await graph_service.add_episode(
-                        f"User uploaded medical report: {report.filename} (Type: {report.doc_type})",
+                    await graph_service.add_user_episode(
+                        user_id=str(self.user.id),
+                        content=f"uploaded medical report: {report.filename} (Type: {report.doc_type})",
                         source="document_upload",
                         timestamp=report.uploaded_at.isoformat() if report.uploaded_at else datetime.utcnow().isoformat()
                     )
@@ -619,18 +621,92 @@ class DocumentProcessingService:
                     observations = obs_result.scalars().all()
 
                     if observations:
-                        # Format observations for graph
-                        obs_texts = []
-                        for obs in observations:
-                            status = "Abnormal" if obs.is_abnormal else "Normal"
+                        # -------------------------------------------------------
+                        # Only sync *clinically relevant* data to the knowledge
+                        # graph – abnormal findings plus a brief overall summary.
+                        # Dumping every normal reading would bloat the graph and
+                        # dilute the signal used by the recommendation engine.
+                        # -------------------------------------------------------
+                        abnormal_obs = [obs for obs in observations if obs.is_abnormal]
+                        normal_count = len(observations) - len(abnormal_obs)
+
+                        obs_texts = [
+                            f"Report {report.filename}: {len(observations)} total observations, "
+                            f"{len(abnormal_obs)} abnormal, {normal_count} normal"
+                        ]
+                        for obs in abnormal_obs:
                             obs_texts.append(
-                                f"{obs.metric_name}: {obs.value} {obs.unit} ({status})"
+                                f"{obs.metric_name}: {obs.value} {obs.unit} "
+                                f"(flagged {obs.flag or 'abnormal'})"
                             )
 
-                        await graph_service.add_observations(
-                            obs_texts,
+                        await graph_service.add_user_facts(
+                            user_id=str(self.user.id),
+                            facts=obs_texts,
                             source=f"report_{report.filename}"
                         )
+
+                        # Sync report-level inferences to Mem0 so the "Health Memory"
+                        # reflects document findings as well.
+                        if memory_service.is_available:
+                            abnormal_observations = abnormal_obs  # already computed above
+                            # normal_count already calculated above
+
+                            summary_parts = [
+                                f"report {report.filename} processed",
+                                f"{len(observations)} observations extracted",
+                                f"{len(abnormal_observations)} abnormal and {normal_count} normal flags",
+                            ]
+                            if report.doc_type:
+                                summary_parts.append(f"document type {report.doc_type}")
+                            report_summary = "; ".join(summary_parts)
+
+                            summary_result = await memory_service.add(
+                                content=f"report inference summary: {report_summary}",
+                                user_id=str(self.user.id),
+                                metadata={
+                                    "source": "report_inference",
+                                    "report_id": str(report.id),
+                                    "doc_type": report.doc_type,
+                                },
+                            )
+                            if isinstance(summary_result, dict) and summary_result.get("error"):
+                                logger.warning(
+                                    "Failed to sync report summary to Mem0 for report %s: %s",
+                                    report_id,
+                                    summary_result["error"],
+                                )
+
+                            # Store abnormal findings as a single combined memory
+                            # instead of individual calls to avoid Groq TPM exhaustion.
+                            if abnormal_observations:
+                                abnormal_lines = []
+                                for obs in abnormal_observations[:12]:
+                                    abnormal_lines.append(
+                                        f"{obs.metric_name} measured {obs.value} {obs.unit} "
+                                        f"flagged {obs.flag or 'abnormal'}"
+                                    )
+                                combined_text = (
+                                    f"report inference abnormal findings from {report.filename}:\n- "
+                                    + "\n- ".join(abnormal_lines)
+                                )
+                                abnormal_result = await memory_service.add(
+                                    content=combined_text,
+                                    user_id=str(self.user.id),
+                                    metadata={
+                                        "source": "report_inference",
+                                        "report_id": str(report.id),
+                                        "kind": "abnormal_findings_batch",
+                                        "abnormal_count": len(abnormal_observations),
+                                    },
+                                )
+                                if isinstance(abnormal_result, dict) and abnormal_result.get("error"):
+                                    logger.warning(
+                                        "Failed to sync abnormal observations to Mem0 "
+                                        "(report=%s): %s",
+                                        report_id,
+                                        abnormal_result["error"],
+                                    )
 
             logger.info(f"Background sync complete for report {report_id}")
 

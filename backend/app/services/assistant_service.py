@@ -27,7 +27,7 @@ class AssistantService:
     1. Mem0: Long-term memory for user preferences and facts
     2. Graphiti: Knowledge graph for medical reasoning and temporal facts
     3. RAG: Retrieval from uploaded reports and observations
-    4. LLM: Generative response (Ollama MedGemma / Gemini)
+    4. LLM: Generative response (OpenRouter primary → Gemini → Ollama last resort)
     """
 
     def __init__(self, db: AsyncSession):
@@ -80,12 +80,12 @@ class AssistantService:
         await self.db.commit()
 
         # 3. Parallel Retrieval Phase
-        # We gather context from RAG, Memory, and Graph
-        rag_context, memory_context, graph_context = await self._gather_context(user_id, message)
+        # We gather context from RAG (structured), Memory, and Graph
+        rag_structured, memory_context, graph_context = await self._gather_context(user_id, message)
 
         # 4. Context Assembly
         full_context = self._assemble_context(
-            rag_context=rag_context,
+            rag_context=rag_structured,
             memory_context=memory_context,
             graph_context=graph_context
         )
@@ -105,17 +105,18 @@ class AssistantService:
         # Update Memory & Graph with new interaction
         await self._update_memory_and_graph(user_id, message, response_content)
 
-        # Extract citations (placeholder logic, usually LLM would provide them structured)
-        citations = self._extract_citations(rag_context)
+        # Extract citations from structured RAG sources + memory/graph flags
+        citations = self._extract_citations(rag_structured, memory_context, graph_context)
 
         # Save assistant message
+        rag_sources = rag_structured.get("sources", []) if isinstance(rag_structured, dict) else []
         assistant_msg = ChatMessage(
             session_id=session_id,
             role="assistant",
             content=response_content,
             message_metadata={
                 "citations": [c.dict() for c in citations],
-                "rag_sources": len(rag_context),
+                "rag_sources": len(rag_sources),
                 "memories_used": len(memory_context),
                 "graph_facts_used": len(graph_context)
             },
@@ -127,31 +128,30 @@ class AssistantService:
 
         return response_content, citations, session_id, assistant_msg.id
 
-    async def _gather_context(self, user_id: uuid.UUID, query: str) -> Tuple[str, List[Dict], List[str]]:
+    async def _gather_context(self, user_id: uuid.UUID, query: str) -> Tuple[Dict[str, Any], List[Dict], List[str]]:
         """
         Retrieve context from all sources.
-        Returns: (rag_text, memories, graph_facts)
+        Returns: (rag_structured, memories, graph_facts)
         """
-        # A. RAG Retrieval (Documents & Observations)
-        # Note: get_user_context returns a formatted string, we might want raw docs too if we want citations
-        # For now, we'll use the service's high-level method for the text, and query again if we need citation metadata
-        rag_text = await self.rag_service.get_user_context(user_id, query, self.db)
+        # A. RAG Retrieval – structured (includes source metadata for citations)
+        rag_structured = await self.rag_service.get_user_context_structured(user_id, query, self.db)
 
         # B. Memory Retrieval (User facts/prefs)
         memories = await self.memory_service.search(query, user_id=str(user_id), limit=5)
 
         # C. Graph Retrieval (Medical knowledge/relationships)
-        graph_facts = await self.graph_service.search(query, limit=5)
+        graph_facts = await self.graph_service.search_user(str(user_id), query, limit=5)
 
-        return rag_text, memories, graph_facts
+        return rag_structured, memories, graph_facts
 
-    def _assemble_context(self, rag_context: str, memory_context: List[Dict], graph_context: List[str]) -> str:
+    def _assemble_context(self, rag_context: Dict[str, Any], memory_context: List[Dict], graph_context: List[str]) -> str:
         """Combine all context sources into a structured string for the LLM."""
         parts = []
 
         # 1. User Memories (Preferences, facts)
         if memory_context:
             parts.append("--- RELEVANT MEMORIES (User Facts & Preferences) ---")
+            parts.append("[Source: User Memory / Health Profile]")
             for m in memory_context:
                 if isinstance(m, str):
                     text = m
@@ -173,13 +173,15 @@ class AssistantService:
         # 2. Knowledge Graph (Medical connections)
         if graph_context:
             parts.append("\n--- MEDICAL KNOWLEDGE GRAPH (Relationships & Facts) ---")
+            parts.append("[Source: Medical Knowledge Graph / Graphiti]")
             for f in graph_context:
                 parts.append(f"- {f}")
 
-        # 3. RAG Data (Reports & Lab Results)
-        if rag_context:
+        # 3. RAG Data (Reports & Lab Results) – use the structured text
+        rag_text = rag_context.get("text", "") if isinstance(rag_context, dict) else rag_context
+        if rag_text:
             parts.append("\n--- MEDICAL DATA & REPORTS ---")
-            parts.append(rag_context)
+            parts.append(rag_text)
 
         return "\n".join(parts)
 
@@ -197,30 +199,68 @@ class AssistantService:
             )
 
             # Add to Graphiti (structured episodes)
-            await self.graph_service.add_episode(
-                f"User asked: {user_msg}\nAssistant answered: {assistant_msg}",
+            await self.graph_service.add_user_episode(
+                user_id=str(user_id),
+                content=f"User asked: {user_msg}\nAssistant answered: {assistant_msg}",
                 source="user_chat"
             )
         except Exception as e:
             logger.error(f"Error updating memory/graph: {e}")
 
-    def _extract_citations(self, rag_context_str: str) -> List[Citation]:
+    def _extract_citations(
+        self,
+        rag_structured: Dict[str, Any],
+        memory_context: List[Dict],
+        graph_context: List[str],
+    ) -> List[Citation]:
         """
-        Attempt to reconstruct citations from the RAG context string.
-        This is a simplification. Ideally, we pass the raw RAG docs through.
+        Build Citation objects from the structured context sources.
         """
-        # Since we only have the string from `get_user_context`, we can't easily rebuild
-        # precise Citation objects without parsing or changing RAGService to return structured data.
-        # For MVP, we return empty citations or generic ones if we detect report content.
-        citations = []
-        if "From report" in rag_context_str:
-            # Minimal dummy citation to indicate source usage
+        citations: List[Citation] = []
+
+        # RAG document sources
+        rag_sources = rag_structured.get("sources", []) if isinstance(rag_structured, dict) else []
+        for src in rag_sources:
+            if src.get("type") == "report":
+                citations.append(Citation(
+                    report_id=src.get("report_id"),
+                    metric_name=src.get("filename", "Report"),
+                    value="Referenced Report",
+                    excerpt=src.get("excerpt", ""),
+                ))
+            elif src.get("type") == "observations":
+                citations.append(Citation(
+                    report_id=None,
+                    metric_name=src.get("metric_name", "Lab Observation"),
+                    value="Lab Data",
+                    excerpt=src.get("excerpt", ""),
+                ))
+
+        # Memory source indicator
+        if memory_context:
+            mem_texts = []
+            for m in memory_context:
+                if isinstance(m, str):
+                    mem_texts.append(m[:100])
+                elif isinstance(m, dict):
+                    t = m.get("memory") or m.get("text") or m.get("content") or ""
+                    mem_texts.append(t[:100])
             citations.append(Citation(
                 report_id=None,
-                metric_name="General",
-                value="Referenced Report",
-                excerpt="See context for details"
+                metric_name="User Memory (Mem0)",
+                value=f"{len(memory_context)} memories referenced",
+                excerpt="; ".join(mem_texts)[:300],
             ))
+
+        # Graph source indicator
+        if graph_context:
+            citations.append(Citation(
+                report_id=None,
+                metric_name="Medical Knowledge Graph",
+                value=f"{len(graph_context)} graph facts referenced",
+                excerpt="; ".join(str(f)[:80] for f in graph_context)[:300],
+            ))
+
         return citations
 
     async def get_session_history(

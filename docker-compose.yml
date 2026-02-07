@@ -49,6 +49,8 @@ services:
       - paddle_models:/root/.paddleocr
       # Persist ChromaDB vector store
       - chroma_data:/app/chroma_db
+      # Persist Mem0's separate ChromaDB store
+      - mem0_chroma:/app/mem0_chroma
       # Persist Hugging Face model/cache locally
       - hf_cache:/root/.cache/huggingface
     environment:
@@ -68,6 +70,12 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - GOOGLE_PLACES_API_KEY=${GOOGLE_PLACES_API_KEY:-}
+      # OpenRouter (PRIMARY LLM provider)
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - OPENROUTER_BASE_URL=${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+      - OPENROUTER_MODEL=${OPENROUTER_MODEL:-openrouter/pony-alpha}
+      - OPENROUTER_FALLBACK_MODEL=${OPENROUTER_FALLBACK_MODEL:-upstage/solar-pro-3:free}
+      - OPENROUTER_TIMEOUT=${OPENROUTER_TIMEOUT:-120}
       # ElevenLabs TTS Configuration
       - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY:-}
       - ELEVENLABS_VOICE_ID=${ELEVENLABS_VOICE_ID:-21m00Tcm4TlvDq8ikWAM}
@@ -86,7 +94,17 @@ services:
       - NEO4J_USER=${NEO4J_USER:-neo4j}
       - NEO4J_PASSWORD=${NEO4J_PASSWORD:-changeme}
       - MEM0_COLLECTION=${MEM0_COLLECTION:-user_memories}
+      - MEM0_EMBED_MODEL=${MEM0_EMBED_MODEL:-nomic-embed-text}
+      - MEM0_GROQ_MODEL=${MEM0_GROQ_MODEL:-llama-3.1-8b-instant}
+      - MEM0_PREFER_GROQ=true
+      - GRAPHITI_GROQ_MODEL=${GRAPHITI_GROQ_MODEL:-moonshotai/kimi-k2-instruct-0905}
       - GRAPHITI_DATABASE=${GRAPHITI_DATABASE:-neo4j}
+      # Groq rate-limit mitigation (tune for your Groq plan)
+      - MEM0_CALL_INTERVAL_SECONDS=${MEM0_CALL_INTERVAL_SECONDS:-3.0}
+      - MEM0_MAX_RETRIES=${MEM0_MAX_RETRIES:-5}
+      - MEM0_RETRY_BASE_SECONDS=${MEM0_RETRY_BASE_SECONDS:-2.0}
+      - MEM0_BATCH_DELAY_SECONDS=${MEM0_BATCH_DELAY_SECONDS:-5.0}
+      - MEM0_SYNC_BATCH_SIZE=${MEM0_SYNC_BATCH_SIZE:-15}
       # SMS Configuration (Twilio or mock mode)
       - SMS_MODE=${SMS_MODE:-mock}
       - SMS_TEST_TO_NUMBER=${SMS_TEST_TO_NUMBER:-}
@@ -117,6 +135,12 @@ services:
       NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-changeme}
       NEO4J_PLUGINS: '["apoc"]'
       NEO4J_dbms_security_procedures_unrestricted: apoc.*
+      # ---- Performance tuning (prevents default tiny-heap lag) ----
+      NEO4J_server_memory_heap_initial__size: 512m
+      NEO4J_server_memory_heap_max__size: 1G
+      NEO4J_server_memory_pagecache_size: 512m
+      # Disable unnecessary features for faster startup
+      NEO4J_dbms_usage__report_enabled: "false"
     ports:
       - "7474:7474"  # Browser UI
       - "7687:7687"  # Bolt protocol
@@ -153,6 +177,7 @@ volumes:
   postgres_data:
   paddle_models:
   chroma_data:
+  mem0_chroma:
   hf_cache:
   neo4j_data:
   neo4j_logs:

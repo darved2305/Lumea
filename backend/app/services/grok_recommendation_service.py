@@ -19,6 +19,9 @@ from app.models import (
 )
 from app.settings import settings
 from app.services.recommendation_service import get_user_recommendations
+from app.services.memory_service import get_memory_service
+from app.services.rag_service import get_rag_service
+from app.services.graph_service import get_graph_service
 
 logger = logging.getLogger(__name__)
 
@@ -111,7 +114,14 @@ async def generate_grok_recommendations(
 
 
 def _build_grok_prompt(context: Dict[str, Any]) -> str:
-    """Build prompt for Grok API based on user health data."""
+    """Build prompt for Grok API based on user health data.
+    
+    Includes:
+    - User profile and conditions (from PostgreSQL)
+    - User preferences and facts (from Mem0)
+    - Historical context (from RAG)
+    - Medical relationships (from Neo4j/Graphiti)
+    """
     
     prompt_parts = [
         "Analyze the following health profile and generate personalized recommendations.",
@@ -161,6 +171,46 @@ def _build_grok_prompt(context: Dict[str, Any]) -> str:
             prompt_parts.append("**Contributing Factors:**")
             for factor, score in sorted(contributions.items(), key=lambda x: x[1], reverse=True)[:5]:
                 prompt_parts.append(f"- {factor}: {score}")
+    
+    # =========================================================================
+    # NEW: User Preferences from Mem0
+    # =========================================================================
+    user_preferences = context.get("user_preferences", [])
+    if user_preferences:
+        prompt_parts.append("")
+        prompt_parts.append("**User Preferences & Personal Context:** (IMPORTANT: Tailor recommendations to these)")
+        for pref in user_preferences[:7]:  # Limit to avoid prompt bloat
+            prompt_parts.append(f"- {pref}")
+    
+    # =========================================================================
+    # NEW: Historical Context from RAG
+    # =========================================================================
+    historical_context = context.get("historical_context", [])
+    if historical_context:
+        prompt_parts.append("")
+        prompt_parts.append("**Historical Health Data:**")
+        for snippet in historical_context[:5]:  # Limit to avoid prompt bloat
+            # Truncate long snippets
+            display_snippet = snippet[:300] + "..." if len(snippet) > 300 else snippet
+            prompt_parts.append(f"- {display_snippet}")
+    
+    # =========================================================================
+    # NEW: Medical Relationships from Neo4j/Graphiti
+    # =========================================================================
+    medical_relationships = context.get("medical_relationships", [])
+    if medical_relationships:
+        prompt_parts.append("")
+        prompt_parts.append("**Known Medical Relationships:**")
+        for rel in medical_relationships[:8]:  # Limit to avoid prompt bloat
+            prompt_parts.append(f"- {rel}")
+    
+    prompt_parts.append("")
+    prompt_parts.append("**IMPORTANT INSTRUCTIONS:**")
+    if user_preferences:
+        prompt_parts.append("- PERSONALIZE recommendations based on the user's preferences above")
+        prompt_parts.append("- Consider their lifestyle, dietary preferences, and stated concerns")
+    prompt_parts.append("- Be specific and actionable")
+    prompt_parts.append("- Prioritize based on health risk and user context")
     
     prompt_parts.append("")
     prompt_parts.append("**Required Output Format:**")
@@ -225,9 +275,10 @@ def _parse_grok_response(content: str) -> List[Dict[str, Any]]:
 async def save_recommendations_to_db(
     user_id: str,
     recommendations: List[Dict[str, Any]],
-    db: AsyncSession
+    db: AsyncSession,
+    context: Optional[Dict[str, Any]] = None
 ) -> None:
-    """Save generated recommendations to database."""
+    """Save generated recommendations to database with provenance tracking."""
     
     # Deactivate old recommendations
     result = await db.execute(
@@ -243,6 +294,16 @@ async def save_recommendations_to_db(
     priority_map = {"high": 1, "medium": 5, "low": 8}
     
     for rec_data in recommendations:
+        # Build provenance info based on context
+        provenance = {}
+        if context:
+            provenance = {
+                "memory": bool(context.get("user_preferences")),
+                "graph": bool(context.get("medical_relationships")),
+                "metrics": bool(context.get("observations")),
+                "profile": bool(context.get("profile")),
+            }
+        
         new_rec = ProfileRecommendation(
             user_id=user_id,
             recommendation_type=rec_data.get("category", "lifestyle"),
@@ -253,7 +314,8 @@ async def save_recommendations_to_db(
             evidence_jsonb={
                 "actions": rec_data.get("actions", []),
                 "evidence": rec_data.get("evidence", []),
-                "source": "grok_api"
+                "source": "grok_api",
+                "provenance": provenance,
             },
             is_active=True
         )
@@ -287,9 +349,9 @@ async def generate_and_save_recommendations(
         # Convert to our format for storage
         grok_recommendations = _convert_rule_recommendations(rule_recommendations)
     
-    # Save to database
+    # Save to database with context for provenance
     if grok_recommendations:
-        await save_recommendations_to_db(user_id, grok_recommendations, db)
+        await save_recommendations_to_db(user_id, grok_recommendations, db, context)
     
     return {
         "count": len(grok_recommendations),
@@ -299,9 +361,21 @@ async def generate_and_save_recommendations(
 
 
 async def _gather_user_context(user_id: str, db: AsyncSession) -> Dict[str, Any]:
-    """Gather all relevant user health data for recommendation generation."""
+    """Gather all relevant user health data for recommendation generation.
+    
+    Integrates data from:
+    1. PostgreSQL (profile, conditions, observations, health index)
+    2. Mem0 (user preferences and facts from conversations)
+    3. RAG (historical report context)
+    4. Neo4j/Graphiti (medical knowledge relationships)
+    """
+    import asyncio
     
     context = {}
+    
+    # =========================================================================
+    # 1. POSTGRESQL DATA (existing functionality)
+    # =========================================================================
     
     # Get profile
     result = await db.execute(
@@ -372,6 +446,123 @@ async def _gather_user_context(user_id: str, db: AsyncSession) -> Dict[str, Any]
             "confidence": health_index.confidence,
             "contributions": health_index.contributions or {}
         }
+    
+    # =========================================================================
+    # 2. MEMORY/KNOWLEDGE LAYER (NEW - parallel async queries)
+    # =========================================================================
+    
+    # Define async tasks for each service
+    async def get_memory_context():
+        """Fetch user preferences from Mem0."""
+        try:
+            memory_service = get_memory_service()
+            if not memory_service.is_available:
+                return []
+            
+            # Search for preferences relevant to recommendations
+            results = await memory_service.search(
+                query="preferences diet exercise lifestyle medication health goals concerns",
+                user_id=user_id,
+                limit=10
+            )
+            
+            # Extract memory text from results
+            memories = []
+            if isinstance(results, list):
+                for item in results:
+                    if isinstance(item, dict):
+                        text = item.get("memory", item.get("text", item.get("content", "")))
+                    else:
+                        text = str(item)
+                    if text:
+                        memories.append(text)
+            
+            return memories
+        except Exception as e:
+            logger.warning(f"Failed to get memory context: {e}")
+            return []
+    
+    async def get_rag_context():
+        """Fetch relevant historical data from RAG."""
+        try:
+            rag_service = get_rag_service()
+            
+            # Query for historical health patterns
+            results = await rag_service.query(
+                user_id=user_id,
+                query="health trends patterns previous recommendations lab results",
+                k=5
+            )
+            
+            # Extract relevant snippets
+            snippets = []
+            if results:
+                for doc in results:
+                    if isinstance(doc, dict):
+                        content = doc.get("content", doc.get("text", ""))
+                        if content:
+                            # Truncate long snippets
+                            snippets.append(content[:500] if len(content) > 500 else content)
+            
+            return snippets
+        except Exception as e:
+            logger.warning(f"Failed to get RAG context: {e}")
+            return []
+    
+    async def get_graph_context():
+        """Fetch medical relationships from Neo4j/Graphiti."""
+        try:
+            graph_service = get_graph_service()
+            if graph_service.client is None:
+                return []
+            
+            # Search for relevant medical knowledge
+            results = await graph_service.search_user(
+                user_id=user_id,
+                query="health conditions medications recommendations risk factors",
+                limit=10
+            )
+            
+            return results if isinstance(results, list) else []
+        except Exception as e:
+            logger.warning(f"Failed to get graph context: {e}")
+            return []
+    
+    # Execute all queries in parallel for performance
+    try:
+        memory_results, rag_results, graph_results = await asyncio.gather(
+            get_memory_context(),
+            get_rag_context(),
+            get_graph_context(),
+            return_exceptions=True
+        )
+        
+        # Handle any exceptions from gather
+        if isinstance(memory_results, Exception):
+            logger.warning(f"Memory query failed: {memory_results}")
+            memory_results = []
+        if isinstance(rag_results, Exception):
+            logger.warning(f"RAG query failed: {rag_results}")
+            rag_results = []
+        if isinstance(graph_results, Exception):
+            logger.warning(f"Graph query failed: {graph_results}")
+            graph_results = []
+        
+        # Add to context
+        context["user_preferences"] = memory_results
+        context["historical_context"] = rag_results
+        context["medical_relationships"] = graph_results
+        
+        logger.info(
+            f"Context enriched with {len(memory_results)} memories, "
+            f"{len(rag_results)} RAG docs, {len(graph_results)} graph facts"
+        )
+        
+    except Exception as e:
+        logger.error(f"Failed to gather memory/knowledge context: {e}")
+        context["user_preferences"] = []
+        context["historical_context"] = []
+        context["medical_relationships"] = []
     
     return context
 

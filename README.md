@@ -12,6 +12,7 @@ A full-stack health companion platform for preventive health management. Upload 
 - [Tech Stack](#tech-stack)
 - [Architecture](#architecture)
 - [Features](#features)
+- [Memory & Knowledge Graph: Intelligent Health Context](#memory--knowledge-graph-intelligent-health-context)
 - [Medicines: Find Cheap Alternatives](#medicines-find-cheap-alternatives)
 - [Voice Agent: AI Health Assistant](#voice-agent-ai-health-assistant)
 - [Physics Twin: Health Telemetry & Organ Scoring](#physics-twin-health-telemetry--organ-scoring)
@@ -34,11 +35,12 @@ Lumea is a unified medical companion platform that enables users to:
 - **Upload medical reports** (PDF, images) and automatically extract health metrics via OCR
 - **Track health profiles** with comprehensive intake forms (conditions, medications, allergies, family history)
 - **Monitor health trends** with a computed Health Index and interactive charts
-- **Receive AI recommendations** based on extracted lab values and health patterns
+- **Receive AI recommendations** based on extracted lab values and health patterns powered by OpenRouter (Claude Sonnet 4.5)
 - **Compare reports over time** with AI-powered summaries and trend analysis
 - **Chat with an AI assistant** grounded in your personal health data
+- **🧠 Memory & Knowledge Graph**: Persistent health memory with Mem0 and interconnected insights via Neo4j/Graphiti for temporal reasoning and contradiction detection
 - **🎙️ Voice Agent**: Speak naturally to an AI health assistant for hands-free access to personalized health insights
-- **🏥 Physics Twin**: Interactive 3D organ scoring engine with real-time telemetry, condition detection, and evidence-based health recommendations powered by your actual medical data
+- **🏥 Physics Twin**: Interactive 2D organ simulation with real-time telemetry, condition detection, and evidence-based health recommendations powered by your actual medical data
 
 ---
 
@@ -47,13 +49,18 @@ Lumea is a unified medical companion platform that enables users to:
 | Layer | Technology |
 |-------|------------|
 | **Frontend** | React 18, TypeScript, Vite, Framer Motion, Recharts, React Router, i18next |
-| **Backend** | FastAPI (Python 3.10+), SQLAlchemy 2.0, Pydantic |
+| **Backend** | FastAPI (Python 3.13+), SQLAlchemy 2.0 (async), Pydantic v2 |
 | **Database** | PostgreSQL (Neon or local), Alembic migrations |
+| **Graph Database** | Neo4j (knowledge graph for health relationships) |
+| **Vector Stores** | ChromaDB (RAG), Mem0 (persistent health memory) |
 | **OCR/Extraction** | PaddleOCR, pdfplumber, PyMuPDF |
-| **AI/LLM** | Google Gemini API, Grok API (xAI), Ollama (MedGemma), ChromaDB (RAG) |
+| **AI/LLM** | OpenRouter (Claude Sonnet 4.5 primary), Google Gemini API (fallback), Groq (fast inference), Ollama (local LLM/embeddings) |
+| **Memory Layer** | Mem0 (user-scoped persistent memory with automatic fact extraction) |
+| **Knowledge Graph** | Graphiti-core (temporal reasoning, entity relationships, contradiction detection) |
+| **Embeddings** | Ollama (nomic-embed-text local), OpenAI-compatible APIs |
 | **Voice Agent** | Web Speech API (STT), ElevenLabs TTS, Google Gemini |
-| **Realtime** | WebSocket (FastAPI native) |
-| **Auth** | JWT (python-jose), bcrypt |
+| **Realtime** | WebSocket (FastAPI native), Server-Sent Events (telemetry streaming) |
+| **Auth** | JWT (python-jose), bcrypt, rate limiting middleware |
 
 ---
 
@@ -226,6 +233,190 @@ sequenceDiagram
 - **Real-time feedback**: Visual orb animations for listening/thinking/speaking
 - **Comprehensive context**: Uses profile, conditions, medications, allergies, reports, RAG data
 - **Accessibility-first**: Ideal for hands-free use, visual impairments, or quick queries
+
+---
+
+## Memory & Knowledge Graph: Intelligent Health Context
+
+### Overview
+
+The **Memory & Knowledge Graph** system provides persistent, intelligent health context that evolves with your medical journey. Built on **Mem0** (memory layer), **Graphiti** (knowledge graph engine), and **Neo4j** (graph database), this architecture enables the platform to:
+
+- **Remember** health facts across sessions (conditions, metrics, lifestyle patterns, medication changes)
+- **Connect** disparate health data points into meaningful relationships
+- **Reason temporally** about health trends and contradictions
+- **Generate insights** from interconnected health knowledge
+
+### Architecture
+
+```mermaid
+flowchart TB
+    subgraph Input["Health Data Sources"]
+        Profile[Health Profile]
+        Reports[Medical Reports]
+        Questionnaire[User Questionnaires]
+        Assistant[AI Assistant Chats]
+    end
+
+    subgraph Memory["Mem0 Memory Layer"]
+        Extraction[Fact Extraction<br/>via Groq LLM]
+        Storage[ChromaDB<br/>Vector Store]
+        Retrieval[Semantic Search]
+    end
+
+    subgraph Graph["Graphiti Knowledge Graph"]
+        Entities[Entity Nodes<br/>conditions, metrics, meds]
+        Relationships[Temporal Relationships<br/>affects, caused_by, treats]
+        Episodes[Health Episodes<br/>time-stamped events]
+        Insights[AI-Generated Insights<br/>contradictions, patterns]
+    end
+
+    subgraph DB["Neo4j Graph Database"]
+        Nodes[Entity Nodes]
+        Edges[Relationship Edges]
+        Indexes[Vector Indexes<br/>Ollama embeddings]
+    end
+
+    Input --> Extraction
+    Extraction --> Storage
+    Storage --> Retrieval
+    
+    Input --> Entities
+    Entities --> Relationships
+    Relationships --> Episodes
+    Episodes --> Insights
+    
+    Entities --> Nodes
+    Relationships --> Edges
+    Edges --> Indexes
+    
+    Retrieval -.->|Enriches| Recommendations[AI Recommendations]
+    Insights -.->|Powers| Dashboard[Features Dashboard]
+```
+
+### Key Features
+
+#### 1. **Persistent Memory (Mem0)**
+
+- **Automatic Fact Extraction**: Converts natural language health data into structured facts
+  - "Sleep is about 5 hours per night" → Extracted memory fact
+  - "Has condition High Blood Pressure" → Indexed and searchable
+  - "BMI is 25.2 which falls in overweight range" → Computed and stored
+
+- **User-Scoped Storage**: Each user's memories are isolated and secure
+- **Vector-Based Retrieval**: Semantic search powered by local Ollama embeddings (nomic-embed-text)
+- **Deduplication**: Prevents redundant facts with intelligent merging
+
+#### 2. **Knowledge Graph (Graphiti + Neo4j)**
+
+- **Entity Relationship Mapping**:
+  - Conditions связаны with symptoms, medications, and risk factors
+  - Lab values connected to reference ranges and health implications
+  - Lifestyle factors (sleep, diet, exercise) linked to health outcomes
+
+- **Temporal Reasoning**:
+  - Track health changes over time (BP trend: 140/90 in Jan → 130/85 in Feb)
+  - Episode creation for significant health events
+  - Valid/expired relationships based on temporal context
+
+- **Contradiction Detection**:
+  - Identifies conflicting health data (e.g., "no allergies" vs. "allergic to dust")
+  - Highlights diagnostic uncertainties
+  - Flags medication interactions
+
+- **Graph-Powered Insights**:
+  - **Temporal Patterns**: "BP decreased after starting medication X"
+  - **Key Relationships**: "High BMI correlates with elevated cholesterol"
+  - **Contradictions**: "Sleep reported as both 5hrs and 8hrs - needs clarification"
+
+#### 3. **Interactive Visualization**
+
+**Features Dashboard** (`/features`) provides:
+
+- **Memory Dashboard**:
+  - View all extracted health facts
+  - Search memories semantically
+  - Add/delete facts manually
+  - Real-time sync status
+
+- **Knowledge Graph Viewer**:
+  - Interactive node-edge visualization
+  - Filter by conditions, medications, metrics
+  - Zoom/pan for detailed exploration
+  - Click nodes/edges for metadata
+
+- **AI Insights Panel**:
+  - Temporal insights (trend analysis)
+  - Relationship insights (correlation patterns)
+  - Contradiction insights (data conflicts)
+  - Each insight includes evidence and confidence score
+
+### Technical Implementation
+
+#### Mem0 Configuration
+
+```python
+# Memory layer uses:
+# - Groq (llama-3.3-70b-versatile) for fact extraction
+# - ChromaDB for vector storage
+# - HuggingFace embeddings (local)
+# - User-scoped collections
+```
+
+#### Graphiti Configuration
+
+```python
+# Knowledge graph uses:
+# - OpenRouter (Claude Sonnet 4.5) for entity extraction
+# - Ollama (nomic-embed-text) for embeddings
+# - Neo4j for graph persistence
+# - User-scoped graph isolation via group_ids
+```
+
+#### Data Flow
+
+1. **Profile Sync**: Health profile questionnaire auto-syncs facts to Mem0 and Graphiti
+2. **Report Upload**: PDF extraction triggers memory and graph updates
+3. **Assistant Chat**: Conversational context stored as episodic memories
+4. **Background Processing**: Fact extraction and graph building happen asynchronously
+
+### API Endpoints
+
+#### Memory API (`/api/memory`)
+
+- `GET /api/memory/facts` - List all user memories
+- `POST /api/memory/search` - Semantic search across memories
+- `POST /api/memory/add` - Manually add a memory fact
+- `DELETE /api/memory/{memory_id}` - Delete specific memory
+
+#### Graph API (`/api/graph`)
+
+- `GET /api/graph/relationships?limit=30` - Get graph nodes and edges
+- `POST /api/graph/insights` - Request AI-generated insights (temporal/relationships/contradictions)
+- `GET /api/graph/stats` - Graph statistics (node count, relationship count)
+
+### Performance & Scalability
+
+- **Rate Limiting**: Groq free tier handles ~30 requests/minute (automatic retry with exponential backoff)
+- **Local Embeddings**: Ollama eliminates API costs for vector operations
+- **Caching**: Frequently accessed graph patterns cached in-memory
+- **Async Processing**: Profile/report sync uses background tasks to avoid blocking HTTP requests
+- **Neo4j Indexes**: Full-text and vector indexes optimize graph queries
+
+### Privacy & Security
+
+- **User Isolation**: Mem0 and Graphiti enforce user-scoped data via `user_id` and `group_ids`
+- **No Cross-User Leakage**: Client-side filtering ensures graph results never leak between users
+- **JWT Authentication**: All memory/graph endpoints require valid JWT tokens
+- **Local Processing**: Embeddings done locally (Ollama) - no external API calls for vectors
+
+### Use Cases
+
+1. **Medication Adherence**: Graph tracks "Started medication X on date Y" → Generate reminders
+2. **Lifestyle Impact Analysis**: Correlate sleep patterns with BP readings over time
+3. **Family History Mapping**: Link genetic conditions to risk factors
+4. **Report Comparison**: Memory of previous lab values enables delta analysis
+5. **Contraindication Detection**: Graph identifies medication-condition conflicts
 
 ---
 
@@ -1381,14 +1572,28 @@ Create a `.env` file in the `backend/` directory:
 | `JWT_ALGORITHM` | JWT algorithm | `HS256` | No (default: HS256) |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | Token expiration | `10080` (7 days) | No (default: 10080) |
 | `FRONTEND_ORIGIN` | CORS allowed origin | `http://localhost:5173` | Yes |
+| **AI/LLM Configuration** |||
+| `OPENROUTER_API_KEY` | OpenRouter API key (primary LLM for recommendations) | `sk-or-v1-...` | **Yes** |
+| `OPENROUTER_MODEL` | OpenRouter model identifier | `anthropic/claude-sonnet-4` | No (default: claude-sonnet-4) |
 | `GROK_API_KEY` | xAI Grok API key (for AI summaries & medicine parsing) | `gsk_...` | Yes |
+| `GROQ_API_KEY` | Groq API key (fast inference for Mem0/Graphiti) | `gsk_...` | **Yes** |
 | `XAI_API_BASE` | xAI API endpoint base URL | `https://api.x.ai/v1` | No (default provided) |
 | `GROK_MODEL` | Grok model identifier | `grok-beta` | No (default: grok-beta) |
+| `GEMINI_API_KEY` | Google Gemini API key (fallback for summaries & voice) | `AIza...` | Yes (for voice agent) |
+| `OLLAMA_BASE_URL` | Ollama server URL (local LLM/embeddings) | `http://localhost:11434` | No (default: localhost:11434) |
+| `OLLAMA_MODEL` | Ollama model name | `llama3.2:latest` | No (default: llama3.2:latest) |
+| `USE_GEMINI_FALLBACK` | Enable Gemini fallback when primary LLM unavailable | `true` | No (default: false) |
+| **Memory & Graph Configuration** |||
+| `NEO4J_URI` | Neo4j connection URI | `bolt://localhost:7687` | **Yes** (for graph features) |
+| `NEO4J_USER` | Neo4j database username | `neo4j` | **Yes** |
+| `NEO4J_PASSWORD` | Neo4j database password | `your-password` | **Yes** |
+| `GRAPHITI_GROQ_MODEL` | Groq model for Graphiti entity extraction | `llama-3.3-70b-versatile` | No (default provided) |
+| `MEM0_GROQ_MODEL` | Groq model for Mem0 fact extraction | `llama-3.3-70b-versatile` | No (default provided) |
+| **Other Services** |||
 | `GOOGLE_PLACES_API_KEY` | Google Maps API key (for pharmacy search) | `AIzaSyD...` | No (fallback to mock data) |
-| `GEMINI_API_KEY` | Google Gemini API key (optional fallback for summaries) | `AIza...` | No |
-| `OLLAMA_BASE_URL` | Ollama server URL (optional) | `http://localhost:11434` | No |
-| `OLLAMA_MODEL` | Ollama model name | `medgemma:4b` | No |
-| `USE_GEMINI_FALLBACK` | Enable Gemini fallback when Grok unavailable | `true` | No (default: false) |
+| `ELEVENLABS_API_KEY` | ElevenLabs TTS API key (for voice agent) | `sk_...` | No (browser TTS fallback) |
+| `ELEVENLABS_VOICE_ID` | ElevenLabs voice ID | `21m00Tcm4TlvDq8ikWAM` | No (default: Rachel) |
+| **SMS Reminders** |||
 | `SMS_MODE` | SMS sending mode: `twilio` (real) or `mock` (test/log only) | `mock` | No (default: mock) |
 | `SMS_TEST_TO_NUMBER` | Default phone for test SMS (mock mode) | `+15551234567` | No |
 | `TWILIO_ACCOUNT_SID` | Twilio Account SID (required for `twilio` mode) | `ACxxxxxxxx` | No* |
@@ -1397,11 +1602,19 @@ Create a `.env` file in the `backend/` directory:
 | `REMINDER_SCHEDULER_ENABLED` | Enable/disable background reminder scheduler | `true` | No (default: true) |
 | `REMINDER_CHECK_INTERVAL_SECONDS` | How often scheduler checks for due reminders | `60` | No (default: 60) |
 
-**Medicines Feature Notes:**
+**Memory & Graph Feature Notes:**
 
-- **GROK_API_KEY**: Required for free-text medicine parsing (e.g., "Aspirin 500mg tablets" → structured data)
-- **GOOGLE_PLACES_API_KEY**: Optional for pharmacy search. If not set, returns mock pharmacy data for testing
-- **XAI_API_BASE** & **GROK_MODEL**: Typically use defaults; modify only for different xAI endpoints or model versions
+- **NEO4J_***: Required for knowledge graph features. Use Docker: `docker run -p 7687:7687 -p 7474:7474 -e NEO4J_AUTH=neo4j/your-password neo4j:latest`
+- **GROQ_API_KEY**: Powers Mem0 fact extraction and Graphiti entity extraction. Free tier: ~30 requests/min (automatic retry with backoff)
+- **OPENROUTER_API_KEY**: Primary LLM for recommendations. Supports Claude, GPT-4, and other models. Get key from [OpenRouter](https://openrouter.ai/)
+- **Ollama embeddings**: Local nomic-embed-text model eliminates API costs. Install: `ollama pull nomic-embed-text`
+
+**AI/LLM Feature Notes:**
+
+- **OPENROUTER_API_KEY**: Primary recommendation engine. Supports 100+ models with unified API
+- **GROK_API_KEY**: Required for medicine parsing and AI summaries
+- **GEMINI_API_KEY**: Required for voice agent, optional fallback for recommendations
+- **OLLAMA_BASE_URL**: Local LLM for offline operation. Supports medical models like medgemma
 
 **SMS Reminders Feature Notes:**
 
@@ -1415,7 +1628,7 @@ See [backend/.env.example](backend/.env.example) for a complete template.
 
 ## Database
 
-### Migrations
+### PostgreSQL (Primary Database)
 
 Migrations are managed with Alembic:
 

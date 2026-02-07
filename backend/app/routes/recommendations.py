@@ -167,6 +167,11 @@ async def get_stored_recommendations(
         
         items = []
         for rec in recommendations:
+            # Extract provenance from evidence_jsonb
+            provenance = {}
+            if rec.evidence_jsonb:
+                provenance = rec.evidence_jsonb.get("provenance", {})
+            
             items.append({
                 "id": str(rec.id),
                 "title": rec.title,
@@ -175,6 +180,7 @@ async def get_stored_recommendations(
                 "priority": _priority_to_label(rec.priority),
                 "actions": rec.evidence_jsonb.get("actions", []) if rec.evidence_jsonb else [],
                 "evidence": rec.evidence_jsonb.get("evidence", []) if rec.evidence_jsonb else [],
+                "provenance": provenance,  # NEW: Include provenance for tooltip
                 "created_at": rec.created_at.isoformat() if rec.created_at else None,
                 "is_completed": rec.completed_at is not None
             })

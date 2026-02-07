@@ -314,6 +314,80 @@ class RAGService:
                 context_parts.append(doc["content"])
         
         return "\n\n---\n\n".join(context_parts)
+
+    async def get_user_context_structured(
+        self,
+        user_id: uuid.UUID,
+        query: str,
+        db: Optional[AsyncSession] = None,
+    ) -> Dict[str, Any]:
+        """
+        Get structured context for the LLM along with source metadata for citations.
+
+        Returns:
+            {
+                "text": "<formatted context string for the LLM>",
+                "sources": [
+                    {"type": "report", "filename": "...", "report_id": "...", "excerpt": "..."},
+                    {"type": "observations", "metric_name": "...", "excerpt": "..."},
+                    ...
+                ]
+            }
+        """
+        # Sync user data if db provided
+        if db:
+            try:
+                await self.sync_user_reports(user_id, db)
+                await self.sync_user_observations(user_id, db)
+            except Exception as e:
+                logger.warning(f"RAG sync failed for user {user_id}: {e}")
+
+        try:
+            docs = await self.query(user_id, query)
+        except Exception as e:
+            logger.warning(f"RAG context unavailable for user {user_id}: {e}")
+            return {"text": "No health data available for this user yet.", "sources": []}
+
+        if not docs:
+            return {"text": "No health data available for this user yet.", "sources": []}
+
+        context_parts: list[str] = []
+        sources: list[dict] = []
+
+        for doc in docs:
+            meta = doc.get("metadata", {})
+            source_type = meta.get("source_type", "unknown")
+            content = doc.get("content", "")
+
+            if source_type == "report":
+                filename = meta.get("filename", "Unknown report")
+                report_id = meta.get("report_id")
+                context_parts.append(f"[Source: Report '{filename}']\n{content}")
+                sources.append({
+                    "type": "report",
+                    "filename": filename,
+                    "report_id": report_id,
+                    "excerpt": content[:200] + ("..." if len(content) > 200 else ""),
+                })
+            elif source_type == "observations":
+                metric = meta.get("metric_name", "health metric")
+                context_parts.append(f"[Source: Lab observations – {metric}]\n{content}")
+                sources.append({
+                    "type": "observations",
+                    "metric_name": metric,
+                    "excerpt": content[:200] + ("..." if len(content) > 200 else ""),
+                })
+            else:
+                context_parts.append(content)
+                sources.append({
+                    "type": source_type,
+                    "excerpt": content[:200] + ("..." if len(content) > 200 else ""),
+                })
+
+        return {
+            "text": "\n\n---\n\n".join(context_parts),
+            "sources": sources,
+        }
     
     async def add_test_document(self, user_id: uuid.UUID) -> str:
         """

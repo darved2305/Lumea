@@ -20,6 +20,19 @@ function Login() {
     setError('')
   }
 
+  // Parse error response - handles both string and Pydantic v2 validation error format
+  const parseErrorMessage = (err: unknown): string => {
+    const axiosError = err as { response?: { data?: { detail?: string | Array<{ msg?: string; loc?: string[] }> } } }
+    const detail = axiosError.response?.data?.detail
+
+    if (!detail) return 'Login failed. Please check your credentials.'
+    if (typeof detail === 'string') return detail
+    if (Array.isArray(detail)) {
+      return detail.map(e => e.msg || 'Validation error').join('. ') || 'Validation failed.'
+    }
+    return 'Login failed. Please check your credentials.'
+  }
+
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError('')
@@ -30,13 +43,7 @@ function Login() {
       localStorage.setItem('access_token', data.access_token)
       navigate('/dashboard')
     } catch (err: unknown) {
-      const axiosError = err as { response?: { data?: { detail?: string | Array<{ msg?: string }> } } }
-      const detail = axiosError.response?.data?.detail
-      if (Array.isArray(detail)) {
-        setError(detail.map(e => e.msg).filter(Boolean).join(', ') || 'Login failed. Please check your credentials.')
-      } else {
-        setError(detail || 'Login failed. Please check your credentials.')
-      }
+      setError(parseErrorMessage(err))
     } finally {
       setLoading(false)
     }

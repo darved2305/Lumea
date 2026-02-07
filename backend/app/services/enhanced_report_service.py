@@ -6,17 +6,20 @@ Integrates:
 - Lab report parsing  
 - Observation storage
 - WebSocket event emission
+- Memory / Knowledge Graph / RAG sync
 """
 import logging
 import os
+import asyncio
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
+from app.db import async_session_maker
 from app.models import Report, Observation, ReportStatus, ObservationType
 from app.services.pdf_extractor import PDFExtractor
 from app.services.lab_parser import LabParser
@@ -189,6 +192,10 @@ class EnhancedReportService:
             
             # Trigger health index recomputation
             await self._recompute_health_index_and_emit(user_id)
+
+            # Sync to Memory (Mem0), Knowledge Graph (Neo4j), and RAG (ChromaDB)
+            # in the background so the endpoint doesn't block.
+            asyncio.create_task(self._sync_to_memory_and_graph(report_id, user_id))
             
             logger.info(f"Report {report_id} processing complete with {observation_count} observations")
             
@@ -239,3 +246,162 @@ class EnhancedReportService:
                 
         except Exception as e:
             logger.exception(f"Error computing health index for user {user_id}: {e}")
+
+    # ------------------------------------------------------------------
+    # Memory / Knowledge Graph / RAG sync  (background task)
+    # ------------------------------------------------------------------
+
+    async def _sync_to_memory_and_graph(self, report_id: UUID, user_id: UUID):
+        """
+        Background task to sync processed report data to:
+        1. RAG (ChromaDB) – for retrieval-augmented generation
+        2. Knowledge Graph (Neo4j/Graphiti) – abnormal findings only
+        3. Memory (Mem0) – report summary + abnormal observations
+
+        This bridges the gap between the active upload pipeline
+        (EnhancedReportService) and the intelligence layers.
+        """
+        from app.services.memory_service import get_memory_service
+        from app.services.graph_service import get_graph_service
+        from app.services.rag_service import get_rag_service
+
+        try:
+            logger.info("Starting background memory/graph/RAG sync for report %s", report_id)
+
+            # Use a fresh session so we don't interfere with the caller's session.
+            async with async_session_maker() as session:
+                # ---- 1. RAG sync (ChromaDB) ----
+                try:
+                    rag_service = get_rag_service()
+                    await rag_service.sync_user_reports(user_id, session)
+                    await rag_service.sync_user_observations(user_id, session)
+                    logger.info("RAG sync complete for report %s", report_id)
+                except Exception as e:
+                    logger.warning("RAG sync failed for report %s: %s", report_id, e)
+
+                # ---- Fetch report + observations ----
+                result = await session.execute(
+                    select(Report).where(Report.id == report_id)
+                )
+                report = result.scalar_one_or_none()
+                if not report:
+                    logger.warning("Report %s not found during sync", report_id)
+                    return
+
+                obs_result = await session.execute(
+                    select(Observation).where(Observation.report_id == report_id)
+                )
+                observations: List[Observation] = list(obs_result.scalars().all())
+
+                if not observations:
+                    logger.info("No observations for report %s – skipping graph/memory sync", report_id)
+                    return
+
+                abnormal_obs = [obs for obs in observations if obs.is_abnormal]
+                normal_count = len(observations) - len(abnormal_obs)
+                uid = str(user_id)
+
+                # ---- 2. Knowledge Graph sync (Neo4j) — abnormal only ----
+                graph_service = get_graph_service()
+                if graph_service.client is not None:
+                    try:
+                        # Episode about the upload
+                        await graph_service.add_user_episode(
+                            user_id=uid,
+                            content=(
+                                f"uploaded medical report: {report.filename} "
+                                f"(Type: {report.doc_type or 'unknown'})"
+                            ),
+                            source="document_upload",
+                            timestamp=(
+                                report.uploaded_at.isoformat()
+                                if report.uploaded_at
+                                else datetime.utcnow().isoformat()
+                            ),
+                        )
+
+                        # Only clinically relevant (abnormal) observations
+                        obs_texts = [
+                            f"Report {report.filename}: {len(observations)} total observations, "
+                            f"{len(abnormal_obs)} abnormal, {normal_count} normal"
+                        ]
+                        for obs in abnormal_obs:
+                            obs_texts.append(
+                                f"{obs.metric_name}: {obs.value} {obs.unit} "
+                                f"(flagged {obs.flag or 'abnormal'})"
+                            )
+
+                        await graph_service.add_user_facts(
+                            user_id=uid,
+                            facts=obs_texts,
+                            source=f"report_{report.filename}",
+                        )
+                        logger.info(
+                            "Graph sync complete for report %s (%d abnormal facts)",
+                            report_id, len(abnormal_obs),
+                        )
+                    except Exception as e:
+                        logger.warning("Graph sync failed for report %s: %s", report_id, e)
+                else:
+                    logger.debug("Graph service unavailable – skipping graph sync for report %s", report_id)
+
+                # ---- 3. Memory sync (Mem0) — summary + abnormal findings ----
+                memory_service = get_memory_service()
+                if memory_service.is_available:
+                    try:
+                        # Report-level summary
+                        summary_parts = [
+                            f"report {report.filename} processed",
+                            f"{len(observations)} observations extracted",
+                            f"{len(abnormal_obs)} abnormal and {normal_count} normal flags",
+                        ]
+                        if report.doc_type:
+                            summary_parts.append(f"document type {report.doc_type}")
+                        report_summary = "; ".join(summary_parts)
+
+                        await memory_service.add(
+                            content=f"report inference summary: {report_summary}",
+                            user_id=uid,
+                            metadata={
+                                "source": "report_inference",
+                                "report_id": str(report_id),
+                                "doc_type": report.doc_type,
+                            },
+                        )
+
+                        # Batch abnormal findings into one memory
+                        if abnormal_obs:
+                            abnormal_lines = []
+                            for obs in abnormal_obs[:12]:
+                                abnormal_lines.append(
+                                    f"{obs.metric_name} measured {obs.value} {obs.unit} "
+                                    f"flagged {obs.flag or 'abnormal'}"
+                                )
+                            combined = (
+                                f"report inference abnormal findings from {report.filename}:\n- "
+                                + "\n- ".join(abnormal_lines)
+                            )
+                            await memory_service.add(
+                                content=combined,
+                                user_id=uid,
+                                metadata={
+                                    "source": "report_inference",
+                                    "report_id": str(report_id),
+                                    "kind": "abnormal_findings_batch",
+                                    "abnormal_count": len(abnormal_obs),
+                                },
+                            )
+
+                        logger.info(
+                            "Memory sync complete for report %s (%d abnormal findings)",
+                            report_id, len(abnormal_obs),
+                        )
+                    except Exception as e:
+                        logger.warning("Memory sync failed for report %s: %s", report_id, e)
+                else:
+                    logger.debug("Memory service unavailable – skipping Mem0 sync for report %s", report_id)
+
+            logger.info("Background sync complete for report %s", report_id)
+
+        except Exception as e:
+            logger.error("Background sync failed for report %s: %s", report_id, e)

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Settings, LogOut, Home, LayoutDashboard, Bell, FileText, Activity, Sparkles, Pill, PhoneCall } from 'lucide-react';
+import { Settings, LogOut, Home, LayoutDashboard, Bell, FileText, Activity, Sparkles, Pill, PhoneCall, Network } from 'lucide-react';
 import { logout } from '../../utils/auth';
 import Logo from '../ui/Logo';
 import './DashboardNavbar.css';
@@ -24,6 +24,7 @@ function DashboardNavbar({ userName = 'User', userStatus = '87% Healthy' }: Dash
     { label: 'Physics Twin', path: '/physics-twin', icon: Activity },
     { label: 'AI Summary', path: '/report-summary', icon: Sparkles },
     { label: 'Recommendations', path: '/recommendations', icon: Activity },
+    { label: 'Features', path: '/features', icon: Network },
     { label: 'Medicines', path: '/medicines', icon: Pill },
   ];
 
@@ -120,6 +121,14 @@ function DashboardNavbar({ userName = 'User', userStatus = '87% Healthy' }: Dash
                   >
                     <Settings size={16} />
                     Settings
+                  </Link>
+                  <Link
+                    to="/features"
+                    className="dashboard-user-dropdown-item"
+                    onClick={() => setIsUserMenuOpen(false)}
+                  >
+                    <Network size={16} />
+                    Features
                   </Link>
                   <div className="dashboard-user-dropdown-divider" />
                   <button

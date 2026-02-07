@@ -8,9 +8,11 @@ Provides endpoints for managing user health profiles, including:
 - Completion tracking and derived features
 - Recompute trigger
 """
+import asyncio
 import logging
+import re
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,6 +21,7 @@ from pydantic import BaseModel
 from app.db import get_db, async_session_maker
 from app.security import get_current_user
 from app.models import User
+from app.settings import settings
 from app.services.profile_service import ProfileService
 from app.services.recompute_service import RecomputeService
 from app.schemas import (
@@ -37,6 +40,9 @@ from app.schemas import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/profile", tags=["profile"])
+MEMORY_SYNC_TIMEOUT_SECONDS = 60.0
+MEMORY_SYNC_MAX_RETRIES = 2
+MEMORY_SYNC_RETRY_BASE_SECONDS = 3.0
 
 
 # ============================================================================
@@ -587,4 +593,311 @@ async def update_wizard_state(
         "wizard_current_step": profile.wizard_current_step,
         "wizard_completed": profile.wizard_completed,
         "wizard_last_saved_at": profile.wizard_last_saved_at.isoformat() if profile.wizard_last_saved_at else None
+    }
+
+
+# ============================================================================
+# MEMORY & GRAPH SYNC
+# ============================================================================
+
+def _safe_float(value: Any) -> Optional[float]:
+    try:
+        if value is None:
+            return None
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _normalize_fact(text: str) -> str:
+    return " ".join(text.strip().split())
+
+
+def _build_profile_sync_facts(profile_data: Dict[str, Any]) -> List[str]:
+    """Build direct profile facts + lightweight inferred insights for memory/graph sync."""
+    facts: List[str] = []
+
+    profile = profile_data.get("profile")
+    if profile:
+        if profile.height_cm:
+            facts.append(f"height is {profile.height_cm} cm")
+        if profile.weight_kg:
+            facts.append(f"weight is {profile.weight_kg} kg")
+        if profile.sex_at_birth:
+            facts.append(f"sex at birth is {profile.sex_at_birth}")
+        if profile.activity_level:
+            facts.append(f"activity level is {profile.activity_level}")
+        if profile.sleep_hours_avg:
+            facts.append(f"sleep is about {profile.sleep_hours_avg} hours per night")
+        if profile.diet_pattern:
+            facts.append(f"diet pattern is {profile.diet_pattern}")
+        if profile.smoking:
+            facts.append(f"smoking status is {profile.smoking}")
+        if profile.alcohol:
+            facts.append(f"alcohol use is {profile.alcohol}")
+
+    # Conditions
+    conditions = profile_data.get("conditions", []) or []
+    for condition in conditions:
+        if condition.condition_name:
+            facts.append(f"has condition {condition.condition_name}")
+
+    # Medications
+    medications = profile_data.get("medications", []) or []
+    for med in medications:
+        if med.name:
+            fact = f"takes medication {med.name}"
+            if med.dose:
+                fact += f" at dose {med.dose}"
+            facts.append(fact)
+
+    # Supplements
+    supplements = profile_data.get("supplements", []) or []
+    for supp in supplements:
+        if supp.name:
+            fact = f"takes supplement {supp.name}"
+            if supp.dose:
+                fact += f" at dose {supp.dose}"
+            facts.append(fact)
+
+    # Allergies
+    allergies = profile_data.get("allergies", []) or []
+    for allergy in allergies:
+        if allergy.allergen:
+            facts.append(f"is allergic to {allergy.allergen}")
+
+    # Family history
+    family_history = profile_data.get("family_history", []) or []
+    for history in family_history:
+        if history.condition_name and history.relative_type:
+            facts.append(f"family history includes {history.relative_type} with {history.condition_name}")
+
+    # Lightweight, deterministic inferences from questionnaire data.
+    if profile:
+        height_cm = _safe_float(profile.height_cm)
+        weight_kg = _safe_float(profile.weight_kg)
+        if height_cm and height_cm > 0 and weight_kg and weight_kg > 0:
+            bmi = round(weight_kg / ((height_cm / 100.0) ** 2), 1)
+            if bmi < 18.5:
+                bmi_band = "underweight"
+            elif bmi < 25:
+                bmi_band = "normal"
+            elif bmi < 30:
+                bmi_band = "overweight"
+            else:
+                bmi_band = "obesity"
+            facts.append(f"inference: bmi is {bmi} which falls in {bmi_band} range")
+
+        exercise_minutes = _safe_float(profile.exercise_minutes_per_week)
+        if exercise_minutes is not None:
+            if exercise_minutes < 90:
+                facts.append("inference: weekly activity is low and may increase cardiometabolic risk")
+            elif exercise_minutes >= 150:
+                facts.append("inference: weekly activity meets or exceeds recommended baseline")
+
+        sleep_hours = _safe_float(profile.sleep_hours_avg)
+        if sleep_hours is not None:
+            if sleep_hours < 6:
+                facts.append("inference: habitual short sleep may affect recovery and metabolic health")
+            elif sleep_hours >= 7:
+                facts.append("inference: sleep duration is within a generally healthy range")
+
+        smoking_value = str(profile.smoking or "").strip().lower()
+        if smoking_value in {"yes", "current", "daily", "sometimes"}:
+            facts.append("inference: smoking status indicates elevated cardiovascular and respiratory risk")
+
+        alcohol_value = str(profile.alcohol or "").strip().lower()
+        if alcohol_value in {"heavy", "daily", "frequent"}:
+            facts.append("inference: alcohol pattern may impact liver and cardiometabolic risk profile")
+
+    if conditions and family_history:
+        facts.append("inference: combined personal and family history increases value of preventive monitoring")
+    if medications and allergies:
+        facts.append("inference: medication planning should remain allergy-aware")
+
+    # De-duplicate while preserving order and keeping text normalized.
+    deduped: List[str] = []
+    seen = set()
+    for fact in facts:
+        normalized = _normalize_fact(fact)
+        if not normalized:
+            continue
+        key = normalized.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(normalized)
+
+    return deduped
+
+
+@router.post("/sync-to-memory")
+async def sync_profile_to_memory(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Sync user profile data to Memory (Mem0) and Knowledge Graph (Neo4j).
+    
+    Called after questionnaire completion to ensure all health data
+    is available for the recommendation engine's provenance tracking.
+    """
+    from app.services.memory_service import get_memory_service
+    from app.services.graph_service import get_graph_service
+    
+    service = ProfileService(db, current_user)
+    profile_data = await service.get_full_profile()
+    
+    user_id = str(current_user.id)
+    facts_to_sync = _build_profile_sync_facts(profile_data)
+    synced = {
+        "memory": False,
+        "graph": False,
+        "facts_attempted": len(facts_to_sync),
+        "facts_synced": 0,
+        "memory_facts_synced": 0,
+        "graph_facts_synced": 0,
+    }
+    errors: List[str] = []
+
+    if not facts_to_sync:
+        return {
+            "success": False,
+            "synced": synced,
+            "errors": ["No profile facts were available to sync yet."],
+            "message": "No profile facts available to sync",
+        }
+
+    # Sync to Memory (Mem0)
+    memory_service = get_memory_service()
+    if not memory_service.is_available:
+        errors.append("Memory service (Mem0) is not available.")
+    else:
+        batch_size = settings.MEM0_SYNC_BATCH_SIZE
+        batch_delay = settings.MEM0_BATCH_DELAY_SECONDS
+        memory_batches = [
+            facts_to_sync[i : i + batch_size]
+            for i in range(0, len(facts_to_sync), batch_size)
+        ]
+
+        async def _sync_batch(batch_index: int, batch: List[str]) -> bool:
+            batch_content = "profile sync snapshot facts:\n" + "\n".join(f"- {fact}" for fact in batch)
+
+            for attempt in range(1, MEMORY_SYNC_MAX_RETRIES + 1):
+                try:
+                    result = await asyncio.wait_for(
+                        memory_service.add(
+                            content=batch_content,
+                            user_id=user_id,
+                            metadata={
+                                "source": "questionnaire_sync",
+                                "kind": "profile_fact_batch",
+                                "batch_index": batch_index,
+                                "batch_size": len(batch),
+                            },
+                        ),
+                        timeout=MEMORY_SYNC_TIMEOUT_SECONDS,
+                    )
+                except asyncio.TimeoutError:
+                    logger.warning(
+                        "Timed out syncing Mem0 batch %s for user %s after %.1fs (attempt %s/%s)",
+                        batch_index,
+                        user_id,
+                        MEMORY_SYNC_TIMEOUT_SECONDS,
+                        attempt,
+                        MEMORY_SYNC_MAX_RETRIES,
+                    )
+                    if attempt < MEMORY_SYNC_MAX_RETRIES:
+                        await asyncio.sleep(MEMORY_SYNC_RETRY_BASE_SECONDS * attempt)
+                        continue
+                    return False
+                except Exception as exc:
+                    logger.warning(
+                        "Unexpected Mem0 batch sync error for user %s (batch %s, attempt %s/%s): %s",
+                        user_id,
+                        batch_index,
+                        attempt,
+                        MEMORY_SYNC_MAX_RETRIES,
+                        exc,
+                    )
+                    if attempt < MEMORY_SYNC_MAX_RETRIES:
+                        await asyncio.sleep(MEMORY_SYNC_RETRY_BASE_SECONDS * attempt)
+                        continue
+                    return False
+
+                # memory_service.add() now self-retries on 429; a returned error
+                # here means retries were exhausted or a non-429 failure occurred.
+                if isinstance(result, dict) and result.get("error"):
+                    err_text = str(result["error"])
+                    logger.warning(
+                        "Mem0 batch sync failed for user %s (batch %s, attempt %s/%s): %s",
+                        user_id,
+                        batch_index,
+                        attempt,
+                        MEMORY_SYNC_MAX_RETRIES,
+                        err_text,
+                    )
+                    if attempt < MEMORY_SYNC_MAX_RETRIES:
+                        await asyncio.sleep(MEMORY_SYNC_RETRY_BASE_SECONDS * attempt)
+                        continue
+                    return False
+
+                return True
+
+            return False
+
+        memory_sync_count = 0
+        for batch_index, batch in enumerate(memory_batches, start=1):
+            batch_synced = await _sync_batch(batch_index, batch)
+            if batch_synced:
+                memory_sync_count += len(batch)
+            # Proactive inter-batch delay to avoid Groq TPM exhaustion
+            if batch_index < len(memory_batches) and batch_delay > 0:
+                logger.debug(
+                    "Mem0 sync: proactive %.1fs delay before batch %s/%s",
+                    batch_delay, batch_index + 1, len(memory_batches),
+                )
+                await asyncio.sleep(batch_delay)
+
+        if memory_sync_count < len(facts_to_sync):
+            logger.info("Mem0 sync partial success for user %s: %s/%s facts", user_id, memory_sync_count, len(facts_to_sync))
+
+        synced["memory_facts_synced"] = memory_sync_count
+        synced["memory"] = memory_sync_count > 0
+        if memory_sync_count > 0:
+            logger.info("Synced %s facts to Mem0 for user %s", memory_sync_count, user_id)
+        else:
+            errors.append(memory_service.last_error or "Failed to sync questionnaire data to Mem0.")
+    
+    # Sync to Graph (Neo4j/Graphiti)
+    graph_service = get_graph_service()
+    if graph_service.client is not None:
+        try:
+            await graph_service.add_user_facts(
+                user_id=user_id,
+                facts=facts_to_sync,
+                source="questionnaire_sync",
+                timestamp=datetime.utcnow().isoformat(),
+            )
+            synced["graph"] = True
+            synced["graph_facts_synced"] = len(facts_to_sync)
+            logger.info("Synced %s facts to Neo4j for user %s", len(facts_to_sync), user_id)
+        except Exception as e:
+            logger.warning("Failed to sync to Neo4j: %s", e)
+            errors.append(f"Graph sync failed: {e}")
+    else:
+        errors.append("Knowledge graph service is not available.")
+
+    synced["facts_synced"] = max(synced["memory_facts_synced"], synced["graph_facts_synced"])
+    overall_success = synced["memory"] or synced["graph"]
+
+    return {
+        "success": overall_success,
+        "synced": synced,
+        "errors": errors,
+        "message": (
+            f"Synced {synced['facts_synced']} profile facts to memory/graph layers"
+            if overall_success
+            else "Profile sync failed for both memory and graph layers"
+        ),
     }
