@@ -299,23 +299,28 @@ class GraphService:
                     )
             elif isinstance(results, list):
                 for item in results:
-                    # Newer Graphiti search returns EntityEdge objects (no source/target names).
-                    if hasattr(item, "fact") and hasattr(item, "name"):
-                        relation = getattr(item, "name", "states") or "states"
-                        fact = getattr(item, "fact", None)
-                        if fact:
-                            formatted_results.append(f"System -> {relation} -> {fact}")
-                            continue
-                    if (
-                        hasattr(item, "source_node_uuid")
-                        and hasattr(item, "target_node_uuid")
-                        and hasattr(item, "name")
-                    ):
-                        formatted_results.append(
-                            f"{item.source_node_uuid} -> {item.name} -> {item.target_node_uuid}"
-                        )
-                    else:
-                        formatted_results.append(str(item))
+                    # Check if this edge has a human-readable fact
+                    if hasattr(item, "fact") and item.fact:
+                        # Use fact as-is if it looks like a relationship statement
+                        formatted_results.append(str(item.fact))
+                        continue
+                    
+                    # Try to extract source/target node names if available
+                    if hasattr(item, "source_node") and hasattr(item, "target_node"):
+                        source_name = getattr(item.source_node, "name", "Unknown")
+                        target_name = getattr(item.target_node, "name", "Unknown")
+                        relation_name = getattr(item, "name", "relates_to")
+                        formatted_results.append(f"{source_name} -> {relation_name} -> {target_name}")
+                        continue
+                    
+                    # Fallback: use raw name/fact if available
+                    if hasattr(item, "name"):
+                        relation = getattr(item, "name", "states")
+                        formatted_results.append(f"Health Data -> {relation} -> Status")
+                        continue
+                    
+                    # Last resort: stringify
+                    formatted_results.append(str(item))
 
             return formatted_results
         except Exception as e:

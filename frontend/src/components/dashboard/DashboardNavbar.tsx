@@ -21,6 +21,7 @@ function DashboardNavbar({ userName = 'User', userStatus = '87% Healthy' }: Dash
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { label: 'Reports', path: '/reports', icon: FileText },
     { label: 'Voice Agent', path: '/voice-agent', icon: PhoneCall },
+    { label: 'Physics Twin', path: '/physics-twin', icon: Activity },
     { label: 'AI Summary', path: '/report-summary', icon: Sparkles },
     { label: 'Recommendations', path: '/recommendations', icon: Activity },
     { label: 'Features', path: '/features', icon: Network },

@@ -77,6 +77,12 @@ async def get_current_user(
             token = auth_header[7:]
             logger.debug(f"Auth: Got token from raw Authorization header")
     
+    # 4. Try query parameter (for SSE/EventSource which can't send headers)
+    if not token:
+        token = request.query_params.get("token")
+        if token:
+            logger.debug(f"Auth: Got token from query parameter")
+    
     if not token:
         logger.warning("Auth: No token found in request")
         raise HTTPException(status_code=401, detail="Not authenticated - no token provided")
