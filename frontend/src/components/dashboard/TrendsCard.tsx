@@ -15,6 +15,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { TrendingUp, TrendingDown, Maximize2, X, AlertCircle, RefreshCw, BarChart2 } from 'lucide-react';
 import { useTrends, type TrendDataPoint } from '../../hooks/useTrends';
+import { getTokenSync } from '../../services/tokenService';
 import './TrendsCard.css';
 
 interface TrendsCardProps {
@@ -42,7 +43,7 @@ function TrendsCard({
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Get auth token from localStorage if not provided
-  const token = authToken || localStorage.getItem('access_token');
+  const token = authToken || getTokenSync();
 
   // Use the API-based trends hook - NO fake data!
   const { data, stats, loading, error, refetch, lastFetchedAt } = useTrends(

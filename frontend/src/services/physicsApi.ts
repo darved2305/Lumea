@@ -4,6 +4,7 @@
  */
 
 import { API_BASE_URL } from '../config/api';
+import { getTokenSync } from './tokenService';
 
 // ---------- Types ----------
 
@@ -69,7 +70,7 @@ export interface PhysicsConfig {
 // ---------- Helpers ----------
 
 function getAuthHeaders(): Record<string, string> {
-  const token = localStorage.getItem('access_token');
+  const token = getTokenSync();
   return {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),

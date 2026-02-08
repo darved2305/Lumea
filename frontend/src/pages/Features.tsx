@@ -19,6 +19,7 @@ import DashboardNavbar from '../components/dashboard/DashboardNavbar';
 import MemoryDashboard from '../components/MemoryDashboard';
 import HealthGraph from '../components/HealthGraph';
 import { API_BASE_URL } from '../config/api';
+import { getTokenSync } from '../services/tokenService';
 import '../styles/dashboardTokens.css';
 import '../styles/dashboardBase.css';
 import './Features.css';
@@ -106,7 +107,7 @@ function Features() {
     }, []);
 
     useEffect(() => {
-        const token = localStorage.getItem('access_token');
+        const token = getTokenSync();
         if (!token) {
             navigate('/login');
             return;

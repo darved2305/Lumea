@@ -14,6 +14,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { fetchFullProfile, FullProfile } from '../services/profileApi';
 import { REQUIRED_FIELDS } from '../components/profile/profileFormSchema';
+import { getTokenSync } from '../services/tokenService';
 
 interface UseProfileRequiredOptions {
   redirect?: boolean;        // Auto-redirect if profile incomplete
@@ -32,10 +33,10 @@ export default function useProfileRequired(
   options: UseProfileRequiredOptions = {}
 ): UseProfileRequiredReturn {
   const { redirect = false, requiredFields = REQUIRED_FIELDS } = options;
-  
+
   const navigate = useNavigate();
   const location = useLocation();
-  
+
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<FullProfile | null>(null);
   const [profileComplete, setProfileComplete] = useState(false);
@@ -46,13 +47,13 @@ export default function useProfileRequired(
     try {
       const data = await fetchFullProfile();
       setProfile(data);
-      
+
       // Check if required fields are filled
       const missing: string[] = [];
-      
+
       if (data?.profile) {
         const p = data.profile;
-        
+
         for (const field of requiredFields) {
           const value = (p as any)[field];
           if (value === null || value === undefined || value === '') {
@@ -63,18 +64,18 @@ export default function useProfileRequired(
         // No profile at all - all required fields missing
         missing.push(...requiredFields);
       }
-      
+
       const isComplete = missing.length === 0;
       setProfileComplete(isComplete);
       setRequiredFieldsMissing(missing);
-      
+
       // Redirect if needed and not already on health profile page
       if (redirect && !isComplete && location.pathname !== '/health-profile') {
-        navigate('/health-profile', { 
+        navigate('/health-profile', {
           state: { from: location.pathname, reason: 'profile_incomplete' }
         });
       }
-      
+
     } catch (error) {
       console.error('Error checking profile:', error);
       // On error, assume profile is incomplete if redirect is enabled
@@ -89,7 +90,7 @@ export default function useProfileRequired(
 
   useEffect(() => {
     // Only check if user is authenticated
-    const token = localStorage.getItem('access_token');
+    const token = getTokenSync();
     if (token) {
       checkProfile();
     } else {

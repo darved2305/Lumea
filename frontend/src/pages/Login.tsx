@@ -2,6 +2,7 @@ import { useState, ChangeEvent, FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AuthShell from '../components/AuthShell'
 import { login } from '../services/auth'
+import { setAuthToken } from '../utils/auth'
 
 function Login() {
   const navigate = useNavigate()
@@ -40,7 +41,7 @@ function Login() {
 
     try {
       const data = await login(formData.email, formData.password)
-      localStorage.setItem('access_token', data.access_token)
+      await setAuthToken(data.access_token)
       navigate('/dashboard')
     } catch (err: unknown) {
       setError(parseErrorMessage(err))

@@ -1,0 +1,31 @@
+{
+  "appId": "com.lumea.unifiedmed",
+  "appName": "Lumea",
+  "webDir": "frontend/dist",
+  "server": {
+    "androidScheme": "https",
+    "allowNavigation": [
+      "*.lumea.health",
+      "10.0.2.2:8000",
+      "huggingface.co"
+    ]
+  },
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    },
+    "SplashScreen": {
+      "launchAutoHide": false,
+      "backgroundColor": "#f5f0e8",
+      "showSpinner": true,
+      "spinnerColor": "#6b9175"
+    },
+    "Keyboard": {
+      "resize": "body",
+      "resizeOnFullScreen": true
+    }
+  },
+  "android": {
+    "allowMixedContent": true
+  }
+}

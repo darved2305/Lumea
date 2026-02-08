@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Youtube, ExternalLink, Loader2, AlertCircle, PlayCircle, Clock } from 'lucide-react';
 import type { OrganResult } from '../../services/physicsApi';
 import { generateVideoRecommendations, type AbnormalMetric, type VideoRecommendation } from '../../services/openRouterService';
+import { openUrl } from '../../utils/browser';
 
 interface YouTubeRecommendationsCardProps {
   selectedOrgan: string | null;
@@ -50,13 +51,13 @@ const YouTubeRecommendationsCard: React.FC<YouTubeRecommendationsCardProps> = ({
   const [videos, setVideos] = useState<VideoRecommendation[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Cache videos per organ to avoid refetching
   const cacheRef = useRef<Map<string, VideoRecommendation[]>>(new Map());
-  
+
   // Track current request to ignore stale responses
   const requestIdRef = useRef(0);
-  
+
   // AbortController for cancelling requests
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -114,22 +115,22 @@ const YouTubeRecommendationsCard: React.FC<YouTubeRecommendationsCardProps> = ({
     // Start new fetch
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
-    
+
     const currentRequestId = ++requestIdRef.current;
-    
+
     const fetchRecommendations = async () => {
       setLoading(true);
       setError(null);
 
       try {
         const abnormalMetrics = getAbnormalMetrics(currentMetrics);
-        
+
         // Generate video recommendations using OpenRouter AI
         const recommendations = await generateVideoRecommendations(
           ORGAN_LABELS[selectedOrgan] || selectedOrgan,
           abnormalMetrics
         );
-        
+
         // Only update if this is still the latest request
         if (currentRequestId === requestIdRef.current && !abortController.signal.aborted) {
           setVideos(recommendations);
@@ -166,10 +167,10 @@ const YouTubeRecommendationsCard: React.FC<YouTubeRecommendationsCardProps> = ({
       cacheRef.current.delete(selectedOrgan);
       // Trigger refetch by incrementing request ID
       requestIdRef.current++;
-      
+
       const fetchRecommendations = async () => {
         if (!selectedOrgan || !organResult) return;
-        
+
         setLoading(true);
         setError(null);
 
@@ -179,7 +180,7 @@ const YouTubeRecommendationsCard: React.FC<YouTubeRecommendationsCardProps> = ({
             ORGAN_LABELS[selectedOrgan] || selectedOrgan,
             abnormalMetrics
           );
-          
+
           setVideos(recommendations);
           cacheRef.current.set(selectedOrgan, recommendations);
           setError(null);
@@ -196,7 +197,7 @@ const YouTubeRecommendationsCard: React.FC<YouTubeRecommendationsCardProps> = ({
   };
 
   const openVideo = (url: string) => {
-    window.open(url, '_blank', 'noopener,noreferrer');
+    openUrl(url);
   };
 
   if (!selectedOrgan || !organResult) {

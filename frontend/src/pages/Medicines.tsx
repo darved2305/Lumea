@@ -14,12 +14,12 @@ import {
   AlertCircle, CheckCircle, Loader2, X, FileText, Camera, Sparkles
 } from 'lucide-react';
 import DashboardNavbar from '../components/dashboard/DashboardNavbar';
-import { getAuthToken } from '../utils/auth';
+import { getTokenSync } from '../services/tokenService';
+import { Geolocation } from '@capacitor/geolocation';
+import { API_BASE_URL as API_BASE } from '../config/api';
 import '../styles/dashboardTokens.css';
 import '../styles/dashboardBase.css';
 import './Medicines.css';
-
-const API_BASE = 'http://localhost:8000';
 
 // Types
 interface NormalizedMedicine {
@@ -107,7 +107,7 @@ export default function Medicines() {
   const [savedMedicines, setSavedMedicines] = useState<Set<string>>(new Set());
 
   // Pharmacy finder state
-  const [userLocation, setUserLocation] = useState<{lat: number; lng: number} | null>(null);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [showManualLocation, setShowManualLocation] = useState(false);
@@ -123,7 +123,7 @@ export default function Medicines() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const token = getAuthToken();
+    const token = getTokenSync();
     if (!token) {
       navigate('/login');
       return;
@@ -205,16 +205,16 @@ export default function Medicines() {
       const results: SubstituteResult[] = [];
       for (const medicine of data.medicines || []) {
         // Grok returns salts as array, join them for display
-        const saltStr = Array.isArray(medicine.salts) 
-          ? medicine.salts.join(' + ') 
+        const saltStr = Array.isArray(medicine.salts)
+          ? medicine.salts.join(' + ')
           : medicine.salts || medicine.salt;
-        
+
         if (saltStr) {
           try {
             // Use from-text endpoint which uses Grok AI
             const formData = new FormData();
             formData.append('text', medicine.raw_line || `${medicine.brand_name} ${medicine.strength}`);
-            
+
             const subResponse = await fetch(`${API_BASE}/api/medicines/substitutes/from-text`, {
               method: 'POST',
               headers: {
@@ -272,51 +272,44 @@ export default function Medicines() {
   };
 
   // Get user location
-  const getLocation = useCallback(() => {
-    if (!navigator.geolocation) {
-      setLocationError('Geolocation is not supported by your browser');
-      return;
-    }
-
+  const getLocation = useCallback(async () => {
     setLocationLoading(true);
     setLocationError(null);
 
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setUserLocation({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        });
-        setLocationLoading(false);
-        setLocationError(null);
-      },
-      (error) => {
-        console.error('Geolocation error:', error);
-        let errorMessage = 'Unable to get your location. ';
-        
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            errorMessage = '❌ Location access denied. Please enable location permissions in your browser settings.';
-            break;
-          case error.POSITION_UNAVAILABLE:
-            errorMessage = '❌ Location information unavailable. Please check your device settings.';
-            break;
-          case error.TIMEOUT:
-            errorMessage = '❌ Location request timed out. Please try again.';
-            break;
-          default:
-            errorMessage = '❌ An unknown error occurred while getting location.';
+    try {
+      // Check/Request permission for native
+      const perm = await Geolocation.checkPermissions();
+      if (perm.location !== 'granted') {
+        const req = await Geolocation.requestPermissions();
+        if (req.location !== 'granted') {
+          throw new Error('Location permission denied');
         }
-        
-        setLocationError(errorMessage);
-        setLocationLoading(false);
-      },
-      { 
-        enableHighAccuracy: true, 
-        timeout: 15000,
-        maximumAge: 0
       }
-    );
+
+      const position = await Geolocation.getCurrentPosition({
+        enableHighAccuracy: true,
+        timeout: 15000,
+      });
+
+      setUserLocation({
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+      });
+      setLocationLoading(false);
+      setLocationError(null);
+    } catch (err: any) {
+      console.error('Geolocation error:', err);
+      let errorMessage = 'Unable to get your location. ';
+
+      if (err.message?.includes('denied')) {
+        errorMessage = '❌ Location access denied. Please enable location permissions in your settings.';
+      } else {
+        errorMessage = `❌ Error: ${err.message || 'Unknown error while getting location.'}`;
+      }
+
+      setLocationError(errorMessage);
+      setLocationLoading(false);
+    }
   }, []);
 
   // Search pharmacies
@@ -369,7 +362,7 @@ export default function Medicines() {
         fetch(`${API_BASE}/api/medicines/pharmacies/${pharmacy.place_id}/click?action=view`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${authToken}` },
-        }).catch(() => {});
+        }).catch(() => { });
       }
     } catch (error) {
       console.error('Pharmacy details error:', error);
@@ -629,12 +622,11 @@ export default function Medicines() {
                                         <span className="jan-badge">Jan Aushadhi</span>
                                       )}
                                       {sub.match_score && (
-                                        <span 
-                                          className={`match-score-badge ${
-                                            sub.match_score === 1.0 ? 'exact' :
+                                        <span
+                                          className={`match-score-badge ${sub.match_score === 1.0 ? 'exact' :
                                             sub.match_score >= 0.8 ? 'near' :
-                                            sub.match_score >= 0.6 ? 'partial' : 'generic'
-                                          }`}
+                                              sub.match_score >= 0.6 ? 'partial' : 'generic'
+                                            }`}
                                           title={sub.match_reason?.join(', ')}
                                         >
                                           {Math.round(sub.match_score * 100)}%
@@ -666,7 +658,7 @@ export default function Medicines() {
                                 <div>
                                   <span>No alternatives found in our database yet</span>
                                   {result.notes && result.notes.length > 0 && (
-                                    <div style={{marginTop: '8px', fontSize: '13px', opacity: 0.8}}>
+                                    <div style={{ marginTop: '8px', fontSize: '13px', opacity: 0.8 }}>
                                       {result.notes.map((note, i) => (
                                         <div key={i}>{note}</div>
                                       ))}
@@ -734,32 +726,32 @@ export default function Medicines() {
                       <AlertCircle size={16} />
                       <div>
                         <div>{locationError}</div>
-                        <button 
-                          className="text-link" 
+                        <button
+                          className="text-link"
                           onClick={() => setShowManualLocation(true)}
-                          style={{marginTop: '8px', textDecoration: 'underline', cursor: 'pointer', background: 'none', border: 'none', color: 'var(--dash-accent)'}}
+                          style={{ marginTop: '8px', textDecoration: 'underline', cursor: 'pointer', background: 'none', border: 'none', color: 'var(--dash-accent)' }}
                         >
                           Enter location manually instead
                         </button>
                       </div>
                     </div>
                   )}
-                  
+
                   {showManualLocation && (
-                    <motion.div 
+                    <motion.div
                       className="manual-location-input"
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
-                      style={{marginTop: '16px', padding: '16px', background: 'var(--dash-card-bg)', borderRadius: '8px'}}
+                      style={{ marginTop: '16px', padding: '16px', background: 'var(--dash-card-bg)', borderRadius: '8px' }}
                     >
-                      <p style={{marginBottom: '12px', fontSize: '14px'}}>Enter your coordinates:</p>
-                      <div style={{display: 'flex', gap: '8px', marginBottom: '12px'}}>
+                      <p style={{ marginBottom: '12px', fontSize: '14px' }}>Enter your coordinates:</p>
+                      <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
                         <input
                           type="number"
                           placeholder="Latitude (e.g., 28.6139)"
                           value={manualLat}
                           onChange={(e) => setManualLat(e.target.value)}
-                          style={{flex: 1, padding: '8px', borderRadius: '4px', border: '1px solid var(--dash-border)'}}
+                          style={{ flex: 1, padding: '8px', borderRadius: '4px', border: '1px solid var(--dash-border)' }}
                           step="any"
                         />
                         <input
@@ -767,7 +759,7 @@ export default function Medicines() {
                           placeholder="Longitude (e.g., 77.2090)"
                           value={manualLng}
                           onChange={(e) => setManualLng(e.target.value)}
-                          style={{flex: 1, padding: '8px', borderRadius: '4px', border: '1px solid var(--dash-border)'}}
+                          style={{ flex: 1, padding: '8px', borderRadius: '4px', border: '1px solid var(--dash-border)' }}
                           step="any"
                         />
                       </div>
@@ -784,11 +776,11 @@ export default function Medicines() {
                             setLocationError('Invalid coordinates. Lat: -90 to 90, Lng: -180 to 180');
                           }
                         }}
-                        style={{width: '100%'}}
+                        style={{ width: '100%' }}
                       >
                         Use This Location
                       </button>
-                      <p style={{marginTop: '8px', fontSize: '12px', opacity: 0.7}}>
+                      <p style={{ marginTop: '8px', fontSize: '12px', opacity: 0.7 }}>
                         💡 Tip: Search "my coordinates" on Google to find yours
                       </p>
                     </motion.div>

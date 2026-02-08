@@ -4,21 +4,22 @@
  * Handles all API calls for the health profile feature.
  */
 import { API_BASE_URL } from '../config/api';
+import { getTokenSync } from './tokenService';
 
 const API_BASE = API_BASE_URL;
 
 function getAuthHeaders(): HeadersInit {
-  const token = localStorage.getItem('access_token');
+  const token = getTokenSync();
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
   };
-  
+
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   } else {
-    console.warn('profileApi: No access_token found in localStorage');
+    console.warn('profileApi: No access_token found');
   }
-  
+
   return headers;
 }
 
@@ -166,27 +167,27 @@ export interface FullProfile {
 
 export async function fetchFullProfile(): Promise<FullProfile | null> {
   try {
-    const token = localStorage.getItem('access_token');
+    const token = getTokenSync();
     if (!token) {
       console.warn('fetchFullProfile: No auth token, skipping fetch');
       return null;
     }
-    
+
     const response = await fetch(`${API_BASE}/api/profile`, {
       headers: getAuthHeaders(),
       credentials: 'include',
     });
-    
+
     if (response.status === 401) {
       console.warn('fetchFullProfile: 401 Unauthorized');
       return null;
     }
-    
+
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.detail || `Failed to fetch profile: ${response.status}`);
     }
-    
+
     return await response.json();
   } catch (error) {
     console.error('Error fetching profile:', error);
@@ -195,11 +196,11 @@ export async function fetchFullProfile(): Promise<FullProfile | null> {
 }
 
 export async function updateProfile(data: Partial<UserProfile>): Promise<UserProfile | null> {
-  const token = localStorage.getItem('access_token');
+  const token = getTokenSync();
   if (!token) {
     throw new Error('Not authenticated - no token');
   }
-  
+
   // Clean up data - remove undefined values that backend might reject
   const cleanData: Record<string, any> = {};
   for (const [key, value] of Object.entries(data)) {
@@ -207,16 +208,16 @@ export async function updateProfile(data: Partial<UserProfile>): Promise<UserPro
       cleanData[key] = value;
     }
   }
-  
+
   console.log('updateProfile: Sending PATCH with data:', cleanData);
-  
+
   const response = await fetch(`${API_BASE}/api/profile`, {
     method: 'PATCH',
     headers: getAuthHeaders(),
     credentials: 'include',
     body: JSON.stringify(cleanData),
   });
-  
+
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({ detail: `HTTP ${response.status}` }));
     console.error('updateProfile: Error response:', errorData);
@@ -233,33 +234,33 @@ export async function updateProfile(data: Partial<UserProfile>): Promise<UserPro
     }
     throw new Error(errorMessage);
   }
-  
+
   const result = await response.json();
   console.log('updateProfile: Success');
   return result;
 }
 
 export async function upsertAnswers(answers: { question_id: string; answer_data: AnswerData }[]): Promise<ProfileAnswer[]> {
-  const token = localStorage.getItem('access_token');
+  const token = getTokenSync();
   if (!token) {
     throw new Error('Not authenticated');
   }
-  
+
   const response = await fetch(`${API_BASE}/api/profile/answers`, {
     method: 'POST',
     headers: getAuthHeaders(),
     credentials: 'include',
     body: JSON.stringify({ answers }),
   });
-  
+
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    const detail = Array.isArray(errorData.detail) 
+    const detail = Array.isArray(errorData.detail)
       ? errorData.detail.map((e: any) => e.msg || e).join(', ')
       : (errorData.detail || `Failed to save answers: ${response.status}`);
     throw new Error(detail);
   }
-  
+
   return await response.json();
 }
 
@@ -270,12 +271,12 @@ export async function setConditions(conditions: { condition_code: string; condit
     credentials: 'include',
     body: JSON.stringify({ conditions }),
   });
-  
+
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.detail || `Failed to save conditions: ${response.status}`);
   }
-  
+
   return await response.json();
 }
 
@@ -286,12 +287,12 @@ export async function setSymptoms(symptoms: { symptom_code: string; symptom_name
     credentials: 'include',
     body: JSON.stringify({ symptoms }),
   });
-  
+
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.detail || `Failed to save symptoms: ${response.status}`);
   }
-  
+
   return await response.json();
 }
 
@@ -302,12 +303,12 @@ export async function setMedications(medications: { name: string; dose?: string;
     credentials: 'include',
     body: JSON.stringify({ medications }),
   });
-  
+
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.detail || `Failed to save medications: ${response.status}`);
   }
-  
+
   return await response.json();
 }
 
@@ -318,12 +319,12 @@ export async function setSupplements(supplements: { name: string; dose?: string;
     credentials: 'include',
     body: JSON.stringify({ supplements }),
   });
-  
+
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.detail || `Failed to save supplements: ${response.status}`);
   }
-  
+
   return await response.json();
 }
 
@@ -334,12 +335,12 @@ export async function setAllergies(allergies: { allergen: string; allergy_type?:
     credentials: 'include',
     body: JSON.stringify({ allergies }),
   });
-  
+
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.detail || `Failed to save allergies: ${response.status}`);
   }
-  
+
   return await response.json();
 }
 
@@ -350,12 +351,12 @@ export async function setFamilyHistory(history: { relative_type: string; conditi
     credentials: 'include',
     body: JSON.stringify({ history }),
   });
-  
+
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.detail || `Failed to save family history: ${response.status}`);
   }
-  
+
   return await response.json();
 }
 
@@ -367,11 +368,11 @@ export async function setGeneticTests(tests: { mutation_name: string; result?: s
       credentials: 'include',
       body: JSON.stringify({ tests }),
     });
-    
+
     if (!response.ok) {
       throw new Error(`Failed to save genetic tests: ${response.status}`);
     }
-    
+
     return await response.json();
   } catch (error) {
     console.error('Error saving genetic tests:', error);
@@ -385,11 +386,11 @@ export async function fetchCompletion(): Promise<ProfileCompletion | null> {
       headers: getAuthHeaders(),
       credentials: 'include',
     });
-    
+
     if (!response.ok) {
       throw new Error(`Failed to fetch completion: ${response.status}`);
     }
-    
+
     return await response.json();
   } catch (error) {
     console.error('Error fetching completion:', error);
@@ -404,7 +405,7 @@ export async function updateWizardState(currentStep: number, completed?: boolean
     credentials: 'include',
     body: JSON.stringify({ current_step: currentStep, completed }),
   });
-  
+
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.detail || `Failed to update wizard state: ${response.status}`);
@@ -418,7 +419,7 @@ export async function triggerRecompute(): Promise<void> {
       headers: getAuthHeaders(),
       credentials: 'include',
     });
-    
+
     if (!response.ok) {
       throw new Error(`Failed to trigger recompute: ${response.status}`);
     }
@@ -444,28 +445,28 @@ export interface ProfileMeResponse {
  * Returns exists=false for new users, is_completed=true when all required fields filled.
  */
 export async function fetchProfileMe(): Promise<ProfileMeResponse> {
-  const token = localStorage.getItem('access_token');
+  const token = getTokenSync();
   if (!token) {
     console.warn('fetchProfileMe: No auth token');
     return { exists: false, is_completed: false, profile: null, completion: null };
   }
-  
+
   try {
     const response = await fetch(`${API_BASE}/api/profile/me`, {
       headers: getAuthHeaders(),
       credentials: 'include',
     });
-    
+
     if (response.status === 401) {
       console.warn('fetchProfileMe: Unauthorized');
       return { exists: false, is_completed: false, profile: null, completion: null };
     }
-    
+
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.detail || `Failed to fetch profile: ${response.status}`);
     }
-    
+
     return await response.json();
   } catch (error) {
     console.error('Error fetching profile/me:', error);
@@ -478,11 +479,11 @@ export async function fetchProfileMe(): Promise<ProfileMeResponse> {
  * Sets is_completed=true when all required fields are present.
  */
 export async function upsertProfileMe(data: Partial<UserProfile>): Promise<UserProfile> {
-  const token = localStorage.getItem('access_token');
+  const token = getTokenSync();
   if (!token) {
     throw new Error('Not authenticated - no token');
   }
-  
+
   // Clean data
   const cleanData: Record<string, any> = {};
   for (const [key, value] of Object.entries(data)) {
@@ -490,16 +491,16 @@ export async function upsertProfileMe(data: Partial<UserProfile>): Promise<UserP
       cleanData[key] = value;
     }
   }
-  
+
   console.log('upsertProfileMe: Sending PUT with data:', cleanData);
-  
+
   const response = await fetch(`${API_BASE}/api/profile/me`, {
     method: 'PUT',
     headers: getAuthHeaders(),
     credentials: 'include',
     body: JSON.stringify(cleanData),
   });
-  
+
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({ detail: `HTTP ${response.status}` }));
     console.error('upsertProfileMe: Error response:', errorData);
@@ -513,7 +514,7 @@ export async function upsertProfileMe(data: Partial<UserProfile>): Promise<UserP
     }
     throw new Error(errorMessage);
   }
-  
+
   const result = await response.json();
   console.log('upsertProfileMe: Success, is_completed:', result.is_completed);
   return result;
@@ -523,30 +524,30 @@ export async function upsertProfileMe(data: Partial<UserProfile>): Promise<UserP
  * Partial update for profile - used by Settings page for edits.
  */
 export async function patchProfileMe(data: Partial<UserProfile>): Promise<UserProfile> {
-  const token = localStorage.getItem('access_token');
+  const token = getTokenSync();
   if (!token) {
     throw new Error('Not authenticated - no token');
   }
-  
+
   const cleanData: Record<string, any> = {};
   for (const [key, value] of Object.entries(data)) {
     if (value !== undefined) {
       cleanData[key] = value;
     }
   }
-  
+
   const response = await fetch(`${API_BASE}/api/profile/me`, {
     method: 'PATCH',
     headers: getAuthHeaders(),
     credentials: 'include',
     body: JSON.stringify(cleanData),
   });
-  
+
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.detail || `Failed to update profile: ${response.status}`);
   }
-  
+
   return await response.json();
 }
 
@@ -594,19 +595,19 @@ export interface ReminderCreate {
 }
 
 export async function fetchReminders(): Promise<Reminder[]> {
-  const token = localStorage.getItem('access_token');
+  const token = getTokenSync();
   if (!token) return [];
-  
+
   const response = await fetch(`${API_BASE}/api/reminders/me`, {
     headers: getAuthHeaders(),
     credentials: 'include',
   });
-  
+
   if (!response.ok) {
     console.error('Failed to fetch reminders:', response.status);
     return [];
   }
-  
+
   return await response.json();
 }
 
@@ -617,12 +618,12 @@ export async function createReminder(data: ReminderCreate): Promise<Reminder> {
     credentials: 'include',
     body: JSON.stringify(data),
   });
-  
+
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.detail || `Failed to create reminder: ${response.status}`);
   }
-  
+
   return await response.json();
 }
 
@@ -633,12 +634,12 @@ export async function updateReminder(id: string, data: Partial<ReminderCreate>):
     credentials: 'include',
     body: JSON.stringify(data),
   });
-  
+
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.detail || `Failed to update reminder: ${response.status}`);
   }
-  
+
   return await response.json();
 }
 
@@ -648,7 +649,7 @@ export async function deleteReminder(id: string): Promise<void> {
     headers: getAuthHeaders(),
     credentials: 'include',
   });
-  
+
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.detail || `Failed to delete reminder: ${response.status}`);
@@ -661,11 +662,11 @@ export async function generateDefaultReminders(): Promise<Reminder[]> {
     headers: getAuthHeaders(),
     credentials: 'include',
   });
-  
+
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.detail || `Failed to generate reminders: ${response.status}`);
   }
-  
+
   return await response.json();
 }

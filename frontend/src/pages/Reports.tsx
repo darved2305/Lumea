@@ -19,6 +19,8 @@ import { useWebSocket } from '../hooks/useWebSocket';
 import { HealthProfileCard } from '../components/profile';
 import { Tooltip, PdfPreview } from '../components/ui';
 import { API_BASE_URL } from '../config/api';
+import { getTokenSync } from '../services/tokenService';
+import { openUrl } from '../utils/browser';
 import './Reports.css';
 import './ReportsExtras.css';
 
@@ -109,7 +111,7 @@ function Reports() {
 
   // Fetch reports from API
   const fetchReports = useCallback(async () => {
-    const token = localStorage.getItem('access_token');
+    const token = getTokenSync();
     if (!token) return;
 
     try {
@@ -167,7 +169,7 @@ function Reports() {
 
   // Handle file upload
   const handleFileUpload = useCallback(async (files: FileList) => {
-    const token = localStorage.getItem('access_token');
+    const token = getTokenSync();
     if (!token) {
       setUploadError('Not authenticated. Please log in.');
       return;
@@ -326,7 +328,7 @@ function Reports() {
 
   // Actions
   const handleView = async (report: Report) => {
-    const token = localStorage.getItem('access_token');
+    const token = getTokenSync();
     if (!token) return;
 
     try {
@@ -343,11 +345,11 @@ function Reports() {
   };
 
   const handleDownload = async (report: Report) => {
-    const token = localStorage.getItem('access_token');
+    const token = getTokenSync();
     if (!token) return;
 
     try {
-      window.open(`${API_BASE_URL}/api/reports/${report.id}/download?token=${token}`, '_blank');
+      openUrl(`${API_BASE_URL}/api/reports/${report.id}/download?token=${token}`);
     } catch (error) {
       console.error('Error downloading report:', error);
       alert('Download feature coming soon. File is stored at: ' + report.name);
@@ -372,7 +374,7 @@ function Reports() {
   const handleDelete = async (report: Report) => {
     if (!confirm(`Delete "${report.name}"?`)) return;
 
-    const token = localStorage.getItem('access_token');
+    const token = getTokenSync();
     if (!token) return;
 
     try {

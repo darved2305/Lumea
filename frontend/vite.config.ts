@@ -10,4 +10,15 @@ export default defineConfig({
       usePolling: true, // Required for Docker hot reload
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor': ['react', 'react-dom', 'react-router-dom'],
+          'three-js': ['three', '@react-three/fiber', '@react-three/drei'],
+          'ui-viz': ['recharts', 'framer-motion', 'gsap', 'lucide-react'],
+        }
+      }
+    }
+  }
 })

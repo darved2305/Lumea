@@ -2,9 +2,11 @@
  * WebSocket hook for real-time updates
  * 
  * Replaces SSE with WebSocket for bidirectional communication
+ * Uses TokenService for cross-platform token access
  */
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { WS_BASE_URL } from '../config/api';
+import { getTokenSync } from '../services/tokenService';
 
 export type WebSocketEventType =
   | 'connected'
@@ -82,7 +84,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   const getToken = useCallback(() => {
-    return localStorage.getItem('access_token');
+    return getTokenSync();
   }, []);
 
   const cleanup = useCallback(() => {
@@ -321,8 +323,46 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
       }
     };
 
+    // Listen for custom tokenChanged event (from TokenService)
+    const handleTokenChange = (e: CustomEvent<{ token: string | null }>) => {
+      if (e.detail?.token) {
+        shouldReconnectRef.current = true;
+        connect();
+      } else {
+        disconnect();
+      }
+    };
+
     window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+    window.addEventListener('tokenChanged', handleTokenChange as EventListener);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('tokenChanged', handleTokenChange as EventListener);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only setup listener once
+
+  // Handle app lifecycle events (Capacitor - pause/resume)
+  useEffect(() => {
+    const handleAppPause = () => {
+      console.log('[WebSocket] App paused, disconnecting...');
+      cleanup();
+      setIsConnected(false);
+    };
+
+    const handleAppResume = () => {
+      console.log('[WebSocket] App resumed, reconnecting...');
+      shouldReconnectRef.current = true;
+      connect();
+    };
+
+    window.addEventListener('appPause', handleAppPause);
+    window.addEventListener('appResume', handleAppResume);
+
+    return () => {
+      window.removeEventListener('appPause', handleAppPause);
+      window.removeEventListener('appResume', handleAppResume);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only setup listener once
 
@@ -333,5 +373,6 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     disconnect,
   };
 }
+
 
 export default useWebSocket;

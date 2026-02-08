@@ -10,6 +10,7 @@ import {
   type ChatMessage,
 } from '../services/dashboardData';
 import { API_BASE_URL, WS_BASE_URL } from '../config/api';
+import { getTokenSync } from '../services/tokenService';
 
 const API_BASE = API_BASE_URL;
 
@@ -21,7 +22,7 @@ export function useHealthSummary() {
 
   useEffect(() => {
     const fetchData = async () => {
-      const token = localStorage.getItem('access_token');
+      const token = getTokenSync();
       if (!token) {
         setLoading(false);
         return;
@@ -40,7 +41,7 @@ export function useHealthSummary() {
 
         if (response.ok) {
           const result = await response.json();
-          
+
           // Transform to HealthSummary format
           if (result.score !== null && result.score !== undefined) {
             const factors = [];
@@ -98,10 +99,10 @@ export function useLiveSeries(metric: string, range: '1D' | '1W' | '1M') {
       intervalRef.current = window.setInterval(() => {
         setData(prevData => {
           if (prevData.length === 0) return prevData;
-          
+
           const lastPoint = prevData[prevData.length - 1];
           const nextPoint = generateNextPoint(lastPoint, metric);
-          
+
           // Keep only last 60 points for 1D view
           const newData = [...prevData.slice(-59), nextPoint];
           return newData;
@@ -158,7 +159,7 @@ Ask me anything about your health metrics, lab results, or what you can do to im
 
   // Setup WebSocket connection for chat
   useEffect(() => {
-    const token = localStorage.getItem('access_token');
+    const token = getTokenSync();
     if (!token) return;
 
     const ws = new WebSocket(`${WS_BASE_URL}/ws?token=${token}`);
@@ -199,7 +200,7 @@ Ask me anything about your health metrics, lab results, or what you can do to im
             flushBufferedTokens();
           }, 50);
         };
-        
+
         switch (message.type) {
           case 'chat_start':
             // Response generation started
@@ -208,7 +209,7 @@ Ask me anything about your health metrics, lab results, or what you can do to im
             tokenBufferRef.current = '';
             upsertAssistantMessage(currentMessageIdRef.current, msg => msg);
             break;
-            
+
           case 'chat_token':
             if (currentMessageIdRef.current && message.data?.token != null) {
               tokenBufferRef.current += message.data.token;
@@ -235,7 +236,7 @@ Ask me anything about your health metrics, lab results, or what you can do to im
             setIsTyping(false);
             currentMessageIdRef.current = null;
             break;
-            
+
           case 'chat_error': {
             if (flushTimerRef.current) {
               clearTimeout(flushTimerRef.current);
@@ -285,7 +286,7 @@ Ask me anything about your health metrics, lab results, or what you can do to im
       content,
       timestamp: new Date(),
     };
-    
+
     setMessages(prev => [...prev, userMessage]);
     setIsTyping(true);
 
@@ -299,25 +300,25 @@ Ask me anything about your health metrics, lab results, or what you can do to im
       // Fallback to mock if WebSocket not connected
       try {
         const responseContent = await mockAssistantResponse(content);
-        
+
         const assistantMessage: ChatMessage = {
           id: (Date.now() + 1).toString(),
           role: 'assistant',
           content: responseContent,
           timestamp: new Date(),
         };
-        
+
         setMessages(prev => [...prev, assistantMessage]);
       } catch (error) {
         console.error('Error getting response:', error);
-        
+
         const errorMessage: ChatMessage = {
           id: (Date.now() + 1).toString(),
           role: 'assistant',
           content: 'Sorry, I encountered an error. Please try again.',
           timestamp: new Date(),
         };
-        
+
         setMessages(prev => [...prev, errorMessage]);
       } finally {
         setIsTyping(false);
@@ -336,6 +337,6 @@ Ask me anything about your health metrics, lab results, or what you can do to im
 // Hook for selected metric tracking
 export function useSelectedMetric(defaultMetric: string = 'index') {
   const [selectedMetric, setSelectedMetric] = useState(defaultMetric);
-  
+
   return { selectedMetric, setSelectedMetric };
 }

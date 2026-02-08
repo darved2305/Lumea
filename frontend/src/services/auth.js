@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { API_BASE_URL } from '../config/api'
+import { getTokenSync, removeToken } from './tokenService'
 
 const API_URL = API_BASE_URL
 
@@ -12,7 +13,7 @@ const api = axios.create({
 })
 
 api.interceptors.request.use(config => {
-  const token = localStorage.getItem('access_token')
+  const token = getTokenSync()
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
@@ -43,6 +44,5 @@ export const getMe = async () => {
 
 export const logout = async () => {
   await api.post('/api/auth/logout')
-  localStorage.removeItem('access_token')
+  removeToken()
 }
-

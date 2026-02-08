@@ -10,10 +10,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { 
-  User, 
-  Heart, 
-  Bell, 
+import {
+  User,
+  Heart,
+  Bell,
   ChevronRight,
   CheckCircle2,
   AlertCircle,
@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { fetchProfileMe, ProfileMeResponse, fetchFullProfile, FullProfile } from '../services/profileApi';
 import { logout } from '../utils/auth';
+import { getTokenSync } from '../services/tokenService';
 import './Settings.css';
 
 // Debug mode - set to true to show saved profile data
@@ -43,20 +44,20 @@ export default function Settings() {
       // Use the /me endpoint for status
       const status = await fetchProfileMe();
       setProfileStatus(status);
-      
+
       // Also load full profile for debug display
       if (status.exists) {
         const full = await fetchFullProfile();
         setFullProfile(full);
       }
-      
+
       // Debug logging
       if (DEV_DEBUG_MODE) {
         console.log('[Settings] Fetched profile status:', status);
       }
-      
+
       // Get email from JWT token if available
-      const token = localStorage.getItem('access_token');
+      const token = getTokenSync();
       if (token) {
         try {
           const payload = JSON.parse(atob(token.split('.')[1]));
@@ -88,19 +89,19 @@ export default function Settings() {
   // Use is_completed from /me response (reflects DB truth)
   const isProfileComplete = profileStatus?.is_completed || false;
   const completionScore = profileStatus?.completion?.score || 0;
-  const lastUpdated = profileStatus?.profile?.updated_at 
+  const lastUpdated = profileStatus?.profile?.updated_at
     ? new Date(profileStatus.profile.updated_at).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      })
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    })
     : null;
   const completedAt = profileStatus?.profile?.completed_at
     ? new Date(profileStatus.profile.completed_at).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      })
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    })
     : null;
 
   return (
@@ -122,7 +123,7 @@ export default function Settings() {
               <User size={18} />
               Account
             </h2>
-            
+
             <div className="settings-card">
               <div className="settings-item">
                 <div className="settings-item-info">
@@ -132,9 +133,9 @@ export default function Settings() {
                   </span>
                 </div>
               </div>
-              
+
               <div className="settings-divider" />
-              
+
               <div className="settings-item settings-item-action">
                 <div className="settings-item-info">
                   <span className="settings-item-label">Password</span>
@@ -154,9 +155,9 @@ export default function Settings() {
               <Heart size={18} />
               Health Profile
             </h2>
-            
+
             <div className="settings-card">
-              <motion.div 
+              <motion.div
                 className="settings-profile-status"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -203,8 +204,8 @@ export default function Settings() {
                   </>
                 )}
               </motion.div>
-              
-              <button 
+
+              <button
                 className="settings-profile-btn"
                 onClick={() => navigate('/health-profile')}
               >
@@ -212,17 +213,17 @@ export default function Settings() {
                 {isProfileComplete ? 'Edit Profile' : 'Complete Profile'}
                 <ChevronRight size={16} />
               </button>
-              
+
               {/* Debug Section - Dev Only */}
               {DEV_DEBUG_MODE && (
                 <div className="settings-debug">
-                  <button 
+                  <button
                     className="settings-debug-toggle"
                     onClick={() => setShowDebug(!showDebug)}
                   >
                     {showDebug ? '▼' : '▶'} Debug Info (Dev Only)
                   </button>
-                  
+
                   {showDebug && profileStatus && (
                     <div className="settings-debug-content">
                       <p className="debug-timestamp">
@@ -267,7 +268,7 @@ export default function Settings() {
               <Shield size={18} />
               Privacy
             </h2>
-            
+
             <div className="settings-card">
               <div className="settings-item settings-item-action">
                 <div className="settings-item-info">
@@ -288,7 +289,7 @@ export default function Settings() {
               <Bell size={18} />
               Notifications
             </h2>
-            
+
             <div className="settings-card">
               <div className="settings-item">
                 <div className="settings-item-info">
@@ -300,9 +301,9 @@ export default function Settings() {
                   <span className="settings-toggle-slider"></span>
                 </label>
               </div>
-              
+
               <div className="settings-divider" />
-              
+
               <div className="settings-item">
                 <div className="settings-item-info">
                   <span className="settings-item-label">Report Reminders</span>

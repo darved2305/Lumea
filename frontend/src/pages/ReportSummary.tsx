@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import DashboardNavbar from '../components/dashboard/DashboardNavbar';
 import { PdfPreview } from '../components/ui';
+import { getTokenSync } from '../services/tokenService';
+import { openUrl } from '../utils/browser';
 import './ReportSummary.css';
 
 import { API_BASE_URL } from '../config/api';
@@ -96,7 +98,7 @@ function ReportSummary() {
   const [docTypeFilter, setDocTypeFilter] = useState('');
   const [categories, setCategories] = useState<CategoryInfo[]>([]);
   const [docTypes, setDocTypes] = useState<CategoryInfo[]>([]);
-  
+
   // AI Results
   const [summaryResult, setSummaryResult] = useState<{
     data: SummaryJSON | null;
@@ -113,7 +115,7 @@ function ReportSummary() {
     loading: false,
     error: null,
   });
-  
+
   const [comparisonResult, setComparisonResult] = useState<{
     data: ComparisonJSON | null;
     cached: boolean;
@@ -129,7 +131,7 @@ function ReportSummary() {
     loading: false,
     error: null,
   });
-  
+
   // UI state
   const [activeTab, setActiveTab] = useState<'summary' | 'comparison' | 'metrics'>('summary');
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -146,7 +148,7 @@ function ReportSummary() {
 
   // Fetch reports
   const fetchReports = useCallback(async () => {
-    const token = localStorage.getItem('access_token');
+    const token = getTokenSync();
     if (!token) return;
 
     try {
@@ -154,7 +156,7 @@ function ReportSummary() {
       const params = new URLSearchParams();
       if (categoryFilter) params.append('category', categoryFilter);
       if (docTypeFilter) params.append('doc_type', docTypeFilter);
-      
+
       const response = await fetch(`${API_BASE}/api/ai/reports-for-summary?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -176,7 +178,7 @@ function ReportSummary() {
 
   // Fetch categories
   const fetchCategories = useCallback(async () => {
-    const token = localStorage.getItem('access_token');
+    const token = getTokenSync();
     if (!token) return;
 
     try {
@@ -235,7 +237,7 @@ function ReportSummary() {
 
     setSelectedIds(prev => {
       const newSet = new Set(prev);
-      
+
       if (newSet.has(id)) {
         newSet.delete(id);
         // Clear results when deselecting
@@ -257,9 +259,9 @@ function ReportSummary() {
         const existingSelected = filteredReports.filter(r => newSet.has(r.id));
         const existingCategory = existingSelected[0]?.category;
         const existingDocType = existingSelected[0]?.doc_type;
-        
+
         if (
-          report.category !== existingCategory && 
+          report.category !== existingCategory &&
           report.doc_type !== existingDocType &&
           existingCategory && existingDocType
         ) {
@@ -276,9 +278,9 @@ function ReportSummary() {
   // Generate summary
   const generateSummary = useCallback(async (forceRegenerate = false) => {
     if (selectedIds.size !== 1) return;
-    
+
     const reportId = Array.from(selectedIds)[0];
-    const token = localStorage.getItem('access_token');
+    const token = getTokenSync();
     if (!token) return;
 
     setSummaryResult(prev => ({ ...prev, loading: true, error: null }));
@@ -325,14 +327,14 @@ function ReportSummary() {
   // Generate comparison
   const generateComparison = useCallback(async (forceRegenerate = false) => {
     if (selectedIds.size < 2) return;
-    
+
     const validation = validateSelection();
     if (!validation.valid) {
       showToast(validation.error || 'Invalid selection', 'error');
       return;
     }
 
-    const token = localStorage.getItem('access_token');
+    const token = getTokenSync();
     if (!token) return;
 
     setComparisonResult(prev => ({ ...prev, loading: true, error: null }));
@@ -407,11 +409,11 @@ function ReportSummary() {
 
     if (selectedReports.length === 1) {
       const report = selectedReports[0];
-      const token = localStorage.getItem('access_token');
+      const token = getTokenSync();
       const fileUrl = report.preview_url
         ? `${API_BASE}${report.preview_url}${token ? `?token=${token}` : ''}`
         : '';
-      
+
       return (
         <div className="preview-single">
           <div className="preview-header">
@@ -429,7 +431,7 @@ function ReportSummary() {
     }
 
     // Multiple reports - grid view
-    const token = localStorage.getItem('access_token');
+    const token = getTokenSync();
     return (
       <div className="preview-multi">
         <div className="preview-multi-header">
@@ -441,7 +443,7 @@ function ReportSummary() {
             const fileUrl = report.preview_url
               ? `${API_BASE}${report.preview_url}${token ? `?token=${token}` : ''}`
               : '';
-            
+
             return (
               <div
                 key={report.id}
@@ -462,7 +464,7 @@ function ReportSummary() {
                   className="preview-grid-expand"
                   onClick={(e) => {
                     e.stopPropagation();
-                    window.open(fileUrl, '_blank');
+                    openUrl(fileUrl);
                   }}
                 >
                   <Maximize2 size={14} />
@@ -478,7 +480,7 @@ function ReportSummary() {
   // Render AI results panel
   const renderAIResults = () => {
     const isLoading = summaryResult.loading || comparisonResult.loading;
-    
+
     if (selectedIds.size === 0) {
       return (
         <div className="ai-empty">
@@ -519,266 +521,266 @@ function ReportSummary() {
 
           {/* Tab Content */}
           <div className="ai-content">
-          {/* Summary Tab */}
-          {activeTab === 'summary' && (
-            <>
-              {summaryResult.loading ? (
-                <div className="ai-loading">
-                  <Loader2 size={32} className="spinner" />
-                  <p>Generating AI summary...</p>
-                </div>
-              ) : summaryResult.error ? (
-                <div className="ai-error">
-                  <AlertCircle size={24} />
-                  <p>{summaryResult.error}</p>
-                  <button onClick={() => generateSummary(true)}>Retry</button>
-                </div>
-              ) : summaryResult.data ? (
-                <div className="ai-summary">
-                  <div className="ai-summary-header">
-                    <h3>{summaryResult.data.title}</h3>
-                    {summaryResult.cached && <span className="cache-badge">Cached</span>}
+            {/* Summary Tab */}
+            {activeTab === 'summary' && (
+              <>
+                {summaryResult.loading ? (
+                  <div className="ai-loading">
+                    <Loader2 size={32} className="spinner" />
+                    <p>Generating AI summary...</p>
                   </div>
-                  
-                  <p className="ai-summary-text">{summaryResult.data.plain_language_summary}</p>
-                  
-                  {/* Highlights */}
-                  <div className="ai-highlights">
-                    {summaryResult.data.highlights.positive.length > 0 && (
-                      <div className="highlight-section positive">
-                        <h4><CheckCircle2 size={16} /> Positive Findings</h4>
-                        <ul>
-                          {summaryResult.data.highlights.positive.map((item, i) => (
-                            <li key={i}>{item}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                    
-                    {summaryResult.data.highlights.needs_attention.length > 0 && (
-                      <div className="highlight-section attention">
-                        <h4><AlertTriangle size={16} /> Needs Attention</h4>
-                        <ul>
-                          {summaryResult.data.highlights.needs_attention.map((item, i) => (
-                            <li key={i}>{item}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                    
-                    {summaryResult.data.highlights.next_steps.length > 0 && (
-                      <div className="highlight-section next-steps">
-                        <h4><ArrowRight size={16} /> Suggested Next Steps</h4>
-                        <ul>
-                          {summaryResult.data.highlights.next_steps.map((item, i) => (
-                            <li key={i}>{item}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
+                ) : summaryResult.error ? (
+                  <div className="ai-error">
+                    <AlertCircle size={24} />
+                    <p>{summaryResult.error}</p>
+                    <button onClick={() => generateSummary(true)}>Retry</button>
                   </div>
-
-                  {/* Key Findings */}
-                  {summaryResult.data.key_findings.length > 0 && (
-                    <div className="ai-findings">
-                      <h4>Key Findings</h4>
-                      {summaryResult.data.key_findings.map((finding, i) => (
-                        <div key={i} className="finding-item">
-                          <strong>{finding.item}</strong>
-                          <span>{finding.evidence}</span>
-                        </div>
-                      ))}
+                ) : summaryResult.data ? (
+                  <div className="ai-summary">
+                    <div className="ai-summary-header">
+                      <h3>{summaryResult.data.title}</h3>
+                      {summaryResult.cached && <span className="cache-badge">Cached</span>}
                     </div>
-                  )}
 
-                  {/* Footer */}
-                  <div className="ai-footer">
-                    <span className="ai-timestamp">
-                      Generated: {summaryResult.generatedAt?.toLocaleString()}
-                    </span>
-                    <button 
-                      className="regenerate-btn"
-                      onClick={() => generateSummary(true)}
-                      disabled={isLoading}
-                    >
-                      <RefreshCw size={14} />
-                      Regenerate
-                    </button>
-                  </div>
+                    <p className="ai-summary-text">{summaryResult.data.plain_language_summary}</p>
 
-                  <p className="ai-disclaimer">
-                    ⚕️ This is an AI-generated summary for informational purposes only. 
-                    It is not a substitute for professional medical advice.
-                  </p>
-                </div>
-              ) : (
-                <div className="ai-prompt">
-                  <p>Click "Generate Summary" to analyze this report</p>
-                </div>
-              )}
-            </>
-          )}
-
-          {/* Comparison Tab */}
-          {activeTab === 'comparison' && (
-            <>
-              {comparisonResult.loading ? (
-                <div className="ai-loading">
-                  <Loader2 size={32} className="spinner" />
-                  <p>Comparing reports...</p>
-                </div>
-              ) : comparisonResult.error ? (
-                <div className="ai-error">
-                  <AlertCircle size={24} />
-                  <p>{comparisonResult.error}</p>
-                  <button onClick={() => generateComparison(true)}>Retry</button>
-                </div>
-              ) : comparisonResult.data ? (
-                <div className="ai-comparison">
-                  <div className="ai-summary-header">
-                    <h3>{comparisonResult.data.title}</h3>
-                    {comparisonResult.cached && <span className="cache-badge">Cached</span>}
-                  </div>
-                  
-                  <p className="ai-overall-change">{comparisonResult.data.overall_change}</p>
-                  
-                  {/* Changes */}
-                  <div className="ai-changes">
-                    {comparisonResult.data.improvements.length > 0 && (
-                      <div className="change-section improved">
-                        <h4><CheckCircle2 size={16} /> Improvements</h4>
-                        <ul>
-                          {comparisonResult.data.improvements.map((item, i) => (
-                            <li key={i}>{item}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                    
-                    {comparisonResult.data.worsened.length > 0 && (
-                      <div className="change-section worsened">
-                        <h4><AlertTriangle size={16} /> Areas of Concern</h4>
-                        <ul>
-                          {comparisonResult.data.worsened.map((item, i) => (
-                            <li key={i}>{item}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                    
-                    {comparisonResult.data.stable.length > 0 && (
-                      <div className="change-section stable">
-                        <h4><Check size={16} /> Stable</h4>
-                        <ul>
-                          {comparisonResult.data.stable.map((item, i) => (
-                            <li key={i}>{item}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Key Differences */}
-                  {comparisonResult.data.key_differences.length > 0 && (
-                    <div className="ai-differences">
-                      <h4>Key Differences</h4>
-                      {comparisonResult.data.key_differences.map((diff, i) => (
-                        <div key={i} className="difference-item">
-                          <span className="diff-metric">{diff.metric}</span>
-                          <span className="diff-change">
-                            {diff.from} → {diff.to}
-                          </span>
-                          <span className="diff-evidence">{diff.evidence}</span>
+                    {/* Highlights */}
+                    <div className="ai-highlights">
+                      {summaryResult.data.highlights.positive.length > 0 && (
+                        <div className="highlight-section positive">
+                          <h4><CheckCircle2 size={16} /> Positive Findings</h4>
+                          <ul>
+                            {summaryResult.data.highlights.positive.map((item, i) => (
+                              <li key={i}>{item}</li>
+                            ))}
+                          </ul>
                         </div>
-                      ))}
-                    </div>
-                  )}
+                      )}
 
-                  {/* Next Steps */}
-                  {comparisonResult.data.next_steps.length > 0 && (
-                    <div className="highlight-section next-steps">
-                      <h4><ArrowRight size={16} /> Recommended Actions</h4>
-                      <ul>
-                        {comparisonResult.data.next_steps.map((item, i) => (
-                          <li key={i}>{item}</li>
+                      {summaryResult.data.highlights.needs_attention.length > 0 && (
+                        <div className="highlight-section attention">
+                          <h4><AlertTriangle size={16} /> Needs Attention</h4>
+                          <ul>
+                            {summaryResult.data.highlights.needs_attention.map((item, i) => (
+                              <li key={i}>{item}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {summaryResult.data.highlights.next_steps.length > 0 && (
+                        <div className="highlight-section next-steps">
+                          <h4><ArrowRight size={16} /> Suggested Next Steps</h4>
+                          <ul>
+                            {summaryResult.data.highlights.next_steps.map((item, i) => (
+                              <li key={i}>{item}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Key Findings */}
+                    {summaryResult.data.key_findings.length > 0 && (
+                      <div className="ai-findings">
+                        <h4>Key Findings</h4>
+                        {summaryResult.data.key_findings.map((finding, i) => (
+                          <div key={i} className="finding-item">
+                            <strong>{finding.item}</strong>
+                            <span>{finding.evidence}</span>
+                          </div>
                         ))}
-                      </ul>
+                      </div>
+                    )}
+
+                    {/* Footer */}
+                    <div className="ai-footer">
+                      <span className="ai-timestamp">
+                        Generated: {summaryResult.generatedAt?.toLocaleString()}
+                      </span>
+                      <button
+                        className="regenerate-btn"
+                        onClick={() => generateSummary(true)}
+                        disabled={isLoading}
+                      >
+                        <RefreshCw size={14} />
+                        Regenerate
+                      </button>
                     </div>
-                  )}
 
-                  {/* Footer */}
-                  <div className="ai-footer">
-                    <span className="ai-timestamp">
-                      Generated: {comparisonResult.generatedAt?.toLocaleString()}
-                    </span>
-                    <button 
-                      className="regenerate-btn"
-                      onClick={() => generateComparison(true)}
-                      disabled={isLoading}
-                    >
-                      <RefreshCw size={14} />
-                      Regenerate
-                    </button>
+                    <p className="ai-disclaimer">
+                      ⚕️ This is an AI-generated summary for informational purposes only.
+                      It is not a substitute for professional medical advice.
+                    </p>
                   </div>
+                ) : (
+                  <div className="ai-prompt">
+                    <p>Click "Generate Summary" to analyze this report</p>
+                  </div>
+                )}
+              </>
+            )}
 
-                  <p className="ai-disclaimer">
-                    ⚕️ This is an AI-generated comparison for informational purposes only. 
-                    It is not a substitute for professional medical advice.
-                  </p>
-                </div>
-              ) : (
-                <div className="ai-prompt">
-                  <p>Click "Compare Selected" to analyze changes between reports</p>
-                </div>
-              )}
-            </>
-          )}
+            {/* Comparison Tab */}
+            {activeTab === 'comparison' && (
+              <>
+                {comparisonResult.loading ? (
+                  <div className="ai-loading">
+                    <Loader2 size={32} className="spinner" />
+                    <p>Comparing reports...</p>
+                  </div>
+                ) : comparisonResult.error ? (
+                  <div className="ai-error">
+                    <AlertCircle size={24} />
+                    <p>{comparisonResult.error}</p>
+                    <button onClick={() => generateComparison(true)}>Retry</button>
+                  </div>
+                ) : comparisonResult.data ? (
+                  <div className="ai-comparison">
+                    <div className="ai-summary-header">
+                      <h3>{comparisonResult.data.title}</h3>
+                      {comparisonResult.cached && <span className="cache-badge">Cached</span>}
+                    </div>
 
-          {/* Metrics Tab */}
-          {activeTab === 'metrics' && (
-            <div className="ai-metrics">
-              <p className="metrics-placeholder">
-                Key metrics extracted from selected reports will appear here.
-                <br /><br />
-                This feature shows structured lab values and measurements when available.
-              </p>
-            </div>
-          )}
+                    <p className="ai-overall-change">{comparisonResult.data.overall_change}</p>
+
+                    {/* Changes */}
+                    <div className="ai-changes">
+                      {comparisonResult.data.improvements.length > 0 && (
+                        <div className="change-section improved">
+                          <h4><CheckCircle2 size={16} /> Improvements</h4>
+                          <ul>
+                            {comparisonResult.data.improvements.map((item, i) => (
+                              <li key={i}>{item}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {comparisonResult.data.worsened.length > 0 && (
+                        <div className="change-section worsened">
+                          <h4><AlertTriangle size={16} /> Areas of Concern</h4>
+                          <ul>
+                            {comparisonResult.data.worsened.map((item, i) => (
+                              <li key={i}>{item}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {comparisonResult.data.stable.length > 0 && (
+                        <div className="change-section stable">
+                          <h4><Check size={16} /> Stable</h4>
+                          <ul>
+                            {comparisonResult.data.stable.map((item, i) => (
+                              <li key={i}>{item}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Key Differences */}
+                    {comparisonResult.data.key_differences.length > 0 && (
+                      <div className="ai-differences">
+                        <h4>Key Differences</h4>
+                        {comparisonResult.data.key_differences.map((diff, i) => (
+                          <div key={i} className="difference-item">
+                            <span className="diff-metric">{diff.metric}</span>
+                            <span className="diff-change">
+                              {diff.from} → {diff.to}
+                            </span>
+                            <span className="diff-evidence">{diff.evidence}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Next Steps */}
+                    {comparisonResult.data.next_steps.length > 0 && (
+                      <div className="highlight-section next-steps">
+                        <h4><ArrowRight size={16} /> Recommended Actions</h4>
+                        <ul>
+                          {comparisonResult.data.next_steps.map((item, i) => (
+                            <li key={i}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Footer */}
+                    <div className="ai-footer">
+                      <span className="ai-timestamp">
+                        Generated: {comparisonResult.generatedAt?.toLocaleString()}
+                      </span>
+                      <button
+                        className="regenerate-btn"
+                        onClick={() => generateComparison(true)}
+                        disabled={isLoading}
+                      >
+                        <RefreshCw size={14} />
+                        Regenerate
+                      </button>
+                    </div>
+
+                    <p className="ai-disclaimer">
+                      ⚕️ This is an AI-generated comparison for informational purposes only.
+                      It is not a substitute for professional medical advice.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="ai-prompt">
+                    <p>Click "Compare Selected" to analyze changes between reports</p>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Metrics Tab */}
+            {activeTab === 'metrics' && (
+              <div className="ai-metrics">
+                <p className="metrics-placeholder">
+                  Key metrics extracted from selected reports will appear here.
+                  <br /><br />
+                  This feature shows structured lab values and measurements when available.
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Action Footer - Generate Summary / Compare Button */}
+          <div className="ai-action-footer">
+            {selectedIds.size === 1 ? (
+              <button
+                className="action-btn primary"
+                onClick={() => generateSummary()}
+                disabled={summaryResult.loading}
+                style={{ width: '100%' }}
+              >
+                {summaryResult.loading ? (
+                  <Loader2 size={18} className="spinner" />
+                ) : (
+                  <Sparkles size={18} />
+                )}
+                Generate Summary
+              </button>
+            ) : (
+              <button
+                className="action-btn primary"
+                onClick={() => generateComparison()}
+                disabled={comparisonResult.loading || !validateSelection().valid}
+                style={{ width: '100%' }}
+              >
+                {comparisonResult.loading ? (
+                  <Loader2 size={18} className="spinner" />
+                ) : (
+                  <Sparkles size={18} />
+                )}
+                Compare Selected ({selectedIds.size})
+              </button>
+            )}
+          </div>
         </div>
-        
-        {/* Action Footer - Generate Summary / Compare Button */}
-        <div className="ai-action-footer">
-          {selectedIds.size === 1 ? (
-            <button
-              className="action-btn primary"
-              onClick={() => generateSummary()}
-              disabled={summaryResult.loading}
-              style={{ width: '100%' }}
-            >
-              {summaryResult.loading ? (
-                <Loader2 size={18} className="spinner" />
-              ) : (
-                <Sparkles size={18} />
-              )}
-              Generate Summary
-            </button>
-          ) : (
-            <button
-              className="action-btn primary"
-              onClick={() => generateComparison()}
-              disabled={comparisonResult.loading || !validateSelection().valid}
-              style={{ width: '100%' }}
-            >
-              {comparisonResult.loading ? (
-                <Loader2 size={18} className="spinner" />
-              ) : (
-                <Sparkles size={18} />
-              )}
-              Compare Selected ({selectedIds.size})
-            </button>
-          )}
-        </div>
-      </div>
       </>
     );
   };
@@ -908,7 +910,7 @@ function ReportSummary() {
                         <input
                           type="checkbox"
                           checked={selectedIds.has(report.id)}
-                          onChange={() => {}}
+                          onChange={() => { }}
                         />
                       </div>
                       <div className="report-info">

@@ -19,6 +19,7 @@ import {
 import DashboardNavbar from '../components/dashboard/DashboardNavbar';
 import { API_BASE_URL } from '../config/api';
 import { getAuthToken } from '../utils/auth';
+import speechService, { SpeechRecognitionResult } from '../services/speechService';
 import './VoiceAgent.css';
 
 type CallState = 'idle' | 'listening' | 'thinking' | 'speaking' | 'error';
@@ -149,7 +150,6 @@ function VoiceAgent() {
   const [error, setError] = useState<string | null>(null);
   const [ttsConfigured, setTtsConfigured] = useState<boolean | null>(null);
 
-  const recognitionRef = useRef<any>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const isCallActiveRef = useRef(isCallActive);
 
@@ -187,60 +187,43 @@ function VoiceAgent() {
     fetchContext();
   }, []);
 
-  // Initialize speech recognition
-  useEffect(() => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    
-    if (!SpeechRecognition) {
-      console.warn('Speech recognition not supported');
-      return;
+  // Handle speech recognition results
+  const handleSpeechResult = useCallback((result: SpeechRecognitionResult) => {
+    setCurrentTranscript(result.transcript);
+    if (result.isFinal) {
+      handleTranscriptComplete(result.transcript);
     }
+  }, []);
 
-    const recognition = new SpeechRecognition();
-    recognition.continuous = false;
-    recognition.interimResults = true;
-    recognition.lang = 'en-US';
+  const handleSpeechError = useCallback((err: string) => {
+    console.error('Speech recognition error:', err);
+    if (err === 'no-speech') {
+      setCallState('idle');
+      setError('No speech detected. Please try again.');
+    } else {
+      setCallState('error');
+      setError(`Speech recognition error: ${err}`);
+    }
+  }, []);
 
-    recognition.onresult = (event: any) => {
-      const transcript = Array.from(event.results)
-        .map((result: any) => result[0].transcript)
-        .join('');
-      
-      setCurrentTranscript(transcript);
+  // Check microphone permission and availability on mount
+  useEffect(() => {
+    const initSpeech = async () => {
+      const available = await speechService.isAvailable();
+      if (!available) {
+        console.warn('Speech recognition not available');
+      }
 
-      if (event.results[event.results.length - 1].isFinal) {
-        handleTranscriptComplete(transcript);
+      const permission = await speechService.checkPermission();
+      if (permission === 'prompt') {
+        await speechService.requestPermission();
       }
     };
 
-    recognition.onerror = (event: any) => {
-      console.error('Speech recognition error:', event.error);
-      if (event.error === 'no-speech') {
-        setCallState('idle');
-        setError('No speech detected. Please try again.');
-      } else if (event.error !== 'aborted') {
-        setCallState('error');
-        setError(`Speech recognition error: ${event.error}`);
-      }
-    };
-
-    recognition.onend = () => {
-      // Use ref to check current state
-      if (isCallActiveRef.current) {
-        // Don't auto-restart - let the flow control it
-      }
-    };
-
-    recognitionRef.current = recognition;
+    initSpeech();
 
     return () => {
-      if (recognitionRef.current) {
-        try {
-          recognitionRef.current.stop();
-        } catch (e) {
-          // Ignore
-        }
-      }
+      speechService.abortListening();
     };
   }, []);
 
@@ -276,23 +259,18 @@ function VoiceAgent() {
     setIsCallActive(false);
     setCallState('idle');
     setCurrentTranscript('');
-    
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch (e) {
-        // Ignore
-      }
-    }
-    
+
+    speechService.stopListening();
+
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current = null;
     }
   }, []);
 
-  const startListening = useCallback(() => {
-    if (!recognitionRef.current) {
+  const startListening = useCallback(async () => {
+    const available = await speechService.isAvailable();
+    if (!available) {
       setError('Speech recognition not available in this browser.');
       return;
     }
@@ -301,22 +279,25 @@ function VoiceAgent() {
       setCallState('listening');
       setCurrentTranscript('');
       setError(null);
-      recognitionRef.current.start();
+
+      await speechService.startListening({
+        onResult: handleSpeechResult,
+        onError: handleSpeechError,
+        onEnd: () => {
+          if (isCallActiveRef.current && callState === 'listening') {
+            // flow control
+          }
+        }
+      });
     } catch (err) {
       console.error('Failed to start recognition:', err);
       setError('Failed to start listening. Please try again.');
       setCallState('idle');
     }
-  }, []);
+  }, [handleSpeechResult, handleSpeechError, callState]);
 
   const stopListening = useCallback(() => {
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch (e) {
-        // Ignore
-      }
-    }
+    speechService.stopListening();
   }, []);
 
   const handleTranscriptComplete = async (transcript: string) => {
@@ -338,10 +319,10 @@ function VoiceAgent() {
 
   const getAIResponse = async (text: string) => {
     setCallState('thinking');
-    
+
     try {
       const token = getAuthToken();
-      
+
       const answerResponse = await fetch(`${API_BASE_URL}/api/voice/answer`, {
         method: 'POST',
         headers: {
@@ -387,10 +368,10 @@ function VoiceAgent() {
       utterance.volume = isSpeakerMuted ? 0 : 1;
 
       const voices = window.speechSynthesis.getVoices();
-      const preferredVoice = voices.find(v => 
+      const preferredVoice = voices.find(v =>
         v.lang.startsWith('en') && (v.name.includes('Female') || v.name.includes('Samantha'))
       ) || voices.find(v => v.lang.startsWith('en')) || voices[0];
-      
+
       if (preferredVoice) {
         utterance.voice = preferredVoice;
       }
@@ -422,7 +403,7 @@ function VoiceAgent() {
 
     try {
       const token = getAuthToken();
-      
+
       const ttsResponse = await fetch(`${API_BASE_URL}/api/voice/tts`, {
         method: 'POST',
         headers: {
@@ -455,7 +436,7 @@ function VoiceAgent() {
 
       const audio = new Audio(audioUrl);
       audioRef.current = audio;
-      
+
       if (isSpeakerMuted) {
         audio.volume = 0;
       }
@@ -561,7 +542,7 @@ function VoiceAgent() {
   return (
     <div className="voice-agent-page">
       <DashboardNavbar userName={userName} userStatus="" />
-      
+
       <div className="voice-agent-content">
         <div className="voice-agent-container">
           {/* Page Header */}
@@ -622,36 +603,36 @@ function VoiceAgent() {
                       Call AI Agent
                     </motion.button>
                   ) : (
-                      <>
-                        <button
-                          className={`control-btn ${isMicMuted ? 'muted' : ''}`}
-                          onClick={toggleMic}
-                          title={isMicMuted ? 'Unmute' : 'Mute'}
-                        >
-                          {isMicMuted ? <MicOff size={18} /> : <Mic size={18} />}
-                        </button>
+                    <>
+                      <button
+                        className={`control-btn ${isMicMuted ? 'muted' : ''}`}
+                        onClick={toggleMic}
+                        title={isMicMuted ? 'Unmute' : 'Mute'}
+                      >
+                        {isMicMuted ? <MicOff size={18} /> : <Mic size={18} />}
+                      </button>
 
-                        <motion.button
-                          className="call-btn call-btn-end"
-                          onClick={endCall}
-                          whileHover={{ scale: 1.03 }}
-                          whileTap={{ scale: 0.97 }}
-                        >
-                          <PhoneOff size={16} />
-                          End Call
-                        </motion.button>
+                      <motion.button
+                        className="call-btn call-btn-end"
+                        onClick={endCall}
+                        whileHover={{ scale: 1.03 }}
+                        whileTap={{ scale: 0.97 }}
+                      >
+                        <PhoneOff size={16} />
+                        End Call
+                      </motion.button>
 
-                        <button
-                          className={`control-btn ${isSpeakerMuted ? 'muted' : ''}`}
-                          onClick={toggleSpeaker}
-                          title={isSpeakerMuted ? 'Unmute speaker' : 'Mute speaker'}
-                        >
-                          {isSpeakerMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
-                        </button>
-                      </>
-                    )}
-                  </div>
+                      <button
+                        className={`control-btn ${isSpeakerMuted ? 'muted' : ''}`}
+                        onClick={toggleSpeaker}
+                        title={isSpeakerMuted ? 'Unmute speaker' : 'Mute speaker'}
+                      >
+                        {isSpeakerMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+                      </button>
+                    </>
+                  )}
                 </div>
+              </div>
 
               {/* Inline Transcript Section */}
               <AnimatePresence>
@@ -713,7 +694,7 @@ function VoiceAgent() {
               {/* Context Section */}
               <div className="context-section">
                 <div className="context-section-title">Health Context Used</div>
-                
+
                 {contextItems.length > 0 ? (
                   <div className="context-items">
                     {contextItems.map((item, idx) => (

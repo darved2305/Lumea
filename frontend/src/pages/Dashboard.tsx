@@ -10,6 +10,7 @@ import TrendsCard from '../components/dashboard/TrendsCard';
 import RecommendationsPanel from '../components/RecommendationsPanel';
 import { useWebSocket, HealthIndexUpdate } from '../hooks/useWebSocket';
 import { API_BASE_URL } from '../config/api';
+import { getTokenSync, removeToken } from '../services/tokenService';
 import '../styles/dashboardTokens.css';
 import '../styles/dashboardBase.css';
 import './Dashboard.css';
@@ -57,7 +58,7 @@ function Dashboard() {
 
   // Fetch user summary on mount
   const fetchUserSummary = useCallback(async () => {
-    const token = localStorage.getItem('access_token');
+    const token = getTokenSync();
     if (!token) {
       navigate('/login');
       return;
@@ -72,7 +73,7 @@ function Dashboard() {
       });
 
       if (response.status === 401) {
-        localStorage.removeItem('access_token');
+        removeToken();
         navigate('/login');
         return;
       }

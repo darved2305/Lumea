@@ -7,6 +7,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { API_BASE_URL } from '../config/api';
+import { getTokenSync } from '../services/tokenService';
 
 // ---------- Types ----------
 
@@ -32,22 +33,22 @@ export interface TelemetryState {
 // ---------- Simulated fallback generator ----------
 
 const BASELINES: Record<string, { base: number; jitter: number; unit: string }> = {
-  heart_rate:       { base: 72, jitter: 5, unit: 'bpm' },
-  systolic_bp:      { base: 118, jitter: 6, unit: 'mmHg' },
-  diastolic_bp:     { base: 76, jitter: 4, unit: 'mmHg' },
-  spo2:             { base: 97.5, jitter: 0.8, unit: '%' },
+  heart_rate: { base: 72, jitter: 5, unit: 'bpm' },
+  systolic_bp: { base: 118, jitter: 6, unit: 'mmHg' },
+  diastolic_bp: { base: 76, jitter: 4, unit: 'mmHg' },
+  spo2: { base: 97.5, jitter: 0.8, unit: '%' },
   respiratory_rate: { base: 16, jitter: 2, unit: 'bpm' },
-  temperature:      { base: 98.4, jitter: 0.3, unit: '°F' },
-  stress_level:     { base: 2.5, jitter: 0.8, unit: 'score' },
-  sleep_hours:      { base: 7.2, jitter: 0.5, unit: 'hrs' },
-  creatinine:       { base: 1.0, jitter: 0.15, unit: 'mg/dL' },
-  urea:             { base: 14, jitter: 2.5, unit: 'mg/dL' },
-  egfr:             { base: 95, jitter: 5, unit: 'mL/min' },
-  sodium:           { base: 140, jitter: 2, unit: 'mEq/L' },
-  alt:              { base: 25, jitter: 5, unit: 'U/L' },
-  ast:              { base: 22, jitter: 4, unit: 'U/L' },
-  bilirubin_total:  { base: 0.8, jitter: 0.15, unit: 'mg/dL' },
-  glucose:          { base: 95, jitter: 8, unit: 'mg/dL' },
+  temperature: { base: 98.4, jitter: 0.3, unit: '°F' },
+  stress_level: { base: 2.5, jitter: 0.8, unit: 'score' },
+  sleep_hours: { base: 7.2, jitter: 0.5, unit: 'hrs' },
+  creatinine: { base: 1.0, jitter: 0.15, unit: 'mg/dL' },
+  urea: { base: 14, jitter: 2.5, unit: 'mg/dL' },
+  egfr: { base: 95, jitter: 5, unit: 'mL/min' },
+  sodium: { base: 140, jitter: 2, unit: 'mEq/L' },
+  alt: { base: 25, jitter: 5, unit: 'U/L' },
+  ast: { base: 22, jitter: 4, unit: 'U/L' },
+  bilirubin_total: { base: 0.8, jitter: 0.15, unit: 'mg/dL' },
+  glucose: { base: 95, jitter: 8, unit: 'mg/dL' },
 };
 
 let _simTick = 0;
@@ -120,7 +121,7 @@ export function useTelemetryStream(interval = 2000): TelemetryState {
 
   // Start SSE or fallback
   useEffect(() => {
-    const token = localStorage.getItem('access_token');
+    const token = getTokenSync();
     if (!token) {
       // No auth – use simulation
       simIntervalRef.current = setInterval(pushSimReading, interval);

@@ -41,6 +41,8 @@ import {
   type TrendDirection,
 } from '../services/conditionsEngine';
 import type { DetectedConditionFE, Severity } from '../components/physics/BodyImpactOverlay';
+import { API_BASE_URL } from '../config/api';
+import { getTokenSync, removeToken } from '../services/tokenService';
 import '../styles/dashboardTokens.css';
 import '../styles/dashboardBase.css';
 import './PhysicsTwin.css';
@@ -156,16 +158,16 @@ function PhysicsTwin() {
 
   // Fetch latest on mount — auto-computes from real user reports/profile data
   const bootstrap = useCallback(async () => {
-    const token = localStorage.getItem('access_token');
+    const token = getTokenSync();
     if (!token) { navigate('/login'); return; }
 
     try {
       const meRes = await fetch(
-        `${import.meta.env.VITE_API_URL?.replace(/\/+$/, '') || 'http://localhost:8000'}/api/me/bootstrap`,
+        `${API_BASE_URL}/api/me/bootstrap`,
         { headers: { Authorization: `Bearer ${token}` } },
       );
       if (meRes.status === 401) {
-        localStorage.removeItem('access_token');
+        removeToken();
         navigate('/login');
         return;
       }
@@ -246,18 +248,18 @@ function PhysicsTwin() {
   // Find worst performing organ for recommendations
   const worstOrgan = useMemo(() => {
     if (!snapshot?.organs) return null;
-    
+
     let worst: { organ: string; score: number; result: OrganResult } | null = null;
-    
+
     for (const [organKey, organData] of Object.entries(snapshot.organs)) {
       // Skip if score is 100 (perfect health)
       if (organData.score >= 100) continue;
-      
+
       if (!worst || organData.score < worst.score) {
         worst = { organ: organKey, score: organData.score, result: organData };
       }
     }
-    
+
     return worst;
   }, [snapshot]);
 
