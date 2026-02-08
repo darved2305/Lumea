@@ -73,18 +73,19 @@
 .dashboard-nav {
   display: flex;
   align-items: center;
-  gap: var(--dash-spacing-md);
+  gap: var(--dash-spacing-sm, 0.75rem);
 }
 
 .dashboard-nav-link {
   padding: var(--dash-spacing-sm) var(--dash-spacing-md);
-  font-size: 0.9375rem;
+  font-size: 0.9rem;
   font-weight: 500;
   color: var(--dash-text-secondary);
   text-decoration: none;
   border-radius: var(--dash-radius-md);
   transition: all var(--dash-transition-fast);
   position: relative;
+  white-space: nowrap;
 }
 
 .dashboard-nav-link:hover {

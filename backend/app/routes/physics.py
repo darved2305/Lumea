@@ -36,6 +36,13 @@ from app.services.conditions import (
     get_organ_conditions,
     get_organ_worst_severity,
 )
+from app.services.youtube_recommendation_service import YouTubeRecommendationService
+from app.settings import Settings
+from functools import lru_cache
+
+@lru_cache()
+def get_settings():
+    return Settings()
 
 logger = logging.getLogger(__name__)
 
@@ -315,3 +322,52 @@ async def get_config(user=Depends(get_current_user)):
             ],
         }
     return {"organs": organs}
+
+
+class YouTubeRecommendationRequest(BaseModel):
+    """Request body for YouTube recommendations"""
+    organ: str = Field(..., description="Organ name (kidney, heart, liver, etc.)")
+    score: float = Field(..., description="Organ health score 0-100")
+    status: str = Field(..., description="Health status (Healthy, Watch, Risk)")
+    metrics: Dict[str, float] = Field(default_factory=dict, description="Current metric values")
+    conditions: List[dict] = Field(default_factory=list, description="Detected conditions")
+
+
+class YouTubeRecommendationResponse(BaseModel):
+    """Response with YouTube video recommendations"""
+    organ: str
+    recommendations: List[Dict[str, str]]
+
+
+@router.post("/youtube-recommendations", response_model=YouTubeRecommendationResponse)
+async def get_youtube_recommendations(
+    body: YouTubeRecommendationRequest,
+    user=Depends(get_current_user),
+):
+    """
+    Generate YouTube video recommendations based on organ telemetry.
+    Uses OpenRouter AI to generate targeted search queries and returns
+    actual YouTube videos (if API key is available) or search links.
+    """
+    try:
+        settings = get_settings()
+        service = YouTubeRecommendationService(settings)
+        
+        recommendations = await service.generate_recommendations(
+            organ=body.organ,
+            score=body.score,
+            status=body.status,
+            metrics=body.metrics,
+            conditions=body.conditions,
+        )
+        
+        return {
+            "organ": body.organ,
+            "recommendations": recommendations,
+        }
+    except Exception as e:
+        logger.exception(f"Error generating YouTube recommendations: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate recommendations: {str(e)}"
+        )

@@ -524,7 +524,7 @@ const HealthGraph: React.FC<HealthGraphProps> = ({
                                                         onMouseLeave={() => setHoveredNode(null)}
                                                     >
                                                         <circle
-                                                            r={isHovered ? 28 : 24}
+                                                            r={isHovered ? 38 : 34}
                                                             fill={nodeColors[node.type] || nodeColors.entity}
                                                             className="node-circle"
                                                         />
@@ -533,8 +533,8 @@ const HealthGraph: React.FC<HealthGraphProps> = ({
                                                             textAnchor="middle"
                                                             className="node-label"
                                                         >
-                                                            {node.name.length > 12
-                                                                ? node.name.slice(0, 10) + '...'
+                                                            {node.name.length > 14
+                                                                ? node.name.slice(0, 12) + '...'
                                                                 : node.name}
                                                         </text>
                                                     </g>

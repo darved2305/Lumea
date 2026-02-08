@@ -1,8 +1,8 @@
-# Lumea Health Platform
+﻿# Lumea Health Platform
 
 A full-stack health companion platform for preventive health management. Upload medical reports, extract health metrics via OCR, track trends, and receive AI-powered health recommendations.
 
-> ⚠️ **Disclaimer**: This platform is a support tool for personal health tracking. It does not provide medical advice, diagnosis, or treatment. Always consult a licensed healthcare professional for medical decisions.
+> **Disclaimer**: This platform is a support tool for personal health tracking. It does not provide medical advice, diagnosis, or treatment. Always consult a licensed healthcare professional for medical decisions.
 
 ---
 
@@ -38,9 +38,9 @@ Lumea is a unified medical companion platform that enables users to:
 - **Receive AI recommendations** based on extracted lab values and health patterns powered by OpenRouter (Claude Sonnet 4.5)
 - **Compare reports over time** with AI-powered summaries and trend analysis
 - **Chat with an AI assistant** grounded in your personal health data
-- **🧠 Memory & Knowledge Graph**: Persistent health memory with Mem0 and interconnected insights via Neo4j/Graphiti for temporal reasoning and contradiction detection
-- **🎙️ Voice Agent**: Speak naturally to an AI health assistant for hands-free access to personalized health insights
-- **🏥 Physics Twin**: Interactive 2D organ simulation with real-time telemetry, condition detection, and evidence-based health recommendations powered by your actual medical data
+- **Memory & Knowledge Graph**: Persistent health memory with Mem0 and interconnected insights via Neo4j/Graphiti for temporal reasoning and contradiction detection
+- **Voice Agent**: Speak naturally to an AI health assistant for hands-free access to personalized health insights
+- **Physics Twin**: Interactive 2D organ simulation with real-time telemetry, condition detection, and evidence-based health recommendations powered by your actual medical data
 
 ---
 
@@ -68,106 +68,106 @@ Lumea is a unified medical companion platform that enables users to:
 
 ```mermaid
 flowchart TB
-    subgraph Client["Frontend (React)"]
-        UI[React UI]
-        WS[WebSocket Client]
-    end
+ subgraph Client["Frontend (React)"]
+ UI[React UI]
+ WS[WebSocket Client]
+ end
 
-    subgraph API["Backend (FastAPI)"]
-        Auth[Auth Routes]
-        Dashboard[Dashboard Routes]
-        Reports[Reports Routes]
-        Profile[Profile Routes]
-        Recommendations[Recommendations Routes]
-        AISummary[AI Summary Routes]
-        Assistant[Assistant Routes]
-        WSServer[WebSocket Server]
-    end
+ subgraph API["Backend (FastAPI)"]
+ Auth[Auth Routes]
+ Dashboard[Dashboard Routes]
+ Reports[Reports Routes]
+ Profile[Profile Routes]
+ Recommendations[Recommendations Routes]
+ AISummary[AI Summary Routes]
+ Assistant[Assistant Routes]
+ WSServer[WebSocket Server]
+ end
 
-    subgraph Services["Backend Services"]
-        OCR[PDF/OCR Extractor]
-        Classifier[Document Classifier]
-        MetricExtractor[Metric Extractor]
-        MetricsService[Metrics Service]
-        RecommendationEngine[Recommendation Engine]
-        AISummaryService[AI Summary Service]
-        RAG[RAG Service]
-        LLM[LLM Service]
-    end
+ subgraph Services["Backend Services"]
+ OCR[PDF/OCR Extractor]
+ Classifier[Document Classifier]
+ MetricExtractor[Metric Extractor]
+ MetricsService[Metrics Service]
+ RecommendationEngine[Recommendation Engine]
+ AISummaryService[AI Summary Service]
+ RAG[RAG Service]
+ LLM[LLM Service]
+ end
 
-    subgraph External["External Services"]
-        GrokAPI[Grok API]
-        Ollama[Ollama / MedGemma]
-        Gemini[Gemini API]
-    end
+ subgraph External["External Services"]
+ GrokAPI[Grok API]
+ Ollama[Ollama / MedGemma]
+ Gemini[Gemini API]
+ end
 
-    subgraph Storage["Data Layer"]
-        DB[(PostgreSQL / Neon)]
-        ChromaDB[(ChromaDB Vector Store)]
-        FileStorage[File Storage]
-    end
+ subgraph Storage["Data Layer"]
+ DB[(PostgreSQL / Neon)]
+ ChromaDB[(ChromaDB Vector Store)]
+ FileStorage[File Storage]
+ end
 
-    UI --> Auth
-    UI --> Dashboard
-    UI --> Reports
-    UI --> Profile
-    UI --> Recommendations
-    UI --> AISummary
-    UI --> Assistant
-    WS <--> WSServer
+ UI --> Auth
+ UI --> Dashboard
+ UI --> Reports
+ UI --> Profile
+ UI --> Recommendations
+ UI --> AISummary
+ UI --> Assistant
+ WS <--> WSServer
 
-    Reports --> OCR
-    OCR --> Classifier
-    Classifier --> MetricExtractor
-    MetricExtractor --> MetricsService
-    MetricsService --> RecommendationEngine
+ Reports --> OCR
+ OCR --> Classifier
+ Classifier --> MetricExtractor
+ MetricExtractor --> MetricsService
+ MetricsService --> RecommendationEngine
 
-    AISummary --> AISummaryService
-    AISummaryService --> GrokAPI
-    Assistant --> RAG
-    RAG --> ChromaDB
-    RAG --> LLM
-    LLM --> Ollama
-    LLM --> Gemini
+ AISummary --> AISummaryService
+ AISummaryService --> GrokAPI
+ Assistant --> RAG
+ RAG --> ChromaDB
+ RAG --> LLM
+ LLM --> Ollama
+ LLM --> Gemini
 
-    Auth --> DB
-    Dashboard --> DB
-    Reports --> DB
-    Reports --> FileStorage
-    Profile --> DB
-    Recommendations --> DB
-    AISummary --> DB
+ Auth --> DB
+ Dashboard --> DB
+ Reports --> DB
+ Reports --> FileStorage
+ Profile --> DB
+ Recommendations --> DB
+ AISummary --> DB
 ```
 
 ### Data Flow: Report Upload to Health Index
 
 ```mermaid
 sequenceDiagram
-    participant User
-    participant Frontend
-    participant Backend
-    participant OCR
-    participant Classifier
-    participant Extractor
-    participant DB
-    participant WebSocket
+ participant User
+ participant Frontend
+ participant Backend
+ participant OCR
+ participant Classifier
+ participant Extractor
+ participant DB
+ participant WebSocket
 
-    User->>Frontend: Upload PDF/Image
-    Frontend->>Backend: POST /api/reports/upload
-    Backend->>DB: Create report (status: uploaded)
-    Backend-->>Frontend: {id, status: uploaded}
-    
-    Backend->>OCR: Extract text (background)
-    OCR-->>Backend: Raw text
-    Backend->>Classifier: Classify document
-    Classifier-->>Backend: Category + doc_type
-    Backend->>Extractor: Extract metrics
-    Extractor-->>Backend: Observations[]
-    Backend->>DB: Save observations + update report
-    Backend->>DB: Recompute health index
-    Backend->>WebSocket: emit report_parsed
-    WebSocket-->>Frontend: report_parsed event
-    Frontend->>Frontend: Refresh UI
+ User->>Frontend: Upload PDF/Image
+ Frontend->>Backend: POST /api/reports/upload
+ Backend->>DB: Create report (status: uploaded)
+ Backend-->>Frontend: {id, status: uploaded}
+ 
+ Backend->>OCR: Extract text (background)
+ OCR-->>Backend: Raw text
+ Backend->>Classifier: Classify document
+ Classifier-->>Backend: Category + doc_type
+ Backend->>Extractor: Extract metrics
+ Extractor-->>Backend: Observations[]
+ Backend->>DB: Save observations + update report
+ Backend->>DB: Recompute health index
+ Backend->>WebSocket: emit report_parsed
+ WebSocket-->>Frontend: report_parsed event
+ Frontend->>Frontend: Refresh UI
 ```
 
 ---
@@ -182,6 +182,8 @@ sequenceDiagram
 - **Condition Detection**: 10 rule-based health conditions auto-detected with severity mapping
 - **Body Impact Overlay**: 2D SVG visualization showing organs affected by detected conditions
 - **Smart Recommendations**: Evidence-based health actions with YouTube educational links per condition
+- **AI Video Recommendations**: OpenRouter-powered personalized health video suggestions for each organ based on abnormal metrics, with per-organ caching
+- **Explainability Cards**: Side-by-side "Improve Your Health" and "Why This Score?" panels showing video recommendations and scoring breakdowns
 - **Time-Series History**: View per-report organ scores and historical trends
 - **Lifestyle Integration**: Incorporates self-reported profile data (sleep hours, stress level)
 
@@ -196,7 +198,7 @@ sequenceDiagram
 - Tracks conditions, symptoms, medications, supplements, allergies
 - Family medical history and genetic test results
 - **Once completed, users are never re-asked** – profile status persists in DB
-- "Profile Complete ✅" indicator with quick-edit access via Settings page
+- "Profile Complete" indicator with quick-edit access via Settings page
 - **Real-time SMS reminders** via Twilio (or mock mode for testing)
 - Background scheduler processes due reminders every 60 seconds
 - Default reminders auto-generated: medication, appointment, checkup, hydration
@@ -224,7 +226,7 @@ sequenceDiagram
 - Citations from reports and observations
 - WebSocket streaming for real-time responses
 
-### 🎙️ Voice Agent (AI Health Assistant)
+### Voice Agent (AI Health Assistant)
 - **Natural voice conversations** with your health data
 - **Speech-to-Text**: Browser Web Speech API for hands-free input
 - **AI Processing**: Google Gemini with personalized health context
@@ -251,47 +253,47 @@ The **Memory & Knowledge Graph** system provides persistent, intelligent health 
 
 ```mermaid
 flowchart TB
-    subgraph Input["Health Data Sources"]
-        Profile[Health Profile]
-        Reports[Medical Reports]
-        Questionnaire[User Questionnaires]
-        Assistant[AI Assistant Chats]
-    end
+ subgraph Input["Health Data Sources"]
+ Profile[Health Profile]
+ Reports[Medical Reports]
+ Questionnaire[User Questionnaires]
+ Assistant[AI Assistant Chats]
+ end
 
-    subgraph Memory["Mem0 Memory Layer"]
-        Extraction[Fact Extraction<br/>via Groq LLM]
-        Storage[ChromaDB<br/>Vector Store]
-        Retrieval[Semantic Search]
-    end
+ subgraph Memory["Mem0 Memory Layer"]
+ Extraction[Fact Extraction<br/>via Groq LLM]
+ Storage[ChromaDB<br/>Vector Store]
+ Retrieval[Semantic Search]
+ end
 
-    subgraph Graph["Graphiti Knowledge Graph"]
-        Entities[Entity Nodes<br/>conditions, metrics, meds]
-        Relationships[Temporal Relationships<br/>affects, caused_by, treats]
-        Episodes[Health Episodes<br/>time-stamped events]
-        Insights[AI-Generated Insights<br/>contradictions, patterns]
-    end
+ subgraph Graph["Graphiti Knowledge Graph"]
+ Entities[Entity Nodes<br/>conditions, metrics, meds]
+ Relationships[Temporal Relationships<br/>affects, caused_by, treats]
+ Episodes[Health Episodes<br/>time-stamped events]
+ Insights[AI-Generated Insights<br/>contradictions, patterns]
+ end
 
-    subgraph DB["Neo4j Graph Database"]
-        Nodes[Entity Nodes]
-        Edges[Relationship Edges]
-        Indexes[Vector Indexes<br/>Ollama embeddings]
-    end
+ subgraph DB["Neo4j Graph Database"]
+ Nodes[Entity Nodes]
+ Edges[Relationship Edges]
+ Indexes[Vector Indexes<br/>Ollama embeddings]
+ end
 
-    Input --> Extraction
-    Extraction --> Storage
-    Storage --> Retrieval
-    
-    Input --> Entities
-    Entities --> Relationships
-    Relationships --> Episodes
-    Episodes --> Insights
-    
-    Entities --> Nodes
-    Relationships --> Edges
-    Edges --> Indexes
-    
-    Retrieval -.->|Enriches| Recommendations[AI Recommendations]
-    Insights -.->|Powers| Dashboard[Features Dashboard]
+ Input --> Extraction
+ Extraction --> Storage
+ Storage --> Retrieval
+ 
+ Input --> Entities
+ Entities --> Relationships
+ Relationships --> Episodes
+ Episodes --> Insights
+ 
+ Entities --> Nodes
+ Relationships --> Edges
+ Edges --> Indexes
+ 
+ Retrieval -.->|Enriches| Recommendations[AI Recommendations]
+ Insights -.->|Powers| Dashboard[Features Dashboard]
 ```
 
 ### Key Features
@@ -299,9 +301,9 @@ flowchart TB
 #### 1. **Persistent Memory (Mem0)**
 
 - **Automatic Fact Extraction**: Converts natural language health data into structured facts
-  - "Sleep is about 5 hours per night" → Extracted memory fact
-  - "Has condition High Blood Pressure" → Indexed and searchable
-  - "BMI is 25.2 which falls in overweight range" → Computed and stored
+ - "Sleep is about 5 hours per night" → Extracted memory fact
+ - "Has condition High Blood Pressure" → Indexed and searchable
+ - "BMI is 25.2 which falls in overweight range" → Computed and stored
 
 - **User-Scoped Storage**: Each user's memories are isolated and secure
 - **Vector-Based Retrieval**: Semantic search powered by local Ollama embeddings (nomic-embed-text)
@@ -310,46 +312,46 @@ flowchart TB
 #### 2. **Knowledge Graph (Graphiti + Neo4j)**
 
 - **Entity Relationship Mapping**:
-  - Conditions связаны with symptoms, medications, and risk factors
-  - Lab values connected to reference ranges and health implications
-  - Lifestyle factors (sleep, diet, exercise) linked to health outcomes
+ - Conditions linked with symptoms, medications, and risk factors
+ - Lab values connected to reference ranges and health implications
+ - Lifestyle factors (sleep, diet, exercise) linked to health outcomes
 
 - **Temporal Reasoning**:
-  - Track health changes over time (BP trend: 140/90 in Jan → 130/85 in Feb)
-  - Episode creation for significant health events
-  - Valid/expired relationships based on temporal context
+ - Track health changes over time (BP trend: 140/90 in Jan → 130/85 in Feb)
+ - Episode creation for significant health events
+ - Valid/expired relationships based on temporal context
 
 - **Contradiction Detection**:
-  - Identifies conflicting health data (e.g., "no allergies" vs. "allergic to dust")
-  - Highlights diagnostic uncertainties
-  - Flags medication interactions
+ - Identifies conflicting health data (e.g., "no allergies" vs. "allergic to dust")
+ - Highlights diagnostic uncertainties
+ - Flags medication interactions
 
 - **Graph-Powered Insights**:
-  - **Temporal Patterns**: "BP decreased after starting medication X"
-  - **Key Relationships**: "High BMI correlates with elevated cholesterol"
-  - **Contradictions**: "Sleep reported as both 5hrs and 8hrs - needs clarification"
+ - **Temporal Patterns**: "BP decreased after starting medication X"
+ - **Key Relationships**: "High BMI correlates with elevated cholesterol"
+ - **Contradictions**: "Sleep reported as both 5hrs and 8hrs - needs clarification"
 
 #### 3. **Interactive Visualization**
 
 **Features Dashboard** (`/features`) provides:
 
 - **Memory Dashboard**:
-  - View all extracted health facts
-  - Search memories semantically
-  - Add/delete facts manually
-  - Real-time sync status
+ - View all extracted health facts
+ - Search memories semantically
+ - Add/delete facts manually
+ - Real-time sync status
 
 - **Knowledge Graph Viewer**:
-  - Interactive node-edge visualization
-  - Filter by conditions, medications, metrics
-  - Zoom/pan for detailed exploration
-  - Click nodes/edges for metadata
+ - Interactive node-edge visualization
+ - Filter by conditions, medications, metrics
+ - Zoom/pan for detailed exploration
+ - Click nodes/edges for metadata
 
 - **AI Insights Panel**:
-  - Temporal insights (trend analysis)
-  - Relationship insights (correlation patterns)
-  - Contradiction insights (data conflicts)
-  - Each insight includes evidence and confidence score
+ - Temporal insights (trend analysis)
+ - Relationship insights (correlation patterns)
+ - Contradiction insights (data conflicts)
+ - Each insight includes evidence and confidence score
 
 ### Technical Implementation
 
@@ -424,7 +426,7 @@ flowchart TB
 
 Lumea includes a comprehensive medicine management system that helps users find affordable generic alternatives to prescribed medicines and locate nearby pharmacies, including government-sponsored Jan Aushadhi Kendras offering subsidized medications.
 
-> ⚠️ **Medical Disclaimer**: This feature is a support tool for informational purposes only. It does NOT provide medical advice. Always consult your doctor or pharmacist before switching medicines or starting new treatments.
+> **Medical Disclaimer**: This feature is a support tool for informational purposes only. It does NOT provide medical advice. Always consult your doctor or pharmacist before switching medicines or starting new treatments.
 
 ### Overview
 
@@ -440,89 +442,89 @@ The Medicines feature enables users to:
 ### User Flow
 
 1. **Input Medicine Information**
-   - User enters brand name (e.g., "Aspirin 500mg") or uploads prescription image
-   - System extracts text via OCR or Grok AI parsing
+ - User enters brand name (e.g., "Aspirin 500mg") or uploads prescription image
+ - System extracts text via OCR or Grok AI parsing
 
 2. **Normalize Medicine Data**
-   - `MedicineNormalizer` service extracts: salt, strength, form (tablet/capsule/liquid), release type (immediate/sustained)
-   - Queries `GenericCatalog` table to validate and standardize extraction
+ - `MedicineNormalizer` service extracts: salt, strength, form (tablet/capsule/liquid), release type (immediate/sustained)
+ - Queries `GenericCatalog` table to validate and standardize extraction
 
 3. **Find Substitutes**
-   - `SubstituteFinder` queries database for alternatives with 4-tier ranked matching:
-     - **Tier 1** (1.0 score): Exact match on salt + strength + form + release type
-     - **Tier 2** (0.8 score): Same salt + strength + form
-     - **Tier 3** (0.6 score): Same salt + strength
-     - **Tier 4** (0.4 score): Same salt only
-   - Results sorted by price (Jan Aushadhi first for lowest cost)
+ - `SubstituteFinder` queries database for alternatives with 4-tier ranked matching:
+ - **Tier 1** (1.0 score): Exact match on salt + strength + form + release type
+ - **Tier 2** (0.8 score): Same salt + strength + form
+ - **Tier 3** (0.6 score): Same salt + strength
+ - **Tier 4** (0.4 score): Same salt only
+ - Results sorted by price (Jan Aushadhi first for lowest cost)
 
 4. **Locate Pharmacies** (Optional)
-   - User enters location (latitude/longitude) and search radius
-   - `PharmacyLocator` queries Google Places API for pharmacies
-   - Results include Jan Aushadhi Kendras (government pharmacies) and private pharmacies
-   - Results cached for 1 hour to reduce API calls
+ - User enters location (latitude/longitude) and search radius
+ - `PharmacyLocator` queries Google Places API for pharmacies
+ - Results include Jan Aushadhi Kendras (government pharmacies) and private pharmacies
+ - Results cached for 1 hour to reduce API calls
 
 5. **Save & Track**
-   - User can save medicines to personal list with notes
-   - Each save creates `UserSavedMedicine` entry for quick reference
+ - User can save medicines to personal list with notes
+ - Each save creates `UserSavedMedicine` entry for quick reference
 
 ### Architecture Diagram
 
 ```mermaid
 flowchart TB
-    subgraph Frontend["Frontend (React)"]
-        MedicinesPage["Medicines.tsx Page"]
-        SubstitutePanel["Substitute Finder Panel"]
-        PharmacyPanel["Pharmacy Locator Panel"]
-    end
+ subgraph Frontend["Frontend (React)"]
+ MedicinesPage["Medicines.tsx Page"]
+ SubstitutePanel["Substitute Finder Panel"]
+ PharmacyPanel["Pharmacy Locator Panel"]
+ end
 
-    subgraph API["Backend API (FastAPI)"]
-        NormalizeRoute["POST /normalize<br/>POST /normalize/batch"]
-        SubstituteRoute["POST /substitutes<br/>POST /substitutes/from-text"]
-        PharmacyRoute["GET /pharmacies/nearby<br/>GET /pharmacies/{id}<br/>POST /pharmacies/{id}/click"]
-        SavedRoute["POST /saved<br/>GET /saved<br/>DELETE /saved/{id}"]
-    end
+ subgraph API["Backend API (FastAPI)"]
+ NormalizeRoute["POST /normalize<br/>POST /normalize/batch"]
+ SubstituteRoute["POST /substitutes<br/>POST /substitutes/from-text"]
+ PharmacyRoute["GET /pharmacies/nearby<br/>GET /pharmacies/{id}<br/>POST /pharmacies/{id}/click"]
+ SavedRoute["POST /saved<br/>GET /saved<br/>DELETE /saved/{id}"]
+ end
 
-    subgraph Services["Backend Services"]
-        MedicineNormalizer["MedicineNormalizer<br/>- normalize()<br/>- normalize_batch()"]
-        SubstituteFinder["SubstituteFinder<br/>- find_substitutes()<br/>- save_medicine()"]
-        PharmacyLocator["PharmacyLocator<br/>- search_nearby()<br/>- get_place_details()<br/>- 1hr cache"]
-        GrokService["GrokMedicineService<br/>- get_alternatives_for_text()"]
-    end
+ subgraph Services["Backend Services"]
+ MedicineNormalizer["MedicineNormalizer<br/>- normalize()<br/>- normalize_batch()"]
+ SubstituteFinder["SubstituteFinder<br/>- find_substitutes()<br/>- save_medicine()"]
+ PharmacyLocator["PharmacyLocator<br/>- search_nearby()<br/>- get_place_details()<br/>- 1hr cache"]
+ GrokService["GrokMedicineService<br/>- get_alternatives_for_text()"]
+ end
 
-    subgraph External["External Services"]
-        GooglePlaces["Google Places API<br/>(Pharmacy Search)"]
-        GrokAPI["Grok xAI API<br/>(Medicine Parsing)"]
-    end
+ subgraph External["External Services"]
+ GooglePlaces["Google Places API<br/>(Pharmacy Search)"]
+ GrokAPI["Grok xAI API<br/>(Medicine Parsing)"]
+ end
 
-    subgraph Storage["Data Layer"]
-        DB[(PostgreSQL)]
-        GenericCatalog["GenericCatalog Table<br/>(600K+ medicines)"]
-        UserSavedMedicine["UserSavedMedicine Table"]
-        SubstituteQuery["SubstituteQuery Table<br/>(Analytics)"]
-        PharmacyClick["PharmacyClick Table<br/>(Analytics)"]
-    end
+ subgraph Storage["Data Layer"]
+ DB[(PostgreSQL)]
+ GenericCatalog["GenericCatalog Table<br/>(600K+ medicines)"]
+ UserSavedMedicine["UserSavedMedicine Table"]
+ SubstituteQuery["SubstituteQuery Table<br/>(Analytics)"]
+ PharmacyClick["PharmacyClick Table<br/>(Analytics)"]
+ end
 
-    MedicinesPage --> SubstitutePanel
-    MedicinesPage --> PharmacyPanel
-    SubstitutePanel --> SubstituteRoute
-    PharmacyPanel --> PharmacyRoute
-    PharmacyPanel --> SavedRoute
+ MedicinesPage --> SubstitutePanel
+ MedicinesPage --> PharmacyPanel
+ SubstitutePanel --> SubstituteRoute
+ PharmacyPanel --> PharmacyRoute
+ PharmacyPanel --> SavedRoute
 
-    SubstituteRoute --> GrokService
-    SubstituteRoute --> MedicineNormalizer
-    SubstituteRoute --> SubstituteFinder
-    PharmacyRoute --> PharmacyLocator
+ SubstituteRoute --> GrokService
+ SubstituteRoute --> MedicineNormalizer
+ SubstituteRoute --> SubstituteFinder
+ PharmacyRoute --> PharmacyLocator
 
-    MedicineNormalizer --> DB
-    MedicineNormalizer --> GenericCatalog
-    SubstituteFinder --> DB
-    SubstituteFinder --> GenericCatalog
-    SubstituteFinder --> SubstituteQuery
-    PharmacyLocator --> GooglePlaces
-    PharmacyLocator --> PharmacyClick
+ MedicineNormalizer --> DB
+ MedicineNormalizer --> GenericCatalog
+ SubstituteFinder --> DB
+ SubstituteFinder --> GenericCatalog
+ SubstituteFinder --> SubstituteQuery
+ PharmacyLocator --> GooglePlaces
+ PharmacyLocator --> PharmacyClick
 
-    GrokService --> GrokAPI
-    GrokAPI -->|Parsed results| SubstituteFinder
+ GrokService --> GrokAPI
+ GrokAPI -->|Parsed results| SubstituteFinder
 ```
 
 ### API Endpoints
@@ -547,47 +549,47 @@ flowchart TB
 Request:
 ```json
 {
-  "text": "Aspirin 500mg tablets"
+ "text": "Aspirin 500mg tablets"
 }
 ```
 
 Response:
 ```json
 {
-  "original_text": "Aspirin 500mg tablets",
-  "normalized": {
-    "brand_name": "Aspirin",
-    "salt": "Acetylsalicylic Acid",
-    "strength": "500",
-    "form": "tablet",
-    "release_type": "immediate",
-    "confidence": 0.95
-  },
-  "substitutes": [
-    {
-      "rank": 1,
-      "product_name": "Jan Aushadhi Aspirin 500mg",
-      "salt": "Acetylsalicylic Acid",
-      "strength": "500",
-      "form": "tablet",
-      "mrp": "5.00",
-      "is_jan_aushadhi": true,
-      "match_score": 1.0,
-      "match_reason": "Exact match: Same salt, strength, form, and type"
-    },
-    {
-      "rank": 2,
-      "product_name": "Ecosprin 500mg",
-      "salt": "Acetylsalicylic Acid",
-      "strength": "500",
-      "form": "tablet",
-      "mrp": "8.50",
-      "is_jan_aushadhi": false,
-      "match_score": 1.0,
-      "match_reason": "Exact match: Same salt, strength, form, and type"
-    }
-  ],
-  "disclaimer": "Always confirm with your doctor or pharmacist before switching medicines"
+ "original_text": "Aspirin 500mg tablets",
+ "normalized": {
+ "brand_name": "Aspirin",
+ "salt": "Acetylsalicylic Acid",
+ "strength": "500",
+ "form": "tablet",
+ "release_type": "immediate",
+ "confidence": 0.95
+ },
+ "substitutes": [
+ {
+ "rank": 1,
+ "product_name": "Jan Aushadhi Aspirin 500mg",
+ "salt": "Acetylsalicylic Acid",
+ "strength": "500",
+ "form": "tablet",
+ "mrp": "5.00",
+ "is_jan_aushadhi": true,
+ "match_score": 1.0,
+ "match_reason": "Exact match: Same salt, strength, form, and type"
+ },
+ {
+ "rank": 2,
+ "product_name": "Ecosprin 500mg",
+ "salt": "Acetylsalicylic Acid",
+ "strength": "500",
+ "form": "tablet",
+ "mrp": "8.50",
+ "is_jan_aushadhi": false,
+ "match_score": 1.0,
+ "match_reason": "Exact match: Same salt, strength, form, and type"
+ }
+ ],
+ "disclaimer": "Always confirm with your doctor or pharmacist before switching medicines"
 }
 ```
 
@@ -601,32 +603,32 @@ GET /api/medicines/pharmacies/nearby?lat=40.7128&lng=-74.0060&radius_m=1000&type
 Response:
 ```json
 {
-  "pharmacies": [
-    {
-      "place_id": "ChIJN1blbgBQwokRzKgy6E_B_1Q",
-      "name": "Jan Aushadhi Kendra - Downtown",
-      "address": "123 Main St, New York, NY 10001",
-      "latitude": 40.7128,
-      "longitude": -74.0060,
-      "rating": 4.7,
-      "is_open": true,
-      "is_jan_aushadhi": true,
-      "phone": "+1-212-555-0123"
-    },
-    {
-      "place_id": "ChIJrc_p_1BQwokRzKgy6E_B_2Q",
-      "name": "Metro Pharmacy",
-      "address": "456 Broadway, New York, NY 10002",
-      "latitude": 40.7150,
-      "longitude": -74.0030,
-      "rating": 4.2,
-      "is_open": true,
-      "is_jan_aushadhi": false,
-      "phone": "+1-212-555-0456"
-    }
-  ],
-  "next_page_token": null,
-  "total_results": 2
+ "pharmacies": [
+ {
+ "place_id": "ChIJN1blbgBQwokRzKgy6E_B_1Q",
+ "name": "Jan Aushadhi Kendra - Downtown",
+ "address": "123 Main St, New York, NY 10001",
+ "latitude": 40.7128,
+ "longitude": -74.0060,
+ "rating": 4.7,
+ "is_open": true,
+ "is_jan_aushadhi": true,
+ "phone": "+1-212-555-0123"
+ },
+ {
+ "place_id": "ChIJrc_p_1BQwokRzKgy6E_B_2Q",
+ "name": "Metro Pharmacy",
+ "address": "456 Broadway, New York, NY 10002",
+ "latitude": 40.7150,
+ "longitude": -74.0030,
+ "rating": 4.2,
+ "is_open": true,
+ "is_jan_aushadhi": false,
+ "phone": "+1-212-555-0456"
+ }
+ ],
+ "next_page_token": null,
+ "total_results": 2
 }
 ```
 
@@ -636,36 +638,36 @@ Response:
 
 Lumea includes a fully integrated **Voice Agent** that provides an ElevenLabs-style conversational health assistant experience. Users can speak naturally to the AI agent, which responds with personalized health guidance based on their profile, conditions, medications, allergies, and recent lab reports.
 
-> ⚠️ **Medical Disclaimer**: The Voice Agent is an informational support tool. It does NOT provide medical diagnosis, dosage recommendations, or emergency care. Always consult licensed healthcare professionals for medical decisions.
+> **Medical Disclaimer**: The Voice Agent is an informational support tool. It does NOT provide medical diagnosis, dosage recommendations, or emergency care. Always consult licensed healthcare professionals for medical decisions.
 
 ### Overview
 
-The Voice Agent transforms how users interact with their health data through natural voice conversations powered by cutting-edge AI technologies.
+The Voice Agent enables users to interact with their health data through natural voice conversations powered by AI.
 
 **Key Capabilities**:
 
-- **🎙️ Voice Interaction**: Speak naturally using browser-based speech recognition (Web Speech API)
-- **🧠 Personalized AI Responses**: Powered by Google Gemini with access to your complete health profile
-- **🔊 Natural Speech Output**: Human-like voice responses via ElevenLabs TTS (with browser fallback)
-- **🛡️ Medical Safety Filters**: Detects emergency keywords, dosage inquiries, and provides appropriate safety responses
-- **⚡ Real-time Feedback**: Visual orb animations reflect listening/thinking/speaking states
-- **📝 Transcript View**: Optional chat-mode panel displays conversation history
-- **🎯 Context-Aware**: Accesses your health conditions, medications, allergies, recent reports, and RAG-indexed data
+- **Voice Interaction**: Speak naturally using browser-based speech recognition (Web Speech API)
+- **Personalized AI Responses**: Powered by Google Gemini with access to your complete health profile
+- **Natural Speech Output**: Voice responses via ElevenLabs TTS (with browser fallback)
+- **Medical Safety Filters**: Detects emergency keywords, dosage inquiries, and provides appropriate safety responses
+- **Real-time Feedback**: Visual orb animations reflect listening/thinking/speaking states
+- **Transcript View**: Optional chat-mode panel displays conversation history
+- **Context-Aware**: Accesses your health conditions, medications, allergies, recent reports, and RAG-indexed data
 
 ### How It Works
 
-The Voice Agent uses a sophisticated three-stage pipeline to deliver personalized health conversations:
+The Voice Agent uses a three-stage pipeline to deliver personalized health conversations:
 
 ```mermaid
 graph LR
-    A[👤 User Speaks] --> B[🎤 Browser STT<br/>Web Speech API]
-    B --> C[🧠 LLM Processing<br/>Google Gemini]
-    C --> D[📊 Health Context<br/>Profile + Reports + RAG]
-    D --> C
-    C --> E[🔊 Text-to-Speech<br/>ElevenLabs API]
-    E --> F[🔉 Browser Fallback<br/>Web Speech API]
-    E --> G[👤 User Hears Response]
-    F --> G
+ A[User Speaks] --> B[Browser STT<br/>Web Speech API]
+ B --> C[LLM Processing<br/>Google Gemini]
+ C --> D[Health Context<br/>Profile + Reports + RAG]
+ D --> C
+ C --> E[Text-to-Speech<br/>ElevenLabs API]
+ E --> F[Browser Fallback<br/>Web Speech API]
+ E --> G[User Hears Response]
+ F --> G
 ```
 
 #### Stage 1: Speech-to-Text (STT)
@@ -677,75 +679,75 @@ graph LR
 #### Stage 2: AI Processing & Context Retrieval
 - **LLM Provider**: Google Gemini API (`gemini-flash-latest`)
 - **Health Context Integration**:
-  - User demographics (age, gender, BMI)
-  - Active medical conditions
-  - Current medications (name, dose, frequency)
-  - Known allergies and their severity
-  - Recent lab reports and observations
-  - Lifestyle factors (sleep, exercise, smoking, alcohol)
+ - User demographics (age, gender, BMI)
+ - Active medical conditions
+ - Current medications (name, dose, frequency)
+ - Known allergies and their severity
+ - Recent lab reports and observations
+ - Lifestyle factors (sleep, exercise, smoking, alcohol)
 - **RAG Enhancement**: Queries ChromaDB vector store for relevant historical health data
 - **Safety Layer**: HIPAA-compliant system prompt with strict medical guidelines:
-  - Never diagnose conditions
-  - Never recommend medication dosages
-  - Always suggest professional consultation
-  - Detect emergency situations and direct to 911
+ - Never diagnose conditions
+ - Never recommend medication dosages
+ - Always suggest professional consultation
+ - Detect emergency situations and direct to 911
 
 #### Stage 3: Text-to-Speech (TTS)
 - **Primary**: ElevenLabs TTS API
-  - Model: `eleven_turbo_v2_5` (optimized for speed, free tier compatible)
-  - Voice: Rachel (`21m00Tcm4TlvDq8ikWAM`)
-  - Quality: Studio-grade natural voice synthesis
+ - Model: `eleven_turbo_v2_5` (optimized for speed, free tier compatible)
+ - Voice: Rachel (`21m00Tcm4TlvDq8ikWAM`)
+ - Quality: Natural voice synthesis
 - **Fallback**: Browser Text-to-Speech API
-  - Activates automatically if ElevenLabs unavailable (503 errors)
-  - Uses system voices
-  - Zero latency, no API costs
+ - Activates automatically if ElevenLabs unavailable (503 errors)
+ - Uses system voices
+ - Zero latency, no API costs
 
 ### Real-World Benefits
 
 **For Everyday Users**:
-- 🏃 **Hands-Free Access**: Check health info while cooking, exercising, or commuting
-- 💬 **Natural Conversations**: Ask questions in plain language, no medical jargon required
-- 📱 **Accessibility**: Ideal for users with visual impairments or reading difficulties
-- ⚡ **Quick Insights**: Faster than navigating multiple screens and charts
+- **Hands-Free Access**: Check health info while cooking, exercising, or commuting
+- **Natural Conversations**: Ask questions in plain language, no medical jargon required
+- **Accessibility**: Ideal for users with visual impairments or reading difficulties
+- **Quick Insights**: Faster than navigating multiple screens and charts
 
 **For Health-Conscious Individuals**:
-- 🔍 **Report Interpretation**: "What do my cholesterol levels mean?"
-- 💊 **Medication Context**: "Why am I taking this medication?"
-- 📊 **Trend Analysis**: "How has my blood pressure changed over time?"
-- 🎯 **Personalized Guidance**: Responses tailored to YOUR specific health profile
+- **Report Interpretation**: "What do my cholesterol levels mean?"
+- **Medication Context**: "Why am I taking this medication?"
+- **Trend Analysis**: "How has my blood pressure changed over time?"
+- **Personalized Guidance**: Responses tailored to your specific health profile
 
 **Safety & Reliability**:
-- 🚨 **Emergency Detection**: Recognizes crisis keywords (chest pain, can't breathe, etc.)
-- 💊 **Dosage Protection**: Refuses to recommend medication changes
-- 🔒 **HIPAA Guidelines**: All responses include disclaimers and professional consultation advice
-- 🌐 **Fallback Mechanisms**: Graceful degradation if AI/TTS services unavailable
+- **Emergency Detection**: Recognizes crisis keywords (chest pain, can't breathe, etc.)
+- **Dosage Protection**: Refuses to recommend medication changes
+- **HIPAA Guidelines**: All responses include disclaimers and professional consultation advice
+- **Fallback Mechanisms**: Graceful degradation if AI/TTS services unavailable
 
 ### API Endpoints
 
 | Method | Endpoint | Description | Auth | Response |
 |--------|----------|-------------|------|----------|
-| GET | `/api/voice/context` | Get user health context summary with profile completeness status | ✅ Yes | `{profile_complete: bool, summary: {...}, has_personalization: bool}` |
-| POST | `/api/voice/answer` | Generate personalized AI answer using Gemini + health context | ✅ Yes | `{answer_text: string, flags: [string], used_context: {...}}` |
-| POST | `/api/voice/tts` | Convert text to speech using ElevenLabs API | ✅ Yes | Binary audio stream (MP3) |
-| GET | `/api/voice/tts/status` | Check ElevenLabs TTS configuration status | ✅ Yes | `{configured: bool, voice_id: string, runtime_check: {...}}` |
+| GET | `/api/voice/context` | Get user health context summary with profile completeness status | Yes | `{profile_complete: bool, summary: {...}, has_personalization: bool}` |
+| POST | `/api/voice/answer` | Generate personalized AI answer using Gemini + health context | Yes | `{answer_text: string, flags: [string], used_context: {...}}` |
+| POST | `/api/voice/tts` | Convert text to speech using ElevenLabs API | Yes | Binary audio stream (MP3) |
+| GET | `/api/voice/tts/status` | Check ElevenLabs TTS configuration status | Yes | `{configured: bool, voice_id: string, runtime_check: {...}}` |
 
 **Context Response Details**:
 ```json
 {
-  "profile_complete": true,
-  "has_personalization": true,
-  "summary": {
-    "name": "Darshan Ved",
-    "age": 49,
-    "gender": "Male",
-    "bmi": 21.5,
-    "conditions": ["Hypertension"],
-    "medications": ["Lisinopril 10mg"],
-    "allergies": ["Penicillin"],
-    "reports_count": 5,
-    "sleep_hours": 7,
-    "exercise_frequency": "3-4 times/week"
-  }
+ "profile_complete": true,
+ "has_personalization": true,
+ "summary": {
+ "name": "Darshan Ved",
+ "age": 49,
+ "gender": "Male",
+ "bmi": 21.5,
+ "conditions": ["Hypertension"],
+ "medications": ["Lisinopril 10mg"],
+ "allergies": ["Penicillin"],
+ "reports_count": 5,
+ "sleep_hours": 7,
+ "exercise_frequency": "3-4 times/week"
+ }
 }
 ```
 
@@ -764,12 +766,12 @@ Add to **root `.env`** (for Docker) and **`backend/.env`** (for local developmen
 # ===== AI/LLM Configuration =====
 # Google Gemini API (Primary LLM for Voice Agent)
 USE_GEMINI_FALLBACK=true
-GEMINI_API_KEY=AIzaSy...  # Get from https://aistudio.google.com/apikey
+GEMINI_API_KEY=AIzaSy... # Get from https://aistudio.google.com/apikey
 
 # ===== Text-to-Speech Configuration =====
 # ElevenLabs TTS for Voice Agent (Optional - has browser fallback)
-ELEVENLABS_API_KEY=sk_...  # Get from https://elevenlabs.io/
-ELEVENLABS_VOICE_ID=21m00Tcm4TlvDq8ikWAM  # Rachel voice (recommended)
+ELEVENLABS_API_KEY=sk_... # Get from https://elevenlabs.io/
+ELEVENLABS_VOICE_ID=21m00Tcm4TlvDq8ikWAM # Rachel voice (recommended)
 ```
 
 #### Docker Configuration
@@ -778,13 +780,13 @@ Ensure `docker-compose.yml` includes these environment variables in the backend 
 
 ```yaml
 services:
-  backend:
-    environment:
-      # ... other env vars ...
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
-      - USE_GEMINI_FALLBACK=${USE_GEMINI_FALLBACK:-true}
-      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY:-}
-      - ELEVENLABS_VOICE_ID=${ELEVENLABS_VOICE_ID:-21m00Tcm4TlvDq8ikWAM}
+ backend:
+ environment:
+ # ... other env vars ...
+ - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+ - USE_GEMINI_FALLBACK=${USE_GEMINI_FALLBACK:-true}
+ - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY:-}
+ - ELEVENLABS_VOICE_ID=${ELEVENLABS_VOICE_ID:-21m00Tcm4TlvDq8ikWAM}
 ```
 
 #### Getting API Keys
@@ -803,13 +805,13 @@ services:
 3. Create new API key (starts with `sk_...`)
 4. Free tier includes: 10,000 characters/month
 5. Recommended voice IDs:
-   - `21m00Tcm4TlvDq8ikWAM` - Rachel (conversational, female)
-   - `ErXwobaYiN019PkySvjV` - Antoni (clear, male)
-   - `EXAVITQu4vr4xnSDxMaL` - Bella (warm, female)
+ - `21m00Tcm4TlvDq8ikWAM` - Rachel (conversational, female)
+ - `ErXwobaYiN019PkySvjV` - Antoni (clear, male)
+ - `EXAVITQu4vr4xnSDxMaL` - Bella (warm, female)
 
 **Free Tier Model Compatibility**:
-- ✅ Works: `gemini-flash-latest`, `gemini-1.5-flash-8b`
-- ❌ Quota exceeded: `gemini-2.0-flash`, `gemini-2.5-flash` (requires paid tier)
+- Works: `gemini-flash-latest`, `gemini-1.5-flash-8b`
+- Quota exceeded: `gemini-2.0-flash`, `gemini-2.5-flash` (requires paid tier)
 
 ### Technology Stack
 
@@ -847,19 +849,19 @@ services:
 
 ```bash
 curl -X GET http://localhost:8000/api/voice/tts/status \
-  -H "Authorization: Bearer <your_jwt_token>"
+ -H "Authorization: Bearer <your_jwt_token>"
 ```
 
 **Expected Response**:
 ```json
 {
-  "configured": true,
-  "voice_id": "21m00Tcm4TlvDq8ikWAM",
-  "runtime_check": {
-    "api_key_loaded": true,
-    "api_key_prefix": "sk_d78...",
-    "voice_id": "21m00Tcm4TlvDq8ikWAM"
-  }
+ "configured": true,
+ "voice_id": "21m00Tcm4TlvDq8ikWAM",
+ "runtime_check": {
+ "api_key_loaded": true,
+ "api_key_prefix": "sk_d78...",
+ "voice_id": "21m00Tcm4TlvDq8ikWAM"
+ }
 }
 ```
 
@@ -867,24 +869,24 @@ curl -X GET http://localhost:8000/api/voice/tts/status \
 
 ```bash
 curl -X GET http://localhost:8000/api/voice/context \
-  -H "Authorization: Bearer <your_jwt_token>"
+ -H "Authorization: Bearer <your_jwt_token>"
 ```
 
 **Expected Response**:
 ```json
 {
-  "profile_complete": true,
-  "has_personalization": true,
-  "summary": {
-    "name": "Darshan Ved",
-    "age": 49,
-    "gender": "Male",
-    "bmi": 21.5,
-    "conditions": ["Hypertension"],
-    "medications": ["Lisinopril"],
-    "allergies": ["Penicillin"],
-    "reports_count": 5
-  }
+ "profile_complete": true,
+ "has_personalization": true,
+ "summary": {
+ "name": "Darshan Ved",
+ "age": 49,
+ "gender": "Male",
+ "bmi": 21.5,
+ "conditions": ["Hypertension"],
+ "medications": ["Lisinopril"],
+ "allergies": ["Penicillin"],
+ "reports_count": 5
+ }
 }
 ```
 
@@ -892,24 +894,24 @@ curl -X GET http://localhost:8000/api/voice/context \
 
 ```bash
 curl -X POST http://localhost:8000/api/voice/answer \
-  -H "Authorization: Bearer <your_jwt_token>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "text": "What do my cholesterol levels mean?"
-  }'
+ -H "Authorization: Bearer <your_jwt_token>" \
+ -H "Content-Type: application/json" \
+ -d '{
+ "text": "What do my cholesterol levels mean?"
+ }'
 ```
 
 **Expected Response**:
 ```json
 {
-  "answer_text": "Based on your recent lab reports, your total cholesterol is 195 mg/dL, which falls within the desirable range (below 200 mg/dL). Your LDL cholesterol is 110 mg/dL, also in the optimal range. However, I recommend discussing these results with your healthcare provider for personalized guidance based on your hypertension condition.",
-  "flags": [],
-  "used_context": {
-    "has_profile": true,
-    "conditions_count": 1,
-    "medications_count": 1,
-    "has_rag_context": true
-  }
+ "answer_text": "Based on your recent lab reports, your total cholesterol is 195 mg/dL, which falls within the desirable range (below 200 mg/dL). Your LDL cholesterol is 110 mg/dL, also in the optimal range. However, I recommend discussing these results with your healthcare provider for personalized guidance based on your hypertension condition.",
+ "flags": [],
+ "used_context": {
+ "has_profile": true,
+ "conditions_count": 1,
+ "medications_count": 1,
+ "has_rag_context": true
+ }
 }
 ```
 
@@ -917,10 +919,10 @@ curl -X POST http://localhost:8000/api/voice/answer \
 
 ```bash
 curl -X POST http://localhost:8000/api/voice/tts \
-  -H "Authorization: Bearer <your_jwt_token>" \
-  -H "Content-Type: application/json" \
-  -d '{"text": "Hello! Your health data shows positive trends."}' \
-  --output test_voice.mp3
+ -H "Authorization: Bearer <your_jwt_token>" \
+ -H "Content-Type: application/json" \
+ -d '{"text": "Hello! Your health data shows positive trends."}' \
+ --output test_voice.mp3
 
 # Play the audio file
 # Windows: start test_voice.mp3
@@ -933,34 +935,34 @@ curl -X POST http://localhost:8000/api/voice/tts \
 **Emergency Detection Test**:
 ```bash
 curl -X POST http://localhost:8000/api/voice/answer \
-  -H "Authorization: Bearer <your_jwt_token>" \
-  -H "Content-Type: application/json" \
-  -d '{"text": "I am having severe chest pain"}'
+ -H "Authorization: Bearer <your_jwt_token>" \
+ -H "Content-Type: application/json" \
+ -d '{"text": "I am having severe chest pain"}'
 ```
 
 **Expected Response**:
 ```json
 {
-  "answer_text": "I'm detecting words that suggest this might be an emergency situation. Please call emergency services immediately (911) or go to the nearest emergency room...",
-  "flags": ["emergency"],
-  "used_context": {}
+ "answer_text": "I'm detecting words that suggest this might be an emergency situation. Please call emergency services immediately (911) or go to the nearest emergency room...",
+ "flags": ["emergency"],
+ "used_context": {}
 }
 ```
 
 **Dosage Inquiry Test**:
 ```bash
 curl -X POST http://localhost:8000/api/voice/answer \
-  -H "Authorization: Bearer <your_jwt_token>" \
-  -H "Content-Type: application/json" \
-  -d '{"text": "Can I double my medication dosage?"}'
+ -H "Authorization: Bearer <your_jwt_token>" \
+ -H "Content-Type: application/json" \
+ -d '{"text": "Can I double my medication dosage?"}'
 ```
 
 **Expected Response**:
 ```json
 {
-  "answer_text": "I cannot provide specific dosage recommendations. Please consult your doctor or pharmacist before making any changes to your medications...",
-  "flags": ["dosage_inquiry"],
-  "used_context": {...}
+ "answer_text": "I cannot provide specific dosage recommendations. Please consult your doctor or pharmacist before making any changes to your medications...",
+ "flags": ["dosage_inquiry"],
+ "used_context": {...}
 }
 ```
 
@@ -972,20 +974,20 @@ curl -X POST http://localhost:8000/api/voice/answer \
 
 **Solutions**:
 1. **Check API Key Loading**:
-   ```bash
-   docker exec ggw-backend python -c "from app.settings import settings; print(f'API Key: {settings.ELEVENLABS_API_KEY[:20] if settings.ELEVENLABS_API_KEY else None}...')"
-   ```
+ ```bash
+ docker exec ggw-backend python -c "from app.settings import settings; print(f'API Key: {settings.ELEVENLABS_API_KEY[:20] if settings.ELEVENLABS_API_KEY else None}...')"
+ ```
 
 2. **Verify Environment Variables**:
-   - Ensure `ELEVENLABS_API_KEY` is in root `.env` file
-   - Ensure `docker-compose.yml` includes the env var mapping
-   - Restart Docker containers: `docker compose restart backend`
+ - Ensure `ELEVENLABS_API_KEY` is in root `.env` file
+ - Ensure `docker-compose.yml` includes the env var mapping
+ - Restart Docker containers: `docker compose restart backend`
 
 3. **Check API Key Validity**:
-   ```bash
-   curl https://api.elevenlabs.io/v1/voices \
-     -H "xi-api-key: sk_your_key_here"
-   ```
+ ```bash
+ curl https://api.elevenlabs.io/v1/voices \
+ -H "xi-api-key: sk_your_key_here"
+ ```
 
 #### Issue: Gemini API 404 or 429 Errors
 
@@ -993,19 +995,19 @@ curl -X POST http://localhost:8000/api/voice/answer \
 
 **Solutions**:
 1. **Verify Model Compatibility**:
-   ```bash
-   docker exec ggw-backend python -c "import google.generativeai as genai; import os; genai.configure(api_key=os.environ['GEMINI_API_KEY']); models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]; print('\n'.join(models))"
-   ```
+ ```bash
+ docker exec ggw-backend python -c "import google.generativeai as genai; import os; genai.configure(api_key=os.environ['GEMINI_API_KEY']); models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]; print('\n'.join(models))"
+ ```
 
 2. **Check Free Tier Limits**:
-   - Free tier model: `gemini-flash-latest` ✅
-   - Paid tier models: `gemini-2.0-flash`, `gemini-2.5-flash` ❌
-   - Rate limits: 15 requests/minute, 1M tokens/day
+ - Free tier model: `gemini-flash-latest` 
+ - Paid tier models: `gemini-2.0-flash`, `gemini-2.5-flash` 
+ - Rate limits: 15 requests/minute, 1M tokens/day
 
 3. **Update Model Name** (if needed):
-   - Edit `backend/app/services/llm_service.py`
-   - Change model to `gemini-flash-latest`
-   - Restart backend
+ - Edit `backend/app/services/llm_service.py`
+ - Change model to `gemini-flash-latest`
+ - Restart backend
 
 #### Issue: "ProfileMedication object has no attribute 'medication_name'"
 
@@ -1026,16 +1028,16 @@ curl -X POST http://localhost:8000/api/voice/answer \
 ### Example Conversations
 
 **General Health Query**:
-- 👤 User: "What does my health profile show?"
-- 🤖 Assistant: "You're a 49-year-old male with a healthy BMI of 21.5. Your profile shows hypertension, and you're currently taking Lisinopril. You have 5 health reports on file. Is there specific information you'd like me to explain?"
+- User: "What does my health profile show?"
+- Assistant: "You're a 49-year-old male with a healthy BMI of 21.5. Your profile shows hypertension, and you're currently taking Lisinopril. You have 5 health reports on file. Is there specific information you'd like me to explain?"
 
 **Lab Result Interpretation**:
-- 👤 User: "Explain my recent cholesterol test"
-- 🤖 Assistant: "Your recent cholesterol panel shows total cholesterol at 195 mg/dL, which is in the desirable range. Your LDL is 110 mg/dL and HDL is 55 mg/dL. Given your hypertension, maintaining these levels is important. Discuss with your doctor about your diet and medication effectiveness."
+- User: "Explain my recent cholesterol test"
+- Assistant: "Your recent cholesterol panel shows total cholesterol at 195 mg/dL, which is in the desirable range. Your LDL is 110 mg/dL and HDL is 55 mg/dL. Given your hypertension, maintaining these levels is important. Discuss with your doctor about your diet and medication effectiveness."
 
 **Medication Context**:
-- 👤 User: "Why am I taking Lisinopril?"
-- 🤖 Assistant: "Lisinopril is an ACE inhibitor prescribed for managing hypertension, which is noted in your health profile. It helps lower blood pressure by relaxing blood vessels. Always take it as prescribed and discuss any side effects with your healthcare provider."
+- User: "Why am I taking Lisinopril?"
+- Assistant: "Lisinopril is an ACE inhibitor prescribed for managing hypertension, which is noted in your health profile. It helps lower blood pressure by relaxing blood vessels. Always take it as prescribed and discuss any side effects with your healthcare provider."
 
 ---
 
@@ -1043,21 +1045,23 @@ curl -X POST http://localhost:8000/api/voice/answer \
 
 Lumea's **Physics Twin** is a comprehensive digital health analysis engine that transforms raw health metrics from uploaded medical reports into deterministic organ-level health scores and real-time condition detection. It provides an interactive 3D body visualization, time-series telemetry monitoring, and AI-powered health recommendations grounded in your actual medical data.
 
-> ⚠️ **Medical Disclaimer**: The Physics Twin is a visualization and analysis support tool. It does NOT provide medical diagnosis or treatment. Values are computed from extracted lab data and should be verified by healthcare professionals. Use for personal health tracking only—always consult a licensed healthcare professional for medical decisions.
+> **Medical Disclaimer**: The Physics Twin is a visualization and analysis support tool. It does NOT provide medical diagnosis or treatment. Values are computed from extracted lab data and should be verified by healthcare professionals. Use for personal health tracking only—always consult a licensed healthcare professional for medical decisions.
 
 ### Overview
 
 The Physics Twin delivers:
 
-- **🏥 Deterministic Organ Scoring**: Evidence-based scoring for 6 organs (kidney, heart, liver, lungs, brain, blood) based on reference ranges and clinical normalisation
-- **🔬 Real Data Integration**: Pulls metrics directly from your uploaded medical reports (not simulated) via the `Observation` table
-- **📊 Interactive 3D Body**: Clickable organ hotspots with animated scoring visualizations and trend indicators
-- **❤️ Real-Time Telemetry**: Simulated vital signs stream via SSE (Server-Sent Events) with SpO₂, heart rate, blood pressure, stress, and glucose tracking
-- **⚠️ Condition Detection**: 10 rule-based conditions (Hypertension, Tachycardia, Kidney Stress, Liver Stress, Hyperglycemia, Sleep Deprivation, etc.) automatically detected from current metrics
-- **👁️ Body Impact Overlay**: 2D SVG body silhouette highlighting organs affected by detected conditions with severity-based color coding
-- **💊 Smart Recommendations**: Context-aware health recommendations with YouTube educational links for each detected condition
-- **📈 Time-Series History**: View per-report organ scores, historical trends, and scored snapshots over time
-- **🧬 Lifestyle Integration**: Incorporates UserProfile self-reported data (sleep hours, stress level, activity level) into organ scoring
+- **Deterministic Organ Scoring**: Evidence-based scoring for 6 organs (kidney, heart, liver, lungs, brain, blood) based on reference ranges and clinical normalisation
+- **Real Data Integration**: Pulls metrics directly from your uploaded medical reports (not simulated) via the `Observation` table
+- **Interactive 3D Body**: Clickable organ hotspots with animated scoring visualizations and trend indicators
+- **Real-Time Telemetry**: Simulated vital signs stream via SSE (Server-Sent Events) with SpO2, heart rate, blood pressure, stress, and glucose tracking
+- **Condition Detection**: 10 rule-based conditions (Hypertension, Tachycardia, Kidney Stress, Liver Stress, Hyperglycemia, Sleep Deprivation, etc.) automatically detected from current metrics
+- **Body Impact Overlay**: 2D SVG body silhouette highlighting organs affected by detected conditions with severity-based color coding
+- **Smart Recommendations**: Context-aware health recommendations with YouTube educational links for each detected condition
+- **AI Video Recommendations**: OpenRouter-powered personalized health video suggestions for each organ based on abnormal metrics, displayed in a side-by-side "Improve Your Health" card with per-organ caching
+- **Explainability Panel**: Side-by-side "Why This Score?" card showing metric contributions, weights, coverage, and confidence for each organ
+- **Time-Series History**: View per-report organ scores, historical trends, and scored snapshots over time
+- **Lifestyle Integration**: Incorporates UserProfile self-reported data (sleep hours, stress level, activity level) into organ scoring
 
 ### How It Works
 
@@ -1089,50 +1093,50 @@ LAYER 3: Condition Detection & Recommendations
 
 ```mermaid
 graph TB
-    subgraph Database["PostgreSQL"]
-        Observation["Observation Table<br/>(extracted metrics)"]
-        UserProfile["UserProfile Table<br/>(lifestyle data)"]
-        Report["Report Table<br/>(source documents)"]
-    end
+ subgraph Database["PostgreSQL"]
+ Observation["Observation Table<br/>(extracted metrics)"]
+ UserProfile["UserProfile Table<br/>(lifestyle data)"]
+ Report["Report Table<br/>(source documents)"]
+ end
 
-    subgraph Backend["Backend Services"]
-        PhysicsConfig["physics_config.py<br/>- Organ specs<br/>- Metric weights<br/>- Reference ranges"]
-        PhysicsRoute["physics.py Routes<br/>- GET /latest (auto-compute)<br/>- GET /history (per-report)<br/>- POST /metrics (manual)<br/>- GET /config"]
-        Scorer["Scoring Engine<br/>- compute_organ_score()<br/>- compute_all_organs()"]
-        ConditionEngine["conditions.py<br/>- detect_conditions()<br/>- 10 rule-based conditions<br/>- Severity mapping<br/>- Organ mapping"]
-        TelemetryRoute["telemetry.py Routes<br/>- GET /stream (SSE)<br/>- GET /latest<br/>- GET /history"]
-    end
+ subgraph Backend["Backend Services"]
+ PhysicsConfig["physics_config.py<br/>- Organ specs<br/>- Metric weights<br/>- Reference ranges"]
+ PhysicsRoute["physics.py Routes<br/>- GET /latest (auto-compute)<br/>- GET /history (per-report)<br/>- POST /metrics (manual)<br/>- GET /config"]
+ Scorer["Scoring Engine<br/>- compute_organ_score()<br/>- compute_all_organs()"]
+ ConditionEngine["conditions.py<br/>- detect_conditions()<br/>- 10 rule-based conditions<br/>- Severity mapping<br/>- Organ mapping"]
+ TelemetryRoute["telemetry.py Routes<br/>- GET /stream (SSE)<br/>- GET /latest<br/>- GET /history"]
+ end
 
-    subgraph Frontend["Frontend Components"]
-        PhysicsTwin["PhysicsTwin.tsx<br/>- Main page orchestrator<br/>- Tab navigation (Twin/Metrics/History)"]
-        TwinViewer["TwinViewer.tsx<br/>- 3D body with Three.js<br/>- Organ hotspots<br/>- Auto-rotate"]
-        BodyOverlay["BodyImpactOverlay.tsx<br/>- SVG body silhouette<br/>- Animated organ zones<br/>- Gender toggle"]
-        OrganTelemetry["OrganTelemetryCard.tsx<br/>- Overall score display<br/>- Selected organ detail<br/>- Metric values"]
-        Explainability["ExplainabilityCard.tsx<br/>- Scoring breakdown<br/>- Weight contributions<br/>- Coverage/confidence"]
-        Recommendations["RecommendationsCard.tsx<br/>- Detected conditions<br/>- Evidence-based actions<br/>- YouTube links"]
-        ConditionsEngine["conditionsEngine.ts<br/>- Client-side condition detection<br/>- Rapid re-evaluation<br/>- Trend computation"]
-        TelemetryHook["useTelemetryStream.ts<br/>- SSE connection manager<br/>- Fallback simulation<br/>- History buffer (120 readings)"]
-    end
+ subgraph Frontend["Frontend Components"]
+ PhysicsTwin["PhysicsTwin.tsx<br/>- Main page orchestrator<br/>- Tab navigation (Twin/Metrics/History)"]
+ TwinViewer["TwinViewer.tsx<br/>- 3D body with Three.js<br/>- Organ hotspots<br/>- Auto-rotate"]
+ BodyOverlay["BodyImpactOverlay.tsx<br/>- SVG body silhouette<br/>- Animated organ zones<br/>- Gender toggle"]
+ OrganTelemetry["OrganTelemetryCard.tsx<br/>- Overall score display<br/>- Selected organ detail<br/>- Metric values"]
+ Explainability["ExplainabilityCard.tsx<br/>- Scoring breakdown<br/>- Weight contributions<br/>- Coverage/confidence"]
+ Recommendations["RecommendationsCard.tsx<br/>- Detected conditions<br/>- Evidence-based actions<br/>- YouTube links"]
+ ConditionsEngine["conditionsEngine.ts<br/>- Client-side condition detection<br/>- Rapid re-evaluation<br/>- Trend computation"]
+ TelemetryHook["useTelemetryStream.ts<br/>- SSE connection manager<br/>- Fallback simulation<br/>- History buffer (120 readings)"]
+ end
 
-    Observation -->|Query last 90 days| PhysicsRoute
-    UserProfile -->|Enrich with lifestyle| PhysicsRoute
-    Report -->|Group snapshots by| PhysicsRoute
+ Observation -->|Query last 90 days| PhysicsRoute
+ UserProfile -->|Enrich with lifestyle| PhysicsRoute
+ Report -->|Group snapshots by| PhysicsRoute
 
-    PhysicsRoute -->|Load config| PhysicsConfig
-    PhysicsRoute -->|Compute scores| Scorer
-    Scorer -->|Detect conditions| ConditionEngine
+ PhysicsRoute -->|Load config| PhysicsConfig
+ PhysicsRoute -->|Compute scores| Scorer
+ Scorer -->|Detect conditions| ConditionEngine
 
-    TelemetryRoute -->|Generate readings| TelemetryHook
-    PhysicsRoute -->|Return snapshot| PhysicsTwin
+ TelemetryRoute -->|Generate readings| TelemetryHook
+ PhysicsRoute -->|Return snapshot| PhysicsTwin
 
-    PhysicsTwin -->|Render organs| TwinViewer
-    PhysicsTwin -->|Show overlay| BodyOverlay
-    PhysicsTwin -->|Display score| OrganTelemetry
-    PhysicsTwin -->|Show breakdown| Explainability
-    PhysicsTwin -->|Detect conditions| ConditionsEngine
-    ConditionsEngine -->|Map to organs| BodyOverlay
-    ConditionsEngine -->|Show recommendations| Recommendations
-    TelemetryHook -->|Stream vitals| PhysicsTwin
+ PhysicsTwin -->|Render organs| TwinViewer
+ PhysicsTwin -->|Show overlay| BodyOverlay
+ PhysicsTwin -->|Display score| OrganTelemetry
+ PhysicsTwin -->|Show breakdown| Explainability
+ PhysicsTwin -->|Detect conditions| ConditionsEngine
+ ConditionsEngine -->|Map to organs| BodyOverlay
+ ConditionsEngine -->|Show recommendations| Recommendations
+ TelemetryHook -->|Stream vitals| PhysicsTwin
 ```
 
 ### Core Concepts
@@ -1154,15 +1158,15 @@ Each metric is **normalised to 0-1** based on clinical reference ranges:
 
 ```
 If metric_value is in reference_range [ref_min, ref_max]:
-  normalised_score = 1.0  (perfect)
+ normalised_score = 1.0 (perfect)
 
 Else if metric_value < ref_min:
-  normalised_score = (metric_value - abs_min) / (ref_min - abs_min)
-  (linear decay to 0 at absolute minimum)
+ normalised_score = (metric_value - abs_min) / (ref_min - abs_min)
+ (linear decay to 0 at absolute minimum)
 
 Else if metric_value > ref_max:
-  normalised_score = 1.0 - (metric_value - ref_max) / (abs_max - ref_max)
-  (linear decay to 0 at absolute maximum)
+ normalised_score = 1.0 - (metric_value - ref_max) / (abs_max - ref_max)
+ (linear decay to 0 at absolute maximum)
 ```
 
 **Organ Score** = weighted average of present metrics:
@@ -1174,9 +1178,9 @@ score = Σ(weight_i × normalised_i) / Σ(weight_present) × 100
 **Overall Score** = mean of all organ scores with data
 
 **Status Classification**:
-- ✅ **Healthy**: 75-100
-- ⚠️ **Watch**: 50-74
-- 🔴 **Risk**: 0-49
+- **Healthy**: 75-100
+- **Watch**: 50-74
+- **Risk**: 0-49
 
 #### Metric Name Alignment
 
@@ -1213,49 +1217,49 @@ This ensures consistent data flow from OCR extraction → database storage → p
 #### Files Modified/Created
 
 1. **`app/services/physics_config.py`**: Organ & metric specifications
-   - 6 organ definitions with metric weights
-   - Reference ranges & absolute bounds per metric
-   - `compute_organ_score()`: Deterministic scoring function
-   - `compute_all_organs()`: Multi-organ aggregation
+ - 6 organ definitions with metric weights
+ - Reference ranges & absolute bounds per metric
+ - `compute_organ_score()`: Deterministic scoring function
+ - `compute_all_organs()`: Multi-organ aggregation
 
 2. **`app/routes/physics.py`**: Smart API endpoints
-   - `GET /api/physics/latest`: Auto-compute from real DB data (90-day window)
-   - `GET /api/physics/history`: Per-report snapshots
-   - `POST /api/physics/metrics`: Manual submission (fallback)
-   - `GET /api/physics/config`: Frontend config download
+ - `GET /api/physics/latest`: Auto-compute from real DB data (90-day window)
+ - `GET /api/physics/history`: Per-report snapshots
+ - `POST /api/physics/metrics`: Manual submission (fallback)
+ - `GET /api/physics/config`: Frontend config download
 
 3. **`app/services/conditions.py`**: Rule engine
-   - 10 `ConditionRule` definitions
-   - `detect_conditions()`: Main evaluation function
-   - Threshold checking with severity mapping
-   - Organ affection mapping
+ - 10 `ConditionRule` definitions
+ - `detect_conditions()`: Main evaluation function
+ - Threshold checking with severity mapping
+ - Organ affection mapping
 
 4. **`app/routes/telemetry.py`**: Simulated SSE stream
-   - Baseline vital signs (heart_rate, bp, spo2, glucose, etc.)
-   - Per-user simulation state tracking
-   - Realistic jitter + periodic spikes
-   - `GET /stream` SSE endpoint
+ - Baseline vital signs (heart_rate, bp, spo2, glucose, etc.)
+ - Per-user simulation state tracking
+ - Realistic jitter + periodic spikes
+ - `GET /stream` SSE endpoint
 
 #### Data QueryQuery Pattern (physics.py)
 
 ```python
 # Gather last 90 days of metrics for user
 result = await db.execute(
-    select(Observation)
-    .where(
-        and_(
-            Observation.user_id == user_id,
-            Observation.observed_at >= cutoff  # 90 days ago
-        )
-    )
-    .order_by(desc(Observation.observed_at))
+ select(Observation)
+ .where(
+ and_(
+ Observation.user_id == user_id,
+ Observation.observed_at >= cutoff # 90 days ago
+ )
+ )
+ .order_by(desc(Observation.observed_at))
 )
 
 # Deduplicate: keep most recent value per metric_name
 metrics = {}
 for obs in sorted_observations:
-    if obs.metric_name not in seen:
-        metrics[obs.metric_name] = float(obs.value)
+ if obs.metric_name not in seen:
+ metrics[obs.metric_name] = float(obs.value)
 ```
 
 ### Frontend Implementation
@@ -1263,50 +1267,59 @@ for obs in sorted_observations:
 #### Main Components
 
 1. **`PhysicsTwin.tsx`** (616 lines): Page orchestrator
-   - Three tabs: Twin View (3D/overlay), Metrics (vitals grid), History (trends + snapshots)
-   - Auto-loads latest snapshot on mount
-   - Streams real-time telemetry via SSE hook
-   - Auto-detects conditions from current metrics
-   - Handles organ selection state
+ - Three tabs: Twin View (3D/overlay), Metrics (vitals grid), History (trends + snapshots)
+ - Auto-loads latest snapshot on mount
+ - Streams real-time telemetry via SSE hook
+ - Auto-detects conditions from current metrics
+ - Handles organ selection state
 
 2. **`TwinViewer.tsx`** (297 lines): 3D body renderer
-   - Uses `@react-three/fiber` + `@react-three/drei` + Three.js
-   - Stylized torso + head mesh
-   - 6 animated organ orbs with onClick handlers
-   - Auto-rotating when no organ selected
-   - Smooth camera tween to selected organ
-   - Responsive scaling & glow effects
+ - Uses `@react-three/fiber` + `@react-three/drei` + Three.js
+ - Stylized torso + head mesh
+ - 6 animated organ orbs with onClick handlers
+ - Auto-rotating when no organ selected
+ - Smooth camera tween to selected organ
+ - Responsive scaling & glow effects
 
 3. **`BodyImpactOverlay.tsx`** (263 lines): 2D condition visualization
-   - SVG body silhouette (male/female toggle)
-   - 6 organ zones with animated pulsing
-   - Severity-based color coding (mild/moderate/severe)
-   - Condition pill badges at top
-   - Gender-specific body paths
+ - SVG body silhouette (male/female toggle)
+ - 6 organ zones with animated pulsing
+ - Severity-based color coding (mild/moderate/severe)
+ - Condition pill badges at top
+ - Gender-specific body paths
 
 4. **`OrganTelemetryCard.tsx`** (159 lines): Score summary
-   - Large animated overall score display
-   - Selected organ detail (coverage %, status badge)
-   - Per-metric contribution breakdown with visual bars
-   - Last updated timestamp
+ - Large animated overall score display
+ - Selected organ detail (coverage %, status badge)
+ - Per-metric contribution breakdown with visual bars
+ - Last updated timestamp
 
 5. **`ExplainabilityCard.tsx`**: Scoring transparency
-   - Breakdown table: metric name, raw value, normalised score, weight
-   - Contribution % calculation
-   - Coverage metric (% of available metrics present)
-   - Confidence score (weighted average)
+ - Breakdown table: metric name, raw value, normalised score, weight
+ - Contribution % calculation
+ - Coverage metric (% of available metrics present)
+ - Confidence score (weighted average)
 
-6. **`RecommendationsCard.tsx`**: Condition actions
-   - Dynamic pill badges grouped by severity
-   - Evidence-based recommendations for each condition
-   - YouTube search links for educational content
-   - Expandable/collapsible sections
+6. **`YouTubeRecommendationsCard.tsx`**: AI-powered video recommendations
+ - Generates organ-specific health video suggestions via OpenRouter (GPT-4o-mini)
+ - Per-organ caching with `useRef<Map>` so recommendations load instantly on re-selection
+ - AbortController + request ID pattern prevents stale API responses
+ - Retry mechanism with cache-clearing for error recovery
+ - Styled with `dash-card` CSS to match the project design system
+ - Side-by-side layout with ExplainabilityCard in a 50/50 CSS grid row
+
+7. **`RecommendationsCard.tsx`**: Condition actions
+ - Dynamic pill badges grouped by severity
+ - Evidence-based recommendations for each condition
+ - YouTube search links for educational content
+ - Expandable/collapsible sections
 
 #### Supporting Files
 
 - **`physicsApi.ts`**: API client with types for snapshots, organs, conditions
 - **`conditionsEngine.ts`**: Client-side condition detection mirroring backend rules (instant feedback on metric changes)
 - **`useTelemetryStream.ts`**: SSE hook with automatic fallback to simulated vitals if SSE unavailable
+- **`openRouterService.ts`**: OpenRouter API client for generating video recommendations (GPT-4o-mini, with local fallback)
 
 ### API Endpoints
 
@@ -1327,69 +1340,69 @@ for obs in sorted_observations:
 Response:
 ```json
 {
-  "id": "550e8400-e29b-41d4-a716-446655440000_2025-02-06T10:30:00",
-  "user_id": "550e8400-e29b-41d4-a716-446655440000",
-  "timestamp": "2025-02-06T10:30:00",
-  "overall_score": 72.3,
-  "overall_status": "Watch",
-  "data_source": "reports",
-  "raw_metrics": {
-    "systolic_bp": 145,
-    "diastolic_bp": 88,
-    "heart_rate": 78,
-    "glucose": 115,
-    "alt": 35,
-    "creatinine": 1.1,
-    "spo2": 97,
-    "hemoglobin": 14.2,
-    "stress_level": 5.2,
-    "sleep_hours": 6.5
-  },
-  "organs": {
-    "heart": {
-      "score": 68.5,
-      "status": "Watch",
-      "coverage": 0.83,
-      "contributions": [
-        {
-          "name": "systolic_bp",
-          "value": 145,
-          "normalised": 0.75,
-          "weight": 0.25,
-          "weighted": 0.1875,
-          "unit": "mmHg"
-        }
-      ]
-    },
-    "kidney": {
-      "score": 82.1,
-      "status": "Healthy",
-      "coverage": 1.0,
-      "contributions": []
-    }
-  },
-  "conditions": [
-    {
-      "id": "hypertension",
-      "name": "Hypertension",
-      "severity": "moderate",
-      "affected_organs": ["heart", "kidney", "brain"],
-      "trigger_metrics": { "systolic_bp": 145 },
-      "recommendations": [
-        "Reduce sodium intake to under 2,300 mg/day",
-        "Engage in 30 minutes of moderate exercise daily"
-      ],
-      "youtube_queries": ["how to lower blood pressure naturally"]
-    }
-  ],
-  "organ_conditions": {
-    "heart": ["hypertension"],
-    "kidney": ["hypertension"]
-  },
-  "organ_severities": {
-    "heart": "moderate",
-    "kidney": "mild"
-  }
+ "id": "550e8400-e29b-41d4-a716-446655440000_2025-02-06T10:30:00",
+ "user_id": "550e8400-e29b-41d4-a716-446655440000",
+ "timestamp": "2025-02-06T10:30:00",
+ "overall_score": 72.3,
+ "overall_status": "Watch",
+ "data_source": "reports",
+ "raw_metrics": {
+ "systolic_bp": 145,
+ "diastolic_bp": 88,
+ "heart_rate": 78,
+ "glucose": 115,
+ "alt": 35,
+ "creatinine": 1.1,
+ "spo2": 97,
+ "hemoglobin": 14.2,
+ "stress_level": 5.2,
+ "sleep_hours": 6.5
+ },
+ "organs": {
+ "heart": {
+ "score": 68.5,
+ "status": "Watch",
+ "coverage": 0.83,
+ "contributions": [
+ {
+ "name": "systolic_bp",
+ "value": 145,
+ "normalised": 0.75,
+ "weight": 0.25,
+ "weighted": 0.1875,
+ "unit": "mmHg"
+ }
+ ]
+ },
+ "kidney": {
+ "score": 82.1,
+ "status": "Healthy",
+ "coverage": 1.0,
+ "contributions": []
+ }
+ },
+ "conditions": [
+ {
+ "id": "hypertension",
+ "name": "Hypertension",
+ "severity": "moderate",
+ "affected_organs": ["heart", "kidney", "brain"],
+ "trigger_metrics": { "systolic_bp": 145 },
+ "recommendations": [
+ "Reduce sodium intake to under 2,300 mg/day",
+ "Engage in 30 minutes of moderate exercise daily"
+ ],
+ "youtube_queries": ["how to lower blood pressure naturally"]
+ }
+ ],
+ "organ_conditions": {
+ "heart": ["hypertension"],
+ "kidney": ["hypertension"]
+ },
+ "organ_severities": {
+ "heart": "moderate",
+ "kidney": "mild"
+ }
 }
 ```
 
@@ -1405,75 +1418,84 @@ data: {"timestamp":"2025-02-06T10:30:02Z","metrics":{"heart_rate":76,"systolic_b
 ### User Experience Flow
 
 1. **Page Load**: 
-   - Auto-fetches `/api/physics/latest` → loads real data from user's reports
-   - If user has reports: snapshot shows immediately with organ scores visible
-   - If no reports: Shows "No health data found" overlay with option to load demo data
+ - Auto-fetches `/api/physics/latest` → loads real data from user's reports
+ - If user has reports: snapshot shows immediately with organ scores visible
+ - If no reports: Shows "No health data found" overlay with option to load demo data
 
 2. **3D Viewer Interaction**:
-   - Click any organ → auto-selects, triggers camera tween to that organ
-   - OrganTelemetryCard shows score breakdown (e.g., "Heart: 68.5% — Watch")
-   - ExplainabilityCard shows metric contributions to selected organ score
-   - Each metric bar shows current value vs reference range
+ - Click any organ → auto-selects, triggers camera tween to that organ
+ - OrganTelemetryCard shows score breakdown (e.g., "Heart: 68.5% — Watch")
+ - ExplainabilityCard shows metric contributions to selected organ score
+ - Each metric bar shows current value vs reference range
 
 3. **Body Overlay Mode**:
-   - Click "Impact View" toggle → SVG body appears
-   - Detected conditions pulse with color coding (mild=yellow, moderate=orange, severe=red)
-   - Each organ zone highlights if affected by a condition
-   - Hover shows condition name
+ - Click "Impact View" toggle → SVG body appears
+ - Detected conditions pulse with color coding (mild=yellow, moderate=orange, severe=red)
+ - Each organ zone highlights if affected by a condition
+ - Hover shows condition name
 
 4. **Real-Time Metrics Tab**:
-   - Vital signs grid shows latest values (from telemetry SSE stream)
-   - Trend arrows (↑ up, ↓ down, → stable) based on 10-reading window
-   - "Score Metrics" button submits current readings for manual analysis
+ - Vital signs grid shows latest values (from telemetry SSE stream)
+ - Trend arrows (↑ up, ↓ down, → stable) based on 10-reading window
+ - "Score Metrics" button submits current readings for manual analysis
 
 5. **History Tab**:
-   - Line chart of selected metric over last 60 telemetry readings
-   - Scored snapshots section lists per-report scores with timestamps
-   - Click any snapshot to replay its organ breakdown
+ - Line chart of selected metric over last 60 telemetry readings
+ - Scored snapshots section lists per-report scores with timestamps
+ - Click any snapshot to replay its organ breakdown
 
 6. **Recommendations**:
-   - Dynamically updates as conditions detected/cleared
-   - Each condition shows severity, affected organs, evidence-based actions
-   - YouTube links for patient education (e.g., "DASH diet for hypertension")
+ - Dynamically updates as conditions detected/cleared
+ - Each condition shows severity, affected organs, evidence-based actions
+ - YouTube links for patient education (e.g., "DASH diet for hypertension")
 
 ### Key Features Breakdown
 
 #### Real Data, Not Simulation
 
-- ✅ `/api/physics/latest` queries actual `Observation` table
-- ✅ Uses real extracted metrics from uploaded medical reports
-- ✅ Falls back gracefully if user has zero observations (shows empty state)
-- ✅ Enriches with self-reported profile data (sleep, stress)
+- `/api/physics/latest` queries actual `Observation` table
+- Uses real extracted metrics from uploaded medical reports
+- Falls back gracefully if user has zero observations (shows empty state)
+- Enriches with self-reported profile data (sleep, stress)
 
 #### Deterministic Scoring
 
-- ✅ Reference ranges stored in `physics_config.py`
-- ✅ All calculations deterministic (no AI/ML, pure math)
-- ✅ Explainable: every score component shown in breakdown
-- ✅ Aligned with clinical normalisation standards
+- Reference ranges stored in `physics_config.py`
+- All calculations deterministic (no AI/ML, pure math)
+- Explainable: every score component shown in breakdown
+- Aligned with clinical normalisation standards
 
 #### 3D Interactive Body
 
-- ✅ 6 clickable organ hotspots
-- ✅ Smooth camera animation on selection
-- ✅ Real-time score badges on each organ
-- ✅ Auto-rotating when idle
-- ✅ Works on mobile and desktop
+- 6 clickable organ hotspots
+- Smooth camera animation on selection
+- Real-time score badges on each organ
+- Auto-rotating when idle
+- Works on mobile and desktop
 
 #### Condition Detection
 
-- ✅ 10 rule-based conditions automatically detected
-- ✅ Severity mapping (mild ≤ moderate ≤ severe)
-- ✅ Organ affection mapping (which organs are affected?)
-- ✅ Real-time evaluation as metrics change
-- ✅ Client-side + server-side dual detection for instant feedback
+- 10 rule-based conditions automatically detected
+- Severity mapping (mild ≤ moderate ≤ severe)
+- Organ affection mapping (which organs are affected?)
+- Real-time evaluation as metrics change
+- Client-side + server-side dual detection for instant feedback
 
 #### Educational Context
 
-- ✅ Recommendations tailored per condition
-- ✅ YouTube search links for each condition
-- ✅ Evidence citations (reference ranges explained)
-- ✅ Safety disclaimers on all pages
+- Recommendations tailored per condition
+- YouTube search links for each condition
+- Evidence citations (reference ranges explained)
+- Safety disclaimers on all pages
+
+#### AI Video Recommendations (OpenRouter)
+
+- Personalized health video suggestions generated via OpenRouter (GPT-4o-mini) for each organ
+- Video recommendations based on organ-specific abnormal metrics, not generic searches
+- Per-organ caching with `useRef<Map>` for instant retrieval on organ re-selection
+- AbortController + request ID guards prevent stale responses from overwriting current data
+- Fallback recommendations generated locally if API is unavailable
+- Displayed in a side-by-side "Improve Your Health" card alongside the "Why This Score?" explainability panel
 
 ### Performance & Optimization
 
@@ -1676,31 +1698,31 @@ alembic current
 
 ```mermaid
 erDiagram
-    users ||--o{ reports : uploads
-    users ||--o{ observations : has
-    users ||--o{ health_metrics : has
-    users ||--o| user_profiles : has
-    users ||--o{ profile_conditions : has
-    users ||--o{ profile_medications : takes
-    users ||--o{ profile_allergies : has
-    users ||--o{ chat_sessions : owns
-    users ||--o{ report_ai_summaries : generates
-    users ||--o{ report_ai_comparisons : generates
-    users ||--o{ user_saved_medicines : saves
-    users ||--o{ substitute_queries : searches
-    users ||--o{ pharmacy_clicks : clicks
-    users ||--o| user_location_consent : grants
-    
-    user_profiles ||--o{ reminders : has
-    reminders ||--o{ reminder_events : logs
-    
-    reports ||--o{ observations : extracts
-    reports ||--o{ report_ai_summaries : summarized_by
-    
-    chat_sessions ||--o{ chat_messages : contains
-    
-    user_saved_medicines ||--o{ generic_catalog : references
-    substitute_queries ||--o{ generic_catalog : queries
+ users ||--o{ reports : uploads
+ users ||--o{ observations : has
+ users ||--o{ health_metrics : has
+ users ||--o| user_profiles : has
+ users ||--o{ profile_conditions : has
+ users ||--o{ profile_medications : takes
+ users ||--o{ profile_allergies : has
+ users ||--o{ chat_sessions : owns
+ users ||--o{ report_ai_summaries : generates
+ users ||--o{ report_ai_comparisons : generates
+ users ||--o{ user_saved_medicines : saves
+ users ||--o{ substitute_queries : searches
+ users ||--o{ pharmacy_clicks : clicks
+ users ||--o| user_location_consent : grants
+ 
+ user_profiles ||--o{ reminders : has
+ reminders ||--o{ reminder_events : logs
+ 
+ reports ||--o{ observations : extracts
+ reports ||--o{ report_ai_summaries : summarized_by
+ 
+ chat_sessions ||--o{ chat_messages : contains
+ 
+ user_saved_medicines ||--o{ generic_catalog : references
+ substitute_queries ||--o{ generic_catalog : queries
 ```
 
 ### Medicines Database Schema
@@ -1866,21 +1888,21 @@ erDiagram
 Request:
 ```json
 {
-  "email": "user@example.com",
-  "password": "securepassword"
+ "email": "user@example.com",
+ "password": "securepassword"
 }
 ```
 
 Response:
 ```json
 {
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "user": {
-    "id": "550e8400-e29b-41d4-a716-446655440000",
-    "email": "user@example.com",
-    "full_name": "John Doe",
-    "created_at": "2026-01-15T10:30:00Z"
-  }
+ "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+ "user": {
+ "id": "550e8400-e29b-41d4-a716-446655440000",
+ "email": "user@example.com",
+ "full_name": "John Doe",
+ "created_at": "2026-01-15T10:30:00Z"
+ }
 }
 ```
 
@@ -1889,30 +1911,30 @@ Response:
 Request:
 ```json
 {
-  "report_id": "550e8400-e29b-41d4-a716-446655440001",
-  "force_regenerate": false
+ "report_id": "550e8400-e29b-41d4-a716-446655440001",
+ "force_regenerate": false
 }
 ```
 
 Response:
 ```json
 {
-  "summary_json": {
-    "title": "Blood Panel Analysis - January 2026",
-    "highlights": {
-      "positive": ["Hemoglobin within normal range", "Glucose levels stable"],
-      "needs_attention": ["LDL cholesterol slightly elevated"],
-      "next_steps": ["Consider dietary changes", "Retest in 3 months"]
-    },
-    "plain_language_summary": "Your blood panel shows mostly healthy values...",
-    "key_findings": [
-      {"item": "LDL Cholesterol", "evidence": "142 mg/dL (ref: <100)"}
-    ],
-    "confidence": 0.85
-  },
-  "cached": false,
-  "generated_at": "2026-02-02T10:30:00Z",
-  "model_name": "grok-beta"
+ "summary_json": {
+ "title": "Blood Panel Analysis - January 2026",
+ "highlights": {
+ "positive": ["Hemoglobin within normal range", "Glucose levels stable"],
+ "needs_attention": ["LDL cholesterol slightly elevated"],
+ "next_steps": ["Consider dietary changes", "Retest in 3 months"]
+ },
+ "plain_language_summary": "Your blood panel shows mostly healthy values...",
+ "key_findings": [
+ {"item": "LDL Cholesterol", "evidence": "142 mg/dL (ref: <100)"}
+ ],
+ "confidence": 0.85
+ },
+ "cached": false,
+ "generated_at": "2026-02-02T10:30:00Z",
+ "model_name": "grok-beta"
 }
 ```
 
@@ -1978,24 +2000,27 @@ pytest tests/test_routes_auth.py
 
 ### Manual QA Checklist
 
-1. ☐ Register a new account
-2. ☐ Login and verify dashboard loads
-3. ☐ Upload a PDF lab report
-4. ☐ Verify OCR extraction completes (WebSocket notification)
-5. ☐ Check extracted metrics appear in reports list
-6. ☐ Verify health index updates on dashboard
-7. ☐ Complete health profile wizard
-8. ☐ Check recommendations generate
-9. ☐ Open AI Summary page, select a report
-10. ☐ Generate AI summary, verify it displays
-11. ☐ Select 2 reports of same type, generate comparison
-12. ☐ Try selecting mixed types, verify warning appears
-13. ☐ Test Medicines feature: search for a medicine (e.g., "Aspirin 500mg")
-14. ☐ Verify substitutes appear with prices and Jan Aushadhi options highlighted
-15. ☐ Test pharmacy search by entering your location
-16. ☐ Verify nearby pharmacies appear with ratings and distance
-17. ☐ Try filtering pharmacies by type (all/jan_aushadhi/generic)
-18. ☐ Save a medicine and verify it appears in saved list
+1. Register a new account
+2. Login and verify dashboard loads
+3. Upload a PDF lab report
+4. Verify OCR extraction completes (WebSocket notification)
+5. Check extracted metrics appear in reports list
+6. Verify health index updates on dashboard
+7. Complete health profile wizard
+8. Check recommendations generate
+9. Open AI Summary page, select a report
+10. Generate AI summary, verify it displays
+11. Select 2 reports of same type, generate comparison
+12. Try selecting mixed types, verify warning appears
+13. Test Medicines feature: search for a medicine (e.g., "Aspirin 500mg")
+14. Verify substitutes appear with prices and Jan Aushadhi options highlighted
+15. Test pharmacy search by entering your location
+16. Verify nearby pharmacies appear with ratings and distance
+17. Try filtering pharmacies by type (all/jan_aushadhi/generic)
+18. Save a medicine and verify it appears in saved list
+19. Open Physics Twin page, verify organ scores load from reports
+20. Click an organ, verify "Why This Score?" breakdown and "Improve Your Health" video recommendations appear side-by-side
+21. Switch organs, verify video recommendations update and cache correctly
 
 ### Medicines Feature Testing
 
@@ -2018,45 +2043,45 @@ pytest tests/test_routes_medicines.py
 ### Medicines Manual Testing
 
 1. **Test Medicine Normalization**
-   ```bash
-   curl -X POST http://localhost:8000/api/medicines/normalize \
-     -H "Authorization: Bearer <token>" \
-     -H "Content-Type: application/json" \
-     -d '{"text": "Aspirin 500mg tablet"}'
-   ```
-   Expected: `NormalizedMedicine` with extracted salt, strength, form
+ ```bash
+ curl -X POST http://localhost:8000/api/medicines/normalize \
+ -H "Authorization: Bearer <token>" \
+ -H "Content-Type: application/json" \
+ -d '{"text": "Aspirin 500mg tablet"}'
+ ```
+ Expected: `NormalizedMedicine` with extracted salt, strength, form
 
 2. **Test Substitute Search (AI-Powered)**
-   ```bash
-   curl -X POST http://localhost:8000/api/medicines/substitutes/from-text \
-     -H "Authorization: Bearer <token>" \
-     -H "Content-Type: application/json" \
-     -d '{"text": "Crocin 650mg for fever"}'
-   ```
-   Expected: Ranked list of alternatives with prices
+ ```bash
+ curl -X POST http://localhost:8000/api/medicines/substitutes/from-text \
+ -H "Authorization: Bearer <token>" \
+ -H "Content-Type: application/json" \
+ -d '{"text": "Crocin 650mg for fever"}'
+ ```
+ Expected: Ranked list of alternatives with prices
 
 3. **Test Pharmacy Search**
-   ```bash
-   curl -X GET "http://localhost:8000/api/medicines/pharmacies/nearby?lat=40.7128&lng=-74.0060&radius_m=1000&type=all" \
-     -H "Authorization: Bearer <token>"
-   ```
-   Expected: List of nearby pharmacies with ratings
+ ```bash
+ curl -X GET "http://localhost:8000/api/medicines/pharmacies/nearby?lat=40.7128&lng=-74.0060&radius_m=1000&type=all" \
+ -H "Authorization: Bearer <token>"
+ ```
+ Expected: List of nearby pharmacies with ratings
 
 4. **Test Save Medicine**
-   ```bash
-   curl -X POST http://localhost:8000/api/medicines/saved \
-     -H "Authorization: Bearer <token>" \
-     -H "Content-Type: application/json" \
-     -d '{
-       "brand_name": "Aspirin",
-       "salt": "Acetylsalicylic Acid",
-       "strength": "500",
-       "form": "tablet",
-       "release_type": "immediate",
-       "notes": "Take with food"
-     }'
-   ```
-   Expected: `UserSavedMedicine` object saved to database
+ ```bash
+ curl -X POST http://localhost:8000/api/medicines/saved \
+ -H "Authorization: Bearer <token>" \
+ -H "Content-Type: application/json" \
+ -d '{
+ "brand_name": "Aspirin",
+ "salt": "Acetylsalicylic Acid",
+ "strength": "500",
+ "form": "tablet",
+ "release_type": "immediate",
+ "notes": "Take with food"
+ }'
+ ```
+ Expected: `UserSavedMedicine` object saved to database
 
 ### Medicines Troubleshooting
 
@@ -2064,58 +2089,58 @@ pytest tests/test_routes_medicines.py
 
 - **Cause**: Medicine not in `generic_catalog` table
 - **Solution**: 
-  - Verify PMBI/Jan Aushadhi seed data was loaded during migration
-  - Check database: `SELECT COUNT(*) FROM generic_catalog;` should show 600K+ records
-  - Try searching by generic name instead of brand name (e.g., "Acetylsalicylic Acid" instead of "Aspirin")
-  - Check logs for Grok API errors if using free-text search
+ - Verify PMBI/Jan Aushadhi seed data was loaded during migration
+ - Check database: `SELECT COUNT(*) FROM generic_catalog;` should show 600K+ records
+ - Try searching by generic name instead of brand name (e.g., "Acetylsalicylic Acid" instead of "Aspirin")
+ - Check logs for Grok API errors if using free-text search
 
 **Problem: "Google Places API 401" or pharmacy search returns empty**
 
 - **Cause**: `GOOGLE_PLACES_API_KEY` not set or API quota exceeded
 - **Solution**:
-  - Verify `GOOGLE_PLACES_API_KEY` is set in `.env`: `echo $GOOGLE_PLACES_API_KEY`
-  - Check Google Cloud Console for API key validity and quota limits
-  - If quota exceeded, wait 24 hours or upgrade billing
-  - During development, feature falls back to mock pharmacy data when API key is missing
-  - Mock data is useful for frontend testing without API costs
+ - Verify `GOOGLE_PLACES_API_KEY` is set in `.env`: `echo $GOOGLE_PLACES_API_KEY`
+ - Check Google Cloud Console for API key validity and quota limits
+ - If quota exceeded, wait 24 hours or upgrade billing
+ - During development, feature falls back to mock pharmacy data when API key is missing
+ - Mock data is useful for frontend testing without API costs
 
 **Problem: Slow medicine normalization or substitute search**
 
 - **Cause**: Missing database indexes on high-cardinality columns
 - **Solution**:
-  - Verify indexes exist on `generic_catalog`: `SELECT indexname FROM pg_indexes WHERE tablename='generic_catalog';`
-  - Should see indexes on: `product_name`, `salt`, `user_id`
-  - If missing, run: `alembic upgrade head` to apply latest migrations
-  - Check database query performance: Enable `EXPLAIN ANALYZE` in PostgreSQL
-  - Profile with: `SELECT pg_size_pretty(pg_total_relation_size('generic_catalog'));`
+ - Verify indexes exist on `generic_catalog`: `SELECT indexname FROM pg_indexes WHERE tablename='generic_catalog';`
+ - Should see indexes on: `product_name`, `salt`, `user_id`
+ - If missing, run: `alembic upgrade head` to apply latest migrations
+ - Check database query performance: Enable `EXPLAIN ANALYZE` in PostgreSQL
+ - Profile with: `SELECT pg_size_pretty(pg_total_relation_size('generic_catalog'));`
 
 **Problem: Grok API errors when parsing prescription images**
 
 - **Cause**: Invalid image format, API key expired, or API rate limit
 - **Solution**:
-  - Verify image is clear and readable (JPG, PNG, TIFF)
-  - Test API key directly: `curl -H "Authorization: Bearer $GROK_API_KEY" https://api.x.ai/v1/models`
-  - Check Grok API status at https://status.x.ai
-  - Review backend logs: `docker logs <backend-container>` or `tail uvicorn.log`
-  - If rate-limited, implement request throttling in `medicine_normalizer.py`
+ - Verify image is clear and readable (JPG, PNG, TIFF)
+ - Test API key directly: `curl -H "Authorization: Bearer $GROK_API_KEY" https://api.x.ai/v1/models`
+ - Check Grok API status at https://status.x.ai
+ - Review backend logs: `docker logs <backend-container>` or `tail uvicorn.log`
+ - If rate-limited, implement request throttling in `medicine_normalizer.py`
 
 **Problem: Pharmacy search cache not updating**
 
 - **Cause**: In-memory cache TTL (1 hour) not expired
 - **Solution**:
-  - Manually clear cache by restarting backend service
-  - Cache is per-search key (lat/lng/radius): different locations create new cache entries
-  - Check cache size in logs: Search for "pharmacy_cache" debug messages
-  - To disable caching for testing, set `PharmacyLocator.CACHE_TTL_SECONDS = 0`
+ - Manually clear cache by restarting backend service
+ - Cache is per-search key (lat/lng/radius): different locations create new cache entries
+ - Check cache size in logs: Search for "pharmacy_cache" debug messages
+ - To disable caching for testing, set `PharmacyLocator.CACHE_TTL_SECONDS = 0`
 
 **Problem: User saved medicines not persisting**
 
 - **Cause**: Database migration not applied or user_id foreign key constraint
 - **Solution**:
-  - Verify `user_saved_medicines` table exists: `\dt user_saved_medicines` in psql
-  - Run migrations: `cd backend && alembic upgrade head`
-  - Verify user exists and authenticated: Check JWT token contains valid `sub` (user_id)
-  - Check database logs for constraint errors: `docker logs <postgres-container>`
+ - Verify `user_saved_medicines` table exists: `\dt user_saved_medicines` in psql
+ - Run migrations: `cd backend && alembic upgrade head`
+ - Verify user exists and authenticated: Check JWT token contains valid `sub` (user_id)
+ - Check database logs for constraint errors: `docker logs <postgres-container>`
 ---
 
 ## Deployment

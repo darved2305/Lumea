@@ -49,6 +49,40 @@
   gap: var(--dash-spacing-lg);
 }
 
+/* Two cards side-by-side row: YouTube (left) + Explainability (right) */
+.physics-cards-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--dash-spacing-lg);
+  align-items: stretch;
+  margin-top: var(--dash-spacing-lg);
+}
+
+.physics-cards-row-item {
+  min-width: 0;
+  height: 100%;
+}
+
+.physics-cards-row-item > .dash-card {
+  height: 100%;
+  min-height: 480px;
+  max-height: 700px;
+  display: flex;
+  flex-direction: column;
+}
+
+.physics-cards-row-item > .dash-card .dash-card-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+@media (max-width: 768px) {
+  .physics-cards-row {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /* Twin card (left column)                                             */
 /* ------------------------------------------------------------------ */
@@ -299,6 +333,20 @@
 /* ------------------------------------------------------------------ */
 /* Explainability card                                                 */
 /* ------------------------------------------------------------------ */
+.physics-explainability-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.physics-explainability-card .dash-card-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
 .physics-explainability-card .dash-card-title {
   display: flex;
   align-items: center;

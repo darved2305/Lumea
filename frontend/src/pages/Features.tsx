@@ -320,6 +320,7 @@ function Features() {
                         viewport={{ once: true }}
                     >
                         <h2>How Your Data Flows</h2>
+                        <p>Every piece of health information follows a carefully designed path through our intelligent systems</p>
                         <div className="flow-diagram">
                             <div className="flow-step">
                                 <div className="flow-icon">

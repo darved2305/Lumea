@@ -268,19 +268,20 @@
     transform-origin: center center;
 }
 
-/* SVG Styles */
+/* SVG Styles - Larger, More Readable Nodes */
 .relationship-line {
-    stroke: var(--dash-border, #e5dfd5);
-    stroke-width: 2;
+    stroke: rgba(107, 145, 117, 0.25);
+    stroke-width: 2.5;
     fill: none;
 }
 
 .relationship-label {
-    font-size: 10px;
-    fill: var(--dash-text-muted, #999999);
+    font-size: 11px;
+    fill: var(--dash-text-secondary, #6b6b6b);
     text-anchor: middle;
     pointer-events: none;
     font-family: var(--dash-font-sans, 'DM Sans', sans-serif);
+    font-weight: 500;
 }
 
 .node {
@@ -294,21 +295,23 @@
 
 .node-circle {
     stroke: white;
-    stroke-width: 3;
-    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+    stroke-width: 4;
+    filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.15));
     transition: all var(--dash-transition-fast, 150ms);
 }
 
 .node:hover .node-circle {
-    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
+    filter: drop-shadow(0 5px 10px rgba(0, 0, 0, 0.25));
+    stroke-width: 5;
 }
 
 .node-label {
-    font-size: 10px;
+    font-size: 12px;
     fill: white;
-    font-weight: 600;
+    font-weight: 700;
     pointer-events: none;
     font-family: var(--dash-font-sans, 'DM Sans', sans-serif);
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 /* Tooltip */

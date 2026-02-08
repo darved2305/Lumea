@@ -241,8 +241,9 @@
   justify-content: space-between;
   gap: var(--dash-spacing-md, 1rem);
   padding: var(--dash-spacing-md, 1rem) var(--dash-spacing-lg, 1.5rem);
-  background: white;
+  background: linear-gradient(135deg, #ffffff 0%, #fafafa 100%);
   border: 1px solid var(--dash-border, #e5dfd5);
+  border-left: 3px solid var(--dash-accent-light, #8fb199);
   border-radius: var(--dash-radius-lg, 1rem);
   margin-bottom: var(--dash-spacing-sm, 0.75rem);
   transition: all var(--dash-transition-base, 250ms);
@@ -250,7 +251,9 @@
 
 .memory-item:hover {
   border-color: var(--dash-accent-light, #8fb199);
-  box-shadow: var(--dash-shadow-sm, 0 2px 8px rgba(107, 145, 117, 0.08));
+  border-left-color: var(--dash-accent, #6b9175);
+  background: white;
+  box-shadow: 0 4px 12px rgba(107, 145, 117, 0.12);
   transform: translateY(-1px);
 }
 

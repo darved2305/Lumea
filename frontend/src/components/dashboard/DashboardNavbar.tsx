@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Settings, LogOut, Home, LayoutDashboard, Bell, FileText, Activity, Sparkles, Pill, PhoneCall, Network } from 'lucide-react';
+import { Settings, LogOut, Home, LayoutDashboard, FileText, Activity, Sparkles, Pill, PhoneCall, Network } from 'lucide-react';
 import { logout } from '../../utils/auth';
 import Logo from '../ui/Logo';
 import './DashboardNavbar.css';
@@ -69,16 +69,6 @@ function DashboardNavbar({ userName = 'User', userStatus = '87% Healthy' }: Dash
 
         {/* Actions */}
         <div className="dashboard-actions">
-          {/* Notifications */}
-          <motion.button
-            className="dash-btn dash-btn-icon dash-focus-ring"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            aria-label="Notifications"
-          >
-            <Bell size={20} />
-          </motion.button>
-
           {/* User Menu */}
           <div className="dashboard-user-menu">
             <motion.button

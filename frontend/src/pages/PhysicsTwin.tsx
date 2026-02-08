@@ -24,7 +24,8 @@ import DashboardNavbar from '../components/dashboard/DashboardNavbar';
 import OrganTelemetryCard from '../components/physics/OrganTelemetryCard';
 import ExplainabilityCard from '../components/physics/ExplainabilityCard';
 import BodyImpactOverlay from '../components/physics/BodyImpactOverlay';
-import RecommendationsCard from '../components/physics/RecommendationsCard';
+import YouTubeRecommendationsCard from '../components/physics/YouTubeRecommendationsCard';
+import '../components/physics/YouTubeRecommendationsCard.css';
 import {
   getLatestSnapshot,
   submitMetrics,
@@ -241,6 +242,31 @@ function PhysicsTwin() {
   const selectedResult: OrganResult | null = selectedOrgan && snapshot?.organs[selectedOrgan]
     ? snapshot.organs[selectedOrgan]
     : null;
+
+  // Find worst performing organ for recommendations
+  const worstOrgan = useMemo(() => {
+    if (!snapshot?.organs) return null;
+    
+    let worst: { organ: string; score: number; result: OrganResult } | null = null;
+    
+    for (const [organKey, organData] of Object.entries(snapshot.organs)) {
+      // Skip if score is 100 (perfect health)
+      if (organData.score >= 100) continue;
+      
+      if (!worst || organData.score < worst.score) {
+        worst = { organ: organKey, score: organData.score, result: organData };
+      }
+    }
+    
+    return worst;
+  }, [snapshot]);
+
+  // Auto-select worst organ if nothing selected
+  useEffect(() => {
+    if (!selectedOrgan && worstOrgan) {
+      setSelectedOrgan(worstOrgan.organ);
+    }
+  }, [worstOrgan, selectedOrgan]);
 
   // Current metric value from telemetry
   const currentMetrics = telemetry.current?.metrics ?? snapshot?.raw_metrics ?? {};
@@ -602,15 +628,25 @@ function PhysicsTwin() {
                 organResult={selectedResult}
                 lastUpdated={telemetry.current?.timestamp ?? snapshot?.timestamp ?? null}
               />
+            </motion.div>
+          </div>
 
+          {/* Full-width two-column layout: YouTube (left) + Explainability (right) */}
+          <div className="physics-cards-row">
+            <div className="physics-cards-row-item">
+              <YouTubeRecommendationsCard
+                selectedOrgan={selectedOrgan}
+                organResult={selectedResult}
+                currentMetrics={currentMetrics}
+              />
+            </div>
+            <div className="physics-cards-row-item">
               <ExplainabilityCard
                 selectedOrgan={selectedOrgan}
                 organResult={selectedResult}
                 organLabel={selectedOrgan ? (ORGAN_LABELS[selectedOrgan] || selectedOrgan) : ''}
               />
-
-              <RecommendationsCard conditions={conditions} />
-            </motion.div>
+            </div>
           </div>
 
           {/* Data quality disclaimer */}

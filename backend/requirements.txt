@@ -40,6 +40,9 @@ ollama>=0.1.0
 google-generativeai>=0.4.0
 openai>=1.0.0  # Used as OpenRouter SDK (OpenAI-compatible API)
 
+# YouTube API for recommendations
+google-api-python-client>=2.100.0
+
 # Local MedGemma via Hugging Face
 # Keep transformers on the 4.x line; 5.x requires newer torch and breaks
 # sentence-transformers import paths used by Mem0 huggingface embeddings.
