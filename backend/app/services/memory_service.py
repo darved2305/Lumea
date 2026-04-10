@@ -48,12 +48,12 @@ def _is_rate_limit_error(error_text: str) -> bool:
     return "rate_limit" in lower or "429" in lower or "rate limit" in lower
 
 
-class _GroqThrottle:
+class _LLMThrottle:
     """
-    Async token-bucket style throttle for outbound Mem0→Groq calls.
+    Async token-bucket style throttle for outbound Mem0→LLM calls.
 
     Enforces a minimum interval between consecutive calls so the
-    aggregate tokens-per-minute stays under Groq's free-tier quota.
+    aggregate tokens-per-minute stays within provider quotas.
     All callers in the process share a single lock.
     """
 
@@ -76,7 +76,7 @@ class _GroqThrottle:
             elapsed = now - self._last_call
             if elapsed < self._min_interval:
                 wait = self._min_interval - elapsed
-                logger.debug("GroqThrottle: waiting %.2fs before next Mem0 call", wait)
+                logger.debug("LLMThrottle: waiting %.2fs before next Mem0 call", wait)
                 await asyncio.sleep(wait)
             self._last_call = time.monotonic()
 
@@ -88,7 +88,7 @@ class _GroqThrottle:
 
 
 # Module-level throttle shared by every MemoryService instance.
-_groq_throttle = _GroqThrottle(settings.MEM0_CALL_INTERVAL_SECONDS)
+_llm_throttle = _LLMThrottle(settings.MEM0_CALL_INTERVAL_SECONDS)
 
 
 class MemoryService:
@@ -96,8 +96,8 @@ class MemoryService:
     Service for interacting with Mem0 memory layer.
     Stores unstructured user preferences, facts, and conversation history.
 
-    All outbound calls are throttled through ``_groq_throttle`` so that
-    aggregate Groq TPM usage stays within quota.  Individual ``add()``
+    All outbound calls are throttled through ``_llm_throttle`` so that
+    aggregate LLM TPM usage stays within quota.  Individual ``add()``
     calls self-retry with exponential back-off on 429 errors.
     """
 
@@ -153,10 +153,28 @@ class MemoryService:
         }
 
     def _build_llm_candidates(self) -> List[Tuple[str, Dict[str, Any]]]:
+        openrouter_candidates: List[Tuple[str, Dict[str, Any]]] = []
         groq_candidates: List[Tuple[str, Dict[str, Any]]] = []
         ollama_candidates: List[Tuple[str, Dict[str, Any]]] = []
 
-        # Groq support via OpenAI-compatible config (preferred).
+        # OpenRouter support via OpenAI-compatible config (preferred).
+        if settings.OPENROUTER_API_KEY and settings.MEM0_PREFER_OPENROUTER:
+            openrouter_candidates.append(
+                (
+                    "openrouter_openai_compat",
+                    {
+                        "provider": "openai",
+                        "config": {
+                            "api_key": settings.OPENROUTER_API_KEY,
+                            "model": settings.MEM0_OPENROUTER_MODEL,
+                            "openai_base_url": settings.OPENROUTER_BASE_URL,
+                            "temperature": 0.1,
+                        },
+                    },
+                )
+            )
+
+        # Groq support via OpenAI-compatible config (fallback if OpenRouter not available).
         if settings.groq_api_key:
             groq_candidates.append(
                 (
@@ -173,9 +191,15 @@ class MemoryService:
                 )
             )
 
-        # Only add Ollama candidates if Groq is not preferred or not available.
+        # Determine if a cloud LLM is preferred and available
+        _cloud_llm_preferred = (
+            (settings.MEM0_PREFER_OPENROUTER and settings.OPENROUTER_API_KEY)
+            or (settings.MEM0_PREFER_GROQ and settings.groq_api_key)
+        )
+
+        # Only add Ollama candidates if no cloud LLM is preferred.
         # This prevents noisy "Failed to connect to Ollama" warnings.
-        if not (settings.MEM0_PREFER_GROQ and settings.groq_api_key):
+        if not _cloud_llm_preferred:
             ollama_model = settings.OLLAMA_MODEL
             ollama_url = settings.OLLAMA_BASE_URL
             ollama_candidates.extend(
@@ -202,7 +226,7 @@ class MemoryService:
                 ]
             )
 
-        return groq_candidates + ollama_candidates
+        return openrouter_candidates + groq_candidates + ollama_candidates
 
     def _build_embedder_candidates(self) -> List[Tuple[str, Dict[str, Any]]]:
         # Prefer local sentence-transformers embedder (works without Ollama or external APIs).
@@ -219,8 +243,12 @@ class MemoryService:
             ),
         ]
 
-        # Skip Ollama embedder candidates when using Groq for LLM (Ollama likely not running).
-        if not (settings.MEM0_PREFER_GROQ and settings.groq_api_key):
+        # Skip Ollama embedder candidates when using a cloud LLM (Ollama likely not running).
+        _cloud_llm_active = (
+            (settings.MEM0_PREFER_OPENROUTER and settings.OPENROUTER_API_KEY)
+            or (settings.MEM0_PREFER_GROQ and settings.groq_api_key)
+        )
+        if not _cloud_llm_active:
             embed_model = settings.MEM0_EMBED_MODEL
             ollama_url = settings.OLLAMA_BASE_URL
             candidates.extend([
@@ -364,7 +392,7 @@ class MemoryService:
 
         for attempt in range(1, max_retries + 1):
             # ---- throttle: wait for our turn ----
-            await _groq_throttle.acquire()
+            await _llm_throttle.acquire()
 
             try:
                 result = await asyncio.to_thread(_sync_add)
@@ -374,11 +402,11 @@ class MemoryService:
                     retry_after = _extract_retry_seconds(err_text)
                     wait = max(retry_after, base_backoff * attempt) + random.uniform(0.5, 1.5)
                     logger.warning(
-                        "Groq 429 during Mem0 add for user %s (attempt %s/%s). "
+                        "LLM 429 during Mem0 add for user %s (attempt %s/%s). "
                         "Backing off %.1fs",
                         user_id, attempt, max_retries, wait,
                     )
-                    await _groq_throttle.backoff(wait)
+                    await _llm_throttle.backoff(wait)
                     await asyncio.sleep(wait)
                     last_err = err_text
                     continue
@@ -394,11 +422,11 @@ class MemoryService:
                     retry_after = _extract_retry_seconds(err_text)
                     wait = max(retry_after, base_backoff * attempt) + random.uniform(0.5, 1.5)
                     logger.warning(
-                        "Groq 429 in Mem0 result for user %s (attempt %s/%s). "
+                        "LLM 429 in Mem0 result for user %s (attempt %s/%s). "
                         "Backing off %.1fs",
                         user_id, attempt, max_retries, wait,
                     )
-                    await _groq_throttle.backoff(wait)
+                    await _llm_throttle.backoff(wait)
                     await asyncio.sleep(wait)
                     last_err = err_text
                     continue
@@ -463,7 +491,7 @@ class MemoryService:
             client = self._get_client()
             return client.search(query, user_id=user_id, limit=limit)
 
-        await _groq_throttle.acquire()
+        await _llm_throttle.acquire()
         try:
             result = await asyncio.to_thread(_sync_search)
             self._clear_error()
@@ -474,12 +502,12 @@ class MemoryService:
                 retry_after = _extract_retry_seconds(err_text)
                 wait = max(retry_after, settings.MEM0_RETRY_BASE_SECONDS) + random.uniform(0.5, 1.5)
                 logger.warning(
-                    "Groq 429 during Mem0 search for user %s — backing off %.1fs and retrying once",
+                    "LLM 429 during Mem0 search for user %s — backing off %.1fs and retrying once",
                     user_id, wait,
                 )
-                await _groq_throttle.backoff(wait)
+                await _llm_throttle.backoff(wait)
                 await asyncio.sleep(wait)
-                await _groq_throttle.acquire()
+                await _llm_throttle.acquire()
                 try:
                     result = await asyncio.to_thread(_sync_search)
                     self._clear_error()

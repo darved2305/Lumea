@@ -213,9 +213,23 @@ class GrokExtractor:
     """
     
     def __init__(self):
-        self.api_key = getattr(settings, 'xai_api_key', None) or getattr(settings, 'openai_api_key', None)
-        self.api_base = getattr(settings, 'xai_api_base', 'https://api.x.ai/v1')
-        self.model = getattr(settings, 'grok_model', 'grok-beta')
+        # Prioritize Groq, then fallback to xAI, then OpenAI
+        if getattr(settings, 'groq_api_key', None):
+            self.api_key = settings.groq_api_key
+            self.api_base = getattr(settings, 'groq_api_base', 'https://api.groq.com/openai/v1')
+            self.model = getattr(settings, 'groq_model', 'llama-3.3-70b-versatile')
+        elif getattr(settings, 'xai_api_key', None):
+            self.api_key = settings.xai_api_key
+            self.api_base = getattr(settings, 'xai_api_base', 'https://api.x.ai/v1')
+            self.model = getattr(settings, 'grok_model', 'grok-beta')
+        elif getattr(settings, 'openai_api_key', None):
+            self.api_key = settings.openai_api_key
+            self.api_base = getattr(settings, 'openai_api_base', 'https://api.openai.com/v1')
+            self.model = getattr(settings, 'openai_model', 'gpt-4o-mini')
+        else:
+            self.api_key = None
+            self.api_base = None
+            self.model = None
         self.timeout = 30.0
         self.max_retries = 2
     

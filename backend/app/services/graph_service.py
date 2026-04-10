@@ -70,8 +70,20 @@ class GraphService:
             return
 
         try:
+            use_openrouter = self._should_use_openrouter_llm()
             use_groq = self._should_use_groq_llm()
-            if use_groq:
+
+            if use_openrouter:
+                logger.info("Initializing Graphiti with Neo4j and OpenRouter (OpenAI-compatible)...")
+                llm_config = LLMConfig(
+                    api_key=settings.OPENROUTER_API_KEY,
+                    base_url=settings.OPENROUTER_BASE_URL,
+                    model=settings.GRAPHITI_OPENROUTER_MODEL,
+                    small_model=settings.GRAPHITI_OPENROUTER_MODEL,
+                    temperature=0.1,
+                    max_tokens=4096,
+                )
+            elif use_groq:
                 logger.info("Initializing Graphiti with Neo4j and Groq (OpenAI-compatible)...")
                 llm_config = LLMConfig(
                     api_key=settings.groq_api_key,
@@ -141,11 +153,21 @@ class GraphService:
             self.client = None
 
     @staticmethod
+    def _should_use_openrouter_llm() -> bool:
+        """
+        Prefer OpenRouter whenever an API key is configured and
+        MEM0_PREFER_OPENROUTER is True.
+        """
+        return bool(settings.OPENROUTER_API_KEY and settings.MEM0_PREFER_OPENROUTER)
+
+    @staticmethod
     def _should_use_groq_llm() -> bool:
         """
-        Prefer Groq whenever an API key is configured.
-        Ollama remains fallback when no Groq key is present.
+        Fallback to Groq when OpenRouter is not preferred/available but a
+        Groq API key is configured.
         """
+        if settings.OPENROUTER_API_KEY and settings.MEM0_PREFER_OPENROUTER:
+            return False
         return bool(settings.groq_api_key)
 
     @staticmethod

@@ -31,6 +31,10 @@ class Settings(BaseSettings):
     OPENROUTER_FALLBACK_MODEL: str = "upstage/solar-pro-3:free"
     OPENROUTER_TIMEOUT: int = 120  # seconds
 
+    # OpenRouter models for Mem0 and Graphiti (overridable per-service)
+    MEM0_OPENROUTER_MODEL: str = "openrouter/pony-alpha"
+    GRAPHITI_OPENROUTER_MODEL: str = "openrouter/pony-alpha"
+
     # Ollama LLM Configuration (LAST RESORT fallback)
     # Default to localhost for direct (non‑Docker) runs.
     # When running via Docker, docker-compose.yml overrides this to use
@@ -84,12 +88,13 @@ class Settings(BaseSettings):
     MEM0_COLLECTION: str = "user_memories"
     MEM0_EMBED_MODEL: str = "nomic-embed-text"
     MEM0_CHROMA_DIR: str = "/app/mem0_chroma"  # Separate from RAG to avoid singleton conflict
-    MEM0_PREFER_GROQ: bool = True
+    MEM0_PREFER_GROQ: bool = False  # Deprecated: use MEM0_PREFER_OPENROUTER
+    MEM0_PREFER_OPENROUTER: bool = True  # Prefer OpenRouter over Groq for mem0/graph
 
-    # Groq / Mem0 rate-limit mitigation
+    # LLM / Mem0 rate-limit mitigation
     # Minimum seconds between consecutive Mem0 LLM calls (prevents TPM exhaustion)
     MEM0_CALL_INTERVAL_SECONDS: float = 3.0
-    # Max retries per individual add() call when Groq returns 429
+    # Max retries per individual add() call when provider returns 429
     MEM0_MAX_RETRIES: int = 5
     # Base backoff (seconds) for exponential retry on 429
     MEM0_RETRY_BASE_SECONDS: float = 2.0
